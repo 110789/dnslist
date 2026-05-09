@@ -784,8 +784,8 @@ class _DragAwareCredentialCard extends StatelessWidget {
     }
 
     return Container(
-      width: 36,
-      height: 36,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(
@@ -793,6 +793,7 @@ class _DragAwareCredentialCard extends StatelessWidget {
           width: isSelected ? 2 : 0,
         ),
       ),
+      padding: EdgeInsets.all(isSelected ? 2 : 0),
       child: ClipOval(
         child: SizedBox(
           width: 36,
