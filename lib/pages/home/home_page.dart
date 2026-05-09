@@ -351,7 +351,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 48, 20, 20),
+            padding: const EdgeInsets.fromLTRB(20, 48, 12, 20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
@@ -365,14 +365,29 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(DnsRadius.md),
-                  ),
-                  child: const Icon(Icons.dns, size: 28, color: Colors.white),
+                Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(DnsRadius.md),
+                      ),
+                      child: const Icon(Icons.dns, size: 28, color: Colors.white),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
+                      onPressed: () {
+                        credentialState.loadCredentials();
+                        if (mounted) {
+                          ToastUtil.showSuccess(context, '已刷新凭证列表');
+                        }
+                      },
+                      tooltip: '刷新凭证',
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -588,7 +603,8 @@ class _CredentialItem extends StatefulWidget {
 }
 
 class _CredentialItemState extends State<_CredentialItem> {
-  bool _isPressed = false;
+  bool _bodyPressed = false;
+  bool _dragPressed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -604,8 +620,8 @@ class _CredentialItemState extends State<_CredentialItem> {
             ? colorScheme.primaryContainer.withValues(alpha: 0.4)
             : colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(DnsRadius.md),
-        elevation: widget.isSelected ? 0 : 0,
         child: Container(
+          height: 72,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(DnsRadius.md),
             border: Border.all(
@@ -632,14 +648,20 @@ class _CredentialItemState extends State<_CredentialItem> {
   Widget _buildItemBody(BuildContext context, ColorScheme colorScheme) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
+      onTapDown: (_) {
+        if (mounted) setState(() => _bodyPressed = true);
+      },
+      onTapUp: (_) {
+        if (mounted) setState(() => _bodyPressed = false);
+      },
+      onTapCancel: () {
+        if (mounted) setState(() => _bodyPressed = false);
+      },
       onTap: widget.onTap,
       onLongPress: widget.onLongPress,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 100),
-        color: _isPressed
+        color: _bodyPressed
             ? colorScheme.onSurface.withValues(alpha: 0.04)
             : Colors.transparent,
         padding: const EdgeInsets.symmetric(
@@ -648,8 +670,7 @@ class _CredentialItemState extends State<_CredentialItem> {
         ),
         child: Row(
           children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+            Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
@@ -710,19 +731,23 @@ class _CredentialItemState extends State<_CredentialItem> {
   }
 
   Widget _buildDragHandle(BuildContext context, ColorScheme colorScheme) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
+    return Listener(
+      onPointerDown: (_) {
+        if (mounted) setState(() => _dragPressed = true);
+      },
+      onPointerUp: (_) {
+        if (mounted) setState(() => _dragPressed = false);
+      },
+      onPointerCancel: (_) {
+        if (mounted) setState(() => _dragPressed = false);
+      },
       child: ReorderableDragStartListener(
         index: widget.index,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
-          width: 44,
-          height: double.infinity,
-          color: _isPressed
-              ? colorScheme.onSurface.withValues(alpha: 0.04)
+          width: 48,
+          color: _dragPressed
+              ? colorScheme.onSurface.withValues(alpha: 0.06)
               : Colors.transparent,
           child: Center(
             child: Column(
