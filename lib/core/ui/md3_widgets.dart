@@ -447,8 +447,12 @@ class DnsDomainTile extends StatelessWidget {
     final createdAt = domain['created_at'] ?? domain['created_on'];
     final expiresAt = domain['expires_at'] ?? domain['expiry_at'];
     final ttl = domain['ttl'];
+    final registrar = domain['registrar']?.toString();
 
     final dateLines = <String>[];
+    if (registrar != null && registrar.isNotEmpty) {
+      dateLines.add('注册商: $registrar');
+    }
     if (createdAt != null) {
       final formatted = _formatDate(createdAt);
       if (formatted.isNotEmpty) dateLines.add('添加: $formatted');

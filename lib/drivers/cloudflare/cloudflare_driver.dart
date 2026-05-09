@@ -166,6 +166,14 @@ class CloudflareDriver implements DriverInterface {
       if (response.data['success'] == true) {
         final result = response.data['result'] as List? ?? [];
         final domains = result.map((zone) {
+          String? registrar;
+          final owner = zone['owner'];
+          if (owner != null) {
+            final ownerType = owner['type']?.toString();
+            if (ownerType != null && ownerType.isNotEmpty) {
+              registrar = _parseRegistrarType(ownerType);
+            }
+          }
           return {
             'id': zone['id']?.toString() ?? '',
             'name': zone['name']?.toString() ?? '',
@@ -177,6 +185,7 @@ class CloudflareDriver implements DriverInterface {
             'name_servers': zone['name_servers'] as List? ?? [],
             'owner': zone['owner'],
             'plan': zone['plan'],
+            'registrar': registrar,
           };
         }).toList();
         final pagination = response.data['result_info'] ?? {};
@@ -522,6 +531,23 @@ class CloudflareDriver implements DriverInterface {
       if (dt != null) return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
       return s;
     } catch (_) { return ''; }
+  }
+
+  String _parseRegistrarType(String ownerType) {
+    switch (ownerType.toLowerCase()) {
+      case 'cloudflare':
+        return 'Cloudflare Registrar';
+      case 'apex':
+        return 'Apex (Root)';
+      case 'full':
+        return 'Full DNS';
+      case 'partial':
+        return 'Partial DNS';
+      case 'secondary':
+        return 'Secondary DNS';
+      default:
+        return ownerType;
+    }
   }
 }
 
