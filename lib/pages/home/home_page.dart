@@ -523,6 +523,14 @@ class _HomePageState extends State<HomePage> {
           final credentialState = context.read<CredentialState>();
           await credentialState.addCredential(credential);
           if (context.mounted) {
+            final newSelected = credentialState.selectedCredential;
+            if (newSelected != null) {
+              context.read<DomainState>().clear();
+              context.read<DomainState>().loadDomains(
+                newSelected.providerId,
+                newSelected.credentials,
+              );
+            }
             ToastUtil.showSuccess(context, '添加凭证成功');
             Navigator.pop(ctx);
           }
