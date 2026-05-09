@@ -506,23 +506,6 @@ class _HomePageState extends State<HomePage> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert, size: 20),
-          onSelected: (value) {
-            if (value == 'edit') {
-              _showEditCredentialDialog(context, credential);
-            } else if (value == 'delete') {
-              _showDeleteCredentialDialog(context, credential, credentialState);
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'edit', child: Text('编辑')),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Text('删除', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        ),
         onTap: () {
           credentialState.selectCredential(credential.id);
           domainState.clear();
@@ -530,7 +513,7 @@ class _HomePageState extends State<HomePage> {
           Navigator.pop(context);
         },
         onLongPress: () {
-          _showCredentialActionsSheet(context, credential, credentialState, domainState);
+          _showCredentialActionsSheet(context, credential, credentialState);
         },
       ),
     );
@@ -540,7 +523,6 @@ class _HomePageState extends State<HomePage> {
     BuildContext context,
     CredentialModel credential,
     CredentialState credentialState,
-    DomainState domainState,
   ) {
     showModalBottomSheet(
       context: context,
@@ -548,17 +530,6 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
-              leading: const Icon(Icons.check_circle),
-              title: const Text('选择此凭证'),
-              onTap: () {
-                Navigator.pop(ctx);
-                credentialState.selectCredential(credential.id);
-                domainState.clear();
-                domainState.loadDomains(credential.providerId, credential.credentials);
-                Navigator.pop(context);
-              },
-            ),
             ListTile(
               leading: const Icon(Icons.edit),
               title: const Text('编辑凭证'),
