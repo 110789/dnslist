@@ -469,21 +469,13 @@ class _HomePageState extends State<HomePage> {
   ) {
     showModalBottomSheet(
       context: context,
+      showDragHandle: false,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(top: 12),
-              decoration: BoxDecoration(
-                color: Theme.of(ctx).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
             Padding(
-              padding: const EdgeInsets.all(DnsSpacing.md),
+              padding: const EdgeInsets.fromLTRB(DnsSpacing.md, DnsSpacing.lg, DnsSpacing.md, DnsSpacing.md),
               child: Text(
                 credential.providerName,
                 style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
