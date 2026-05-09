@@ -475,7 +475,7 @@ class _HomePageState extends State<HomePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(DnsSpacing.md, DnsSpacing.lg, DnsSpacing.md, DnsSpacing.md),
+              padding: const EdgeInsets.fromLTRB(DnsSpacing.md, DnsSpacing.sm, DnsSpacing.md, DnsSpacing.sm),
               child: Text(
                 credential.providerName,
                 style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
@@ -835,27 +835,40 @@ class _DragAwareCredentialCard extends StatelessWidget {
   }
 
   Widget _buildInfo(ColorScheme colorScheme) {
+    final hasRemark = credential.remark != null && credential.remark!.isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          credential.providerName,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-            color: colorScheme.onSurface,
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        if (credential.remark != null && credential.remark!.isNotEmpty) ...[
-          const SizedBox(height: 2),
+        if (hasRemark) ...[
           Text(
             credential.remark!,
             style: TextStyle(
+              fontSize: 15,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: colorScheme.onSurface,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            credential.providerName,
+            style: TextStyle(
               fontSize: 12,
               color: colorScheme.onSurfaceVariant,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ] else ...[
+          Text(
+            credential.providerName,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: colorScheme.onSurface,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
