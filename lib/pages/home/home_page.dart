@@ -64,6 +64,10 @@ class _HomePageState extends State<HomePage> {
                     }
                   },
                 ),
+                IconButton(
+                  icon: const Icon(Icons.settings_outlined),
+                  onPressed: () => GoRouter.of(context).push('/settings'),
+                ),
               ]
             : null,
       ),
