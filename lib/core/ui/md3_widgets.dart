@@ -123,6 +123,7 @@ class DnsListTile extends StatelessWidget {
   final String title;
   final Widget? subtitle;
   final Widget? trailing;
+  final List<Widget>? tags;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
@@ -132,6 +133,7 @@ class DnsListTile extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailing,
+    this.tags,
     this.onTap,
     this.onLongPress,
   });
@@ -175,6 +177,14 @@ class DnsListTile extends StatelessWidget {
                           color: colorScheme.onSurfaceVariant,
                         ),
                         child: subtitle!,
+                      ),
+                    ],
+                    if (tags != null && tags!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: tags!,
                       ),
                     ],
                   ],
@@ -271,6 +281,67 @@ class DnsTypeBadge extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoTag extends StatelessWidget {
+  final String label;
+  final ColorScheme colorScheme;
+
+  const _InfoTag({required this.label, required this.colorScheme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(DnsRadius.sm),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          color: colorScheme.onSurfaceVariant,
+        ),
+      ),
+    );
+  }
+}
+
+class DnsTtlTag extends StatelessWidget {
+  final int ttl;
+
+  const DnsTtlTag({super.key, required this.ttl});
+
+  String get _label {
+    if (ttl <= 0) return 'TTL: $ttl';
+    if (ttl < 60) return 'TTL: ${ttl}s';
+    if (ttl < 3600) return 'TTL: ${(ttl / 60).round()}m';
+    if (ttl < 86400) return 'TTL: ${(ttl / 3600).round()}h';
+    return 'TTL: ${(ttl / 86400).round()}d';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: colorScheme.secondaryContainer.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(DnsRadius.sm),
+      ),
+      child: Text(
+        _label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: colorScheme.onSecondaryContainer,
         ),
       ),
     );
@@ -407,9 +478,25 @@ class DnsDomainTile extends StatelessWidget {
     final name = domain['name']?.toString() ?? '';
     final status = domain['status']?.toString() ?? '';
     final displayStatus = _translateStatus(status);
+    final colorScheme = Theme.of(context).colorScheme;
+
+    final createdAt = domain['created_at'];
+    final expiresAt = domain['expires_at'];
+    final ttl = domain['ttl'];
+
+    final tags = <Widget>[];
+    if (createdAt != null) {
+      tags.add(_InfoTag(label: '添加: ${_formatDate(createdAt)}', colorScheme: colorScheme));
+    }
+    if (expiresAt != null && expiresAt.toString().isNotEmpty) {
+      tags.add(_InfoTag(label: '过期: ${_formatDate(expiresAt)}', colorScheme: colorScheme));
+    }
+    if (ttl != null) {
+      tags.add(DnsTtlTag(ttl: ttl is int ? ttl : int.tryParse(ttl.toString()) ?? 0));
+    }
 
     return DnsListTile(
-      leading: Icon(Icons.language, color: Theme.of(context).colorScheme.primary),
+      leading: Icon(Icons.language, color: colorScheme.primary),
       title: name,
       subtitle: displayStatus.isNotEmpty
           ? Text(
@@ -419,9 +506,10 @@ class DnsDomainTile extends StatelessWidget {
               ),
             )
           : null,
+      tags: tags.isNotEmpty ? tags : null,
       onTap: onTap,
       trailing: PopupMenuButton<String>(
-        icon: Icon(Icons.more_vert, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
+        icon: Icon(Icons.more_vert, size: 20, color: colorScheme.onSurfaceVariant),
         onSelected: (value) {
           if (value == 'delete') onDelete?.call();
           if (value == 'renew') onRenew?.call();
@@ -432,11 +520,27 @@ class DnsDomainTile extends StatelessWidget {
           if (supportsDelete)
             PopupMenuItem(
               value: 'delete',
-              child: Text('删除', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              child: Text('删除', style: TextStyle(color: colorScheme.error)),
             ),
         ],
       ),
     );
+  }
+
+  String _formatDate(dynamic dateVal) {
+    try {
+      if (dateVal is int) {
+        return '${dateVal ~/ 1000000}-??';
+      }
+      final s = dateVal.toString();
+      if (s.length >= 10) {
+        final dt = DateTime.tryParse(s);
+        if (dt != null) return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      }
+      return s;
+    } catch (_) {
+      return '无';
+    }
   }
 
   String _translateStatus(String status) {
