@@ -61,7 +61,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 DropdownButtonFormField<String>(
                   value: selectedType,
                   decoration: const InputDecoration(labelText: '记录类型'),
-                  items: driver.getSupportedRecordTypes().map((t) => DropdownMenuItem(initialValue: t, child: Text(t))).toList(),
+                  items: driver.getSupportedRecordTypes().map((t) => DropdownMenuItem<String>(value: t, child: Text(t))).toList(),
                   onChanged: (v) => setDialogState(() => selectedType = v!),
                 ),
                 const SizedBox(height: 16),
@@ -139,7 +139,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 DropdownButtonFormField<String>(
                   value: selectedType,
                   decoration: const InputDecoration(labelText: '记录类型'),
-                  items: driver.getSupportedRecordTypes().map((t) => DropdownMenuItem(initialValue: t, child: Text(t))).toList(),
+                  items: driver.getSupportedRecordTypes().map((t) => DropdownMenuItem<String>(value: t, child: Text(t))).toList(),
                   onChanged: (v) => setDialogState(() => selectedType = v!),
                 ),
                 const SizedBox(height: 16),

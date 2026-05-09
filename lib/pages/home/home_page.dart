@@ -217,6 +217,7 @@ class _HomePageState extends State<HomePage> {
     if (driver == null) return;
 
     final domainState = context.read<DomainState>();
+    final title = driver.getAddDomainTitle();
     final isSubdomain = providerId == 'dnshe';
 
     final controllers = <String, TextEditingController>{};
@@ -765,7 +766,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
                   value: _selectedProviderId,
                   decoration: InputDecoration(labelText: '选择服务商', border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, fillColor: Colors.transparent, filled: false),
                   isExpanded: true,
-                  items: drivers.map((d) => DropdownMenuItem(initialValue: d.providerId, child: Text(d.providerName))).toList(),
+                  items: drivers.map((d) => DropdownMenuItem<String>(value: d.providerId, child: Text(d.providerName))).toList(),
                   onChanged: (value) => setState(() { _selectedProviderId = value; _controllers.clear(); }),
                 ),
               ),
