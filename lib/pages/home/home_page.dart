@@ -382,23 +382,28 @@ class _HomePageState extends State<HomePage> {
     return Drawer(
       child: Column(
         children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(color: Colors.blue),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                const Icon(Icons.dns, size: 48, color: Colors.white),
-                const SizedBox(height: 8),
-                const Text('DNS管理工具', style: TextStyle(fontSize: 20, color: Colors.white)),
-                const SizedBox(height: 4),
-                Text(
-                  credentialState.credentials.isNotEmpty
-                      ? '已添加 ${credentialState.credentials.length} 个凭证'
-                      : '未添加凭证',
-                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-              ],
+          SizedBox(
+            width: double.infinity,
+            child: DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.blue),
+              margin: EdgeInsets.zero,
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  const Icon(Icons.dns, size: 48, color: Colors.white),
+                  const SizedBox(height: 8),
+                  const Text('DNS管理工具', style: TextStyle(fontSize: 20, color: Colors.white)),
+                  const SizedBox(height: 4),
+                  Text(
+                    credentialState.credentials.isNotEmpty
+                        ? '已添加 ${credentialState.credentials.length} 个凭证'
+                        : '未添加凭证',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
             ),
           ),
           Expanded(
@@ -483,19 +488,9 @@ class _HomePageState extends State<HomePage> {
     return Container(
       color: isSelected ? Colors.blue.withValues(alpha: 0.1) : null,
       child: ListTile(
-        leading: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ReorderableDragStartListener(
-              index: index,
-              child: const Icon(Icons.drag_handle, color: Colors.grey),
-            ),
-            const SizedBox(width: 8),
-            Icon(
-              isSelected ? Icons.check_circle : Icons.circle_outlined,
-              color: isSelected ? Colors.green : null,
-            ),
-          ],
+        leading: Icon(
+          isSelected ? Icons.check_circle : Icons.circle_outlined,
+          color: isSelected ? Colors.green : null,
         ),
         title: Text(credential.providerName),
         subtitle: Text(
@@ -505,6 +500,13 @@ class _HomePageState extends State<HomePage> {
           style: const TextStyle(fontSize: 12),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+        ),
+        trailing: ReorderableDragStartListener(
+          index: index,
+          child: const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Icon(Icons.drag_handle, color: Colors.grey),
+          ),
         ),
         onTap: () {
           credentialState.selectCredential(credential.id);
