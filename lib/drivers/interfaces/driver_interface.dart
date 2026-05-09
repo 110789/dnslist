@@ -1,6 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
+class AddDomainField {
+  final String key;
+  final String label;
+  final String hintText;
+  final String? description;
+  final bool required;
+
+  const AddDomainField({
+    required this.key,
+    required this.label,
+    required this.hintText,
+    this.description,
+    this.required = true,
+  });
+}
+
 abstract class DriverInterface {
   String get providerId;
   String get providerName;
@@ -64,6 +80,8 @@ abstract class DriverInterface {
   String mapErrorCode(String code);
 
   String getAddDomainTitle();
+
+  List<AddDomainField> getAddDomainFields();
 
   Map<String, dynamic> prepareDomainData(Map<String, dynamic> input);
 

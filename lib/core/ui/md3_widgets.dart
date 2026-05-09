@@ -843,7 +843,7 @@ class DnsDivider extends StatelessWidget {
   final double indent;
   final double endIndent;
 
-  const DnsDivider({super.key, this.indent = DnsSpacing.md, this.endIndent = DnsSpacing.md});
+  const DnsDivider({super.key, this.indent = 60.0, this.endIndent = 44.0});
 
   @override
   Widget build(BuildContext context) {

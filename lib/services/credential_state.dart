@@ -92,7 +92,6 @@ class CredentialState extends ChangeNotifier {
     }).toList();
 
     await _storage.saveOrder(_credentials);
-    notifyListeners();
   }
 
   void selectCredential(String id) {
