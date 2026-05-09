@@ -68,8 +68,32 @@ class _HomePageState extends State<HomePage> {
     if (state.error != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ToastUtil.showError(context, state.error!, errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null);
+        final currentDomains = state.domains;
         state.clear();
+        if (currentDomains.isNotEmpty) {
+          final selected = credentialState.selectedCredential;
+          if (selected != null) {
+            state.loadDomains(selected.providerId, selected.credentials);
+          }
+        }
       });
+      if (state.domains.isNotEmpty) {
+        return RefreshIndicator(
+          onRefresh: () async {
+            final selected = credentialState.selectedCredential;
+            if (selected != null) {
+              await state.loadDomains(selected.providerId, selected.credentials);
+            }
+          },
+          child: ListView.builder(
+            itemCount: state.domains.length,
+            itemBuilder: (listContext, index) {
+              final domain = state.domains[index];
+              return _buildDomainItemWithContext(listContext, domain, state, credentialState);
+            },
+          ),
+        );
+      }
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -83,7 +107,7 @@ class _HomePageState extends State<HomePage> {
     final supportsDelete = driver?.supportsDeleteDomain ?? false;
     final supportsRenew = driver?.supportsRenewDomain ?? false;
 
-    return RefreshIndicator(
+return RefreshIndicator(
       onRefresh: () async {
         if (selected != null) {
           await state.loadDomains(selected.providerId, selected.credentials);
@@ -91,18 +115,32 @@ class _HomePageState extends State<HomePage> {
       },
       child: ListView.builder(
         itemCount: state.domains.length,
-        itemBuilder: (context, index) {
+        itemBuilder: (listContext, index) {
           final domain = state.domains[index];
-          final domainName = domain['name'] ?? 'Unknown';
-          final domainId = domain['id']?.toString() ?? '';
-          return _buildDomainItem(context, domain, domainName, domainId, state, selected, supportsDelete, supportsRenew);
+          return _buildDomainItemWithContext(listContext, domain, state, credentialState);
         },
       ),
     );
   }
 
+  Widget _buildDomainItemWithContext(
+    BuildContext listContext,
+    Map<String, dynamic> domain,
+    DomainState state,
+    CredentialState credentialState,
+  ) {
+    final domainName = domain['name'] ?? 'Unknown';
+    final domainId = domain['id']?.toString() ?? '';
+    final selected = credentialState.selectedCredential;
+    final driver = selected != null ? DriverFactory.get(selected.providerId) : null;
+    final supportsDelete = driver?.supportsDeleteDomain ?? false;
+    final supportsRenew = driver?.supportsRenewDomain ?? false;
+
+    return _buildDomainItem(listContext, domain, domainName, domainId, state, selected, supportsDelete, supportsRenew);
+  }
+
   Widget _buildDomainItem(
-    BuildContext context,
+    BuildContext? context,
     Map<String, dynamic> domain,
     String domainName,
     String domainId,
@@ -134,8 +172,8 @@ class _HomePageState extends State<HomePage> {
       ),
       trailing: PopupMenuButton<String>(
         icon: const Icon(Icons.more_vert, size: 20),
-        onSelected: (value) => _handleDomainAction(context, value, state, selected, domainName, domainId),
-        itemBuilder: (context) => [
+        onSelected: (value) => _handleDomainAction(context!, value, state, selected, domainName, domainId),
+        itemBuilder: (popupContext) => [
           if (supportsDelete)
             const PopupMenuItem(value: 'delete', child: Text('删除')),
           if (supportsRenew)
@@ -144,7 +182,7 @@ class _HomePageState extends State<HomePage> {
       ),
       onTap: () {
         if (domainId.isNotEmpty) {
-          GoRouter.of(context).push(
+          GoRouter.of(context!).push(
             '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
           );
         }
