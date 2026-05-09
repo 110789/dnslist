@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:provider/provider.dart';
 import '../state/theme_provider.dart';
-import '../../services/services.dart';
 
 class AdaptiveScaffold extends StatelessWidget {
   final String title;
@@ -49,7 +49,6 @@ class AdaptiveScaffold extends StatelessWidget {
               : null,
         ),
         child: SafeArea(child: body),
-        floatingActionButton: floatingActionButton,
       );
     }
 
@@ -382,7 +381,7 @@ class AdaptiveSwitch extends StatelessWidget {
   }
 }
 
-class AdaptiveSegmentedControl<T> extends StatelessWidget {
+class AdaptiveSegmentedControl<T extends Object> extends StatelessWidget {
   final Map<T, Widget> children;
   final T selectedValue;
   final ValueChanged<T>? onValueChanged;

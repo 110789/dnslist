@@ -1,81 +1,110 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 class AppTheme {
   static const _primarySeed = Color(0xFF2563EB);
 
-  static ThemeData get md3Light => ThemeData(
-    useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
+  static ThemeData get md3Light {
+    final colorScheme = ColorScheme.fromSeed(
       seedColor: _primarySeed,
       brightness: Brightness.light,
-    ),
-    fontFamily: 'Roboto',
-    appBarTheme: const AppBarTheme(
-      centerTitle: true,
-      elevation: 0,
-    ),
-    cardTheme: CardThemeData(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      fontFamily: 'Roboto',
+      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+      appBarTheme: AppBarTheme(
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
       ),
-    ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      elevation: 2,
-    ),
-    listTileTheme: const ListTileThemeData(
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    ),
-    dividerTheme: const DividerThemeData(
-      space: 1,
-      thickness: 1,
-    ),
-  );
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFFF1F5F9),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colorScheme.primary, width: 2)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      listTileTheme: const ListTileThemeData(
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+      dividerTheme: const DividerThemeData(
+        space: 1,
+        thickness: 1,
+        color: Color(0xFFE2E8F0),
+      ),
+    );
+  }
 
-  static ThemeData get md3Dark => ThemeData(
-    useMaterial3: true,
-    colorScheme: ColorScheme.fromSeed(
+  static ThemeData get md3Dark {
+    final colorScheme = ColorScheme.fromSeed(
       seedColor: _primarySeed,
       brightness: Brightness.dark,
-    ),
-    fontFamily: 'Roboto',
-    appBarTheme: const AppBarTheme(
-      centerTitle: true,
-      elevation: 0,
-    ),
-    cardTheme: CardThemeData(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: colorScheme,
+      fontFamily: 'Roboto',
+      scaffoldBackgroundColor: const Color(0xFF0F172A),
+      appBarTheme: AppBarTheme(
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 1,
+        backgroundColor: colorScheme.surface,
+        foregroundColor: colorScheme.onSurface,
       ),
-    ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      elevation: 2,
-    ),
-    listTileTheme: const ListTileThemeData(
-      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-    ),
-    dividerTheme: const DividerThemeData(
-      space: 1,
-      thickness: 1,
-    ),
-  );
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF334155))),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF334155),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF334155))),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colorScheme.primary, width: 2)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      listTileTheme: const ListTileThemeData(
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      ),
+      dividerTheme: const DividerThemeData(
+        space: 1,
+        thickness: 1,
+        color: Color(0xFF334155),
+      ),
+    );
+  }
 
   static CupertinoThemeData get cupertinoLight => const CupertinoThemeData(
     brightness: Brightness.light,
