@@ -5,6 +5,7 @@ class CredentialModel {
   final String id;
   final String providerId;
   final String providerName;
+  final String? remark;
   final Map<String, String> credentials;
   final DateTime createdAt;
 
@@ -12,6 +13,7 @@ class CredentialModel {
     required this.id,
     required this.providerId,
     required this.providerName,
+    this.remark,
     required this.credentials,
     required this.createdAt,
   });
@@ -21,6 +23,7 @@ class CredentialModel {
       'id': id,
       'providerId': providerId,
       'providerName': providerName,
+      'remark': remark,
       'credentials': credentials,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -31,7 +34,8 @@ class CredentialModel {
       id: json['id'],
       providerId: json['providerId'],
       providerName: json['providerName'],
-      credentials: Map<String, String>.from(json['credentials']),
+      remark: json['remark'],
+      credentials: Map<String, String>.from(json['credentials'] ?? {}),
       createdAt: DateTime.parse(json['createdAt']),
     );
   }
@@ -40,6 +44,7 @@ class CredentialModel {
     String? id,
     String? providerId,
     String? providerName,
+    String? remark,
     Map<String, String>? credentials,
     DateTime? createdAt,
   }) {
@@ -47,6 +52,7 @@ class CredentialModel {
       id: id ?? this.id,
       providerId: providerId ?? this.providerId,
       providerName: providerName ?? this.providerName,
+      remark: remark ?? this.remark,
       credentials: credentials ?? this.credentials,
       createdAt: createdAt ?? this.createdAt,
     );

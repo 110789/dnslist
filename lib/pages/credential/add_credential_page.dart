@@ -15,12 +15,14 @@ class AddCredentialPage extends StatefulWidget {
 class _AddCredentialPageState extends State<AddCredentialPage> {
   String? _selectedProviderId;
   final Map<String, TextEditingController> _controllers = {};
+  final TextEditingController _remarkController = TextEditingController();
 
   @override
   void dispose() {
     for (final c in _controllers.values) {
       c.dispose();
     }
+    _remarkController.dispose();
     super.dispose();
   }
 
@@ -47,7 +49,17 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
             },
           ),
           const SizedBox(height: 16),
-          if (_selectedProviderId != null) ..._buildCredentialFields(),
+          if (_selectedProviderId != null) ...[
+            TextField(
+              controller: _remarkController,
+              decoration: const InputDecoration(
+                labelText: '备注（可选）',
+                hintText: '用于区分不同凭证，如邮箱、用途等',
+              ),
+            ),
+            const SizedBox(height: 16),
+            ..._buildCredentialFields(),
+          ],
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _selectedProviderId != null ? _saveCredential : null,
@@ -92,10 +104,13 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
       }
     }
 
+    final remark = _remarkController.text.trim();
+
     final credential = CredentialModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      providerId: _selectedProviderId!,
+      providerId: _selectedProviderId!.toLowerCase(),
       providerName: driver.providerName,
+      remark: remark.isEmpty ? null : remark,
       credentials: credentials,
       createdAt: DateTime.now(),
     );

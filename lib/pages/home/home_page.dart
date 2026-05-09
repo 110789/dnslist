@@ -143,7 +143,12 @@ class _HomePageState extends State<HomePage> {
                     color: state.selectedCredentialId == c.id ? Colors.green : null,
                   ),
                   title: Text(c.providerName),
-                  subtitle: Text(c.providerId, style: const TextStyle(fontSize: 12)),
+                  subtitle: Text(
+                    c.remark != null && c.remark!.isNotEmpty
+                        ? '${c.providerId} · ${c.remark}'
+                        : c.providerId,
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   selected: state.selectedCredentialId == c.id,
                   selectedTileColor: Colors.blue.withValues(alpha: 0.1),
                   onTap: () {
