@@ -559,9 +559,13 @@ class _HomePageState extends State<HomePage> {
             ),
             ReorderableDragStartListener(
               index: index,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8),
-                child: Icon(Icons.drag_handle, color: Colors.grey),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onLongPress: () {},
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                  child: Icon(Icons.drag_handle, color: Colors.grey),
+                ),
               ),
             ),
           ],
