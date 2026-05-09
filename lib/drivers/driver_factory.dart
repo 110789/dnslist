@@ -1,7 +1,8 @@
 import 'interfaces/driver_interface.dart';
 
-abstract class DriverFactory {
+class DriverFactory {
   static final Map<String, DriverInterface> _drivers = {};
+  static bool _isInitialized = false;
 
   static void register(DriverInterface driver) {
     _drivers[driver.providerId] = driver;
@@ -25,6 +26,14 @@ abstract class DriverFactory {
 
   static void clear() {
     _drivers.clear();
+    _isInitialized = false;
+  }
+
+  static bool get isInitialized => _isInitialized;
+
+  static Future<void> initialize() async {
+    if (_isInitialized) return;
+    _isInitialized = true;
   }
 
   DriverFactory._();
