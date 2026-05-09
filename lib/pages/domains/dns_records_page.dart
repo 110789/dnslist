@@ -24,22 +24,34 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final credential = context.read<CredentialState>().selectedCredential;
-      if (credential != null) {
-        context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId);
-      }
+      _loadRecords();
     });
+  }
+
+  void _loadRecords() {
+    final credential = context.read<CredentialState>().selectedCredential;
+    if (credential != null) {
+      context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId);
+    }
+  }
+
+  Future<void> _refreshRecords() async {
+    final credential = context.read<CredentialState>().selectedCredential;
+    if (credential != null) {
+      await context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId);
+    }
   }
 
   void _showAddRecordDialog(BuildContext context, String providerId) {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential == null) return;
-    
+
     final driver = DriverFactory.get(providerId);
     if (driver == null) return;
 
     final nameController = TextEditingController();
     final contentController = TextEditingController();
+    final priorityController = TextEditingController(text: '10');
     String selectedType = 'A';
     int ttl = 3600;
 
@@ -51,31 +63,60 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedType,
                   decoration: const InputDecoration(labelText: '记录类型'),
-                  items: driver.getSupportedRecordTypes().map((t) => 
+                  items: driver.getSupportedRecordTypes().map((t) =>
                     DropdownMenuItem(value: t, child: Text(t))
                   ).toList(),
                   onChanged: (v) => setDialogState(() => selectedType = v!),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: '记录名称'),
+                  decoration: InputDecoration(
+                    labelText: '记录名称',
+                    hintText: selectedType == 'MX' || selectedType == 'SRV'
+                        ? '例如: mail'
+                        : '例如: www 或 @',
+                  ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 TextField(
                   controller: contentController,
-                  decoration: const InputDecoration(labelText: '记录值'),
+                  decoration: InputDecoration(
+                    labelText: _getContentLabel(selectedType),
+                    hintText: _getContentHint(selectedType),
+                  ),
+                  keyboardType: _getContentKeyboardType(selectedType),
                 ),
-                const SizedBox(height: 12),
+                if (selectedType == 'MX' || selectedType == 'SRV') ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: priorityController,
+                    decoration: InputDecoration(
+                      labelText: selectedType == 'MX' ? '优先级' : '权重',
+                      hintText: '数值越小优先级越高',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+                const SizedBox(height: 16),
                 TextField(
                   controller: TextEditingController(text: ttl.toString()),
-                  decoration: const InputDecoration(labelText: 'TTL (秒)'),
+                  decoration: const InputDecoration(
+                    labelText: 'TTL (秒)',
+                    hintText: '3600 = 1小时',
+                  ),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => ttl = int.tryParse(v) ?? 3600,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'TTL: 3600建议用于频繁变更的记录',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -88,12 +129,23 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                final recordData = {
-                  'name': nameController.text,
+
+                if (contentController.text.isEmpty) {
+                  ToastUtil.showError(context, '请填写记录值');
+                  return;
+                }
+
+                final recordData = <String, dynamic>{
                   'type': selectedType,
+                  'name': nameController.text,
                   'content': contentController.text,
                   'ttl': ttl,
                 };
+
+                if (selectedType == 'MX' || selectedType == 'SRV') {
+                  recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
+                }
+
                 final domainState = context.read<DomainState>();
                 final result = await domainState.createDnsRecord(
                   providerId,
@@ -102,7 +154,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 );
                 if (mounted) {
                   if (result['success']) {
-                    ToastUtil.showSuccess(context, '添加记录成功');
+                    ToastUtil.showSuccess(context, '记录添加成功');
                   } else {
                     ToastUtil.showError(context, result['error'] ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
                   }
@@ -116,12 +168,58 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     );
   }
 
-  void _showEditRecordDialog(BuildContext context, String providerId, Map<String, dynamic> record) {
-    final credential = context.read<CredentialState>().selectedCredential;
-    if (credential == null) return;
+  String _getContentLabel(String type) {
+    switch (type) {
+      case 'A':
+        return 'IPv4地址';
+      case 'AAAA':
+        return 'IPv6地址';
+      case 'CNAME':
+        return '目标域名';
+      case 'MX':
+        return '邮件服务器';
+      case 'TXT':
+        return '记录值';
+      default:
+        return '记录值';
+    }
+  }
 
+  String _getContentHint(String type) {
+    switch (type) {
+      case 'A':
+        return '例如: 192.168.1.1';
+      case 'AAAA':
+        return '例如: 2001:db8::1';
+      case 'CNAME':
+        return '例如: example.com';
+      case 'MX':
+        return '例如: mail.example.com';
+      case 'TXT':
+        return '例如: v=spf1 include:_spf.example.com ~all';
+      default:
+        return '';
+    }
+  }
+
+  TextInputType _getContentKeyboardType(String type) {
+    switch (type) {
+      case 'A':
+        return TextInputType.number;
+      case 'AAAA':
+        return TextInputType.text;
+      case 'MX':
+      case 'SRV':
+        return TextInputType.text;
+      default:
+        return TextInputType.text;
+    }
+  }
+
+  void _showEditRecordDialog(BuildContext context, String providerId, Map<String, dynamic> record) {
     final nameController = TextEditingController(text: record['name'] ?? '');
     final contentController = TextEditingController(text: record['content'] ?? '');
+    final priorityController = TextEditingController(text: (record['priority'] ?? 10).toString());
     String selectedType = record['type'] ?? 'A';
     int ttl = record['ttl'] ?? 3600;
 
@@ -133,29 +231,46 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedType,
                   decoration: const InputDecoration(labelText: '记录类型'),
-                  items: ['A', 'AAAA', 'CNAME', 'MX', 'TXT'].map((t) => 
+                  items: ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV'].map((t) =>
                     DropdownMenuItem(value: t, child: Text(t))
                   ).toList(),
                   onChanged: (v) => setDialogState(() => selectedType = v!),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 TextField(
                   controller: nameController,
                   decoration: const InputDecoration(labelText: '记录名称'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 TextField(
                   controller: contentController,
-                  decoration: const InputDecoration(labelText: '记录值'),
+                  decoration: InputDecoration(
+                    labelText: _getContentLabel(selectedType),
+                    hintText: _getContentHint(selectedType),
+                  ),
+                  keyboardType: _getContentKeyboardType(selectedType),
                 ),
-                const SizedBox(height: 12),
+                if (selectedType == 'MX' || selectedType == 'SRV') ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: priorityController,
+                    decoration: InputDecoration(
+                      labelText: selectedType == 'MX' ? '优先级' : '权重',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+                const SizedBox(height: 16),
                 TextField(
                   controller: TextEditingController(text: ttl.toString()),
-                  decoration: const InputDecoration(labelText: 'TTL (秒)'),
+                  decoration: const InputDecoration(
+                    labelText: 'TTL (秒)',
+                  ),
                   keyboardType: TextInputType.number,
                   onChanged: (v) => ttl = int.tryParse(v) ?? 3600,
                 ),
@@ -170,12 +285,18 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
             ElevatedButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                final recordData = {
-                  'name': nameController.text,
+
+                final recordData = <String, dynamic>{
                   'type': selectedType,
+                  'name': nameController.text,
                   'content': contentController.text,
                   'ttl': ttl,
                 };
+
+                if (selectedType == 'MX' || selectedType == 'SRV') {
+                  recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
+                }
+
                 final domainState = context.read<DomainState>();
                 final result = await domainState.updateDnsRecord(
                   providerId,
@@ -185,7 +306,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 );
                 if (mounted) {
                   if (result['success']) {
-                    ToastUtil.showSuccess(context, '更新记录成功');
+                    ToastUtil.showSuccess(context, '记录已更新');
                   } else {
                     ToastUtil.showError(context, result['error'] ?? '更新失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
                   }
@@ -204,7 +325,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('删除记录'),
-        content: Text('确定要删除 ${record['name']} 吗？'),
+        content: Text('确定要删除 "${record['name']}" 吗？此操作无法撤销。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -227,7 +348,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       );
       if (mounted) {
         if (result['success']) {
-          ToastUtil.showSuccess(context, '删除记录成功');
+          ToastUtil.showSuccess(context, '记录已删除');
         } else {
           ToastUtil.showError(context, result['error'] ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
         }
@@ -248,29 +369,26 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              final credential = credentialState.selectedCredential;
-              if (credential != null) {
-                domainState.loadDnsRecords(credential.providerId, widget.domainId);
-              }
-            },
+            onPressed: _refreshRecords,
           ),
         ],
       ),
       body: _buildBody(domainState, records, providerId),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddRecordDialog(context, providerId),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: providerId.isNotEmpty
+          ? FloatingActionButton(
+              onPressed: () => _showAddRecordDialog(context, providerId),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
   Widget _buildBody(DomainState state, List<Map<String, dynamic>> records, String providerId) {
-    if (state.isLoading) {
+    if (state.isLoading && records.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (state.error != null) {
+    if (state.error != null && records.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ToastUtil.showError(context, state.error!, errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null);
         state.clear();
@@ -279,46 +397,159 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     }
 
     if (records.isEmpty) {
-      return const Center(
+      return _buildEmptyState();
+    }
+
+    return RefreshIndicator(
+      onRefresh: _refreshRecords,
+      child: ListView.builder(
+        itemCount: records.length,
+        itemBuilder: (context, index) {
+          final record = records[index];
+          return _buildRecordItem(context, providerId, record);
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.dns, size: 64, color: Colors.grey),
+            Icon(Icons.dns_outlined, size: 72, color: Colors.grey.shade400),
+            const SizedBox(height: 24),
+            const Text(
+              '暂无DNS记录',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '点击下方按钮添加DNS记录，开始配置解析',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            ElevatedButton.icon(
+              onPressed: () {
+                final credential = context.read<CredentialState>().selectedCredential;
+                if (credential != null) {
+                  _showAddRecordDialog(context, credential.providerId);
+                }
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('添加记录'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
           ],
         ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: records.length,
-      itemBuilder: (context, index) {
-        final record = records[index];
-        return ListTile(
-          title: Text(record['name'] ?? ''),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('类型: ${record['type']}'),
-              Text('值: ${record['content']}'),
-              if (record['ttl'] != null) Text('TTL: ${record['ttl']}'),
-            ],
-          ),
-          isThreeLine: true,
-          trailing: PopupMenuButton<String>(
-            onSelected: (value) {
-              if (value == 'edit') {
-                _showEditRecordDialog(context, providerId, record);
-              } else if (value == 'delete') {
-                _deleteRecord(context, providerId, record);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'edit', child: Text('编辑')),
-              const PopupMenuItem(value: 'delete', child: Text('删除')),
-            ],
-          ),
-        );
-      },
+      ),
     );
+  }
+
+  Widget _buildRecordItem(BuildContext context, String providerId, Map<String, dynamic> record) {
+    final recordName = record['name'] ?? '';
+    final recordType = record['type'] ?? '';
+    final recordContent = record['content'] ?? '';
+    final recordTtl = record['ttl'];
+
+    return ListTile(
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: _getTypeColor(recordType).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              recordType,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _getTypeColor(recordType),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              recordName,
+              style: const TextStyle(fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 4),
+          Text(
+            recordContent,
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (recordTtl != null)
+            Text(
+              'TTL: $recordTtl秒',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            ),
+          if (record['proxied'] == true)
+            Row(
+              children: [
+                Icon(Icons.cloud, size: 12, color: Colors.orange.shade400),
+                const SizedBox(width: 4),
+                Text(
+                  '已代理',
+                  style: TextStyle(fontSize: 11, color: Colors.orange.shade400),
+                ),
+              ],
+            ),
+        ],
+      ),
+      isThreeLine: true,
+      trailing: PopupMenuButton<String>(
+        onSelected: (value) {
+          if (value == 'edit') {
+            _showEditRecordDialog(context, providerId, record);
+          } else if (value == 'delete') {
+            _deleteRecord(context, providerId, record);
+          }
+        },
+        itemBuilder: (context) => [
+          const PopupMenuItem(value: 'edit', child: Text('编辑')),
+          const PopupMenuItem(
+            value: 'delete',
+            child: Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getTypeColor(String type) {
+    switch (type) {
+      case 'A':
+        return Colors.blue;
+      case 'AAAA':
+        return Colors.purple;
+      case 'CNAME':
+        return Colors.green;
+      case 'MX':
+        return Colors.orange;
+      case 'TXT':
+        return Colors.teal;
+      case 'NS':
+        return Colors.indigo;
+      case 'SRV':
+        return Colors.pink;
+      default:
+        return Colors.grey;
+    }
   }
 }

@@ -8,7 +8,12 @@ class CredentialState extends ChangeNotifier {
 
   CredentialState(this._storage);
 
-  List<CredentialModel> get credentials => _credentials;
+  List<CredentialModel> get credentials {
+    final sorted = List<CredentialModel>.from(_credentials);
+    sorted.sort((a, b) => a.order.compareTo(b.order));
+    return sorted;
+  }
+
   String? get selectedCredentialId => _selectedCredentialId;
 
   CredentialModel? get selectedCredential {
@@ -23,34 +28,71 @@ class CredentialState extends ChangeNotifier {
   Future<void> loadCredentials() async {
     _credentials = await _storage.loadAll();
     if (_credentials.isNotEmpty && _selectedCredentialId == null) {
-      _selectedCredentialId = _credentials.first.id;
+      final sorted = List<CredentialModel>.from(_credentials);
+      sorted.sort((a, b) => a.order.compareTo(b.order));
+      _selectedCredentialId = sorted.first.id;
     } else if (_selectedCredentialId != null) {
       final exists = _credentials.any((c) => c.id == _selectedCredentialId);
       if (!exists && _credentials.isNotEmpty) {
-        _selectedCredentialId = _credentials.first.id;
+        final sorted = List<CredentialModel>.from(_credentials);
+        sorted.sort((a, b) => a.order.compareTo(b.order));
+        _selectedCredentialId = sorted.first.id;
       }
     }
     notifyListeners();
   }
 
   Future<void> addCredential(CredentialModel credential) async {
-    await _storage.add(credential);
-    await loadCredentials();
-    _selectedCredentialId = credential.id;
+    final maxOrder = _credentials.isEmpty ? 0 : _credentials.map((c) => c.order).reduce((a, b) => a > b ? a : b);
+    final newCredential = credential.copyWith(order: maxOrder + 1);
+    await _storage.add(newCredential);
+    _credentials.add(newCredential);
+    _selectedCredentialId = newCredential.id;
     notifyListeners();
   }
 
   Future<void> removeCredential(String id) async {
     await _storage.remove(id);
+    _credentials.removeWhere((e) => e.id == id);
     if (_selectedCredentialId == id) {
-      _selectedCredentialId = _credentials.isNotEmpty ? _credentials.first.id : null;
+      if (_credentials.isNotEmpty) {
+        final sorted = List<CredentialModel>.from(_credentials);
+        sorted.sort((a, b) => a.order.compareTo(b.order));
+        _selectedCredentialId = sorted.first.id;
+      } else {
+        _selectedCredentialId = null;
+      }
     }
-    await loadCredentials();
+    notifyListeners();
   }
 
   Future<void> updateCredential(CredentialModel credential) async {
     await _storage.update(credential);
-    await loadCredentials();
+    final index = _credentials.indexWhere((e) => e.id == credential.id);
+    if (index != -1) {
+      _credentials[index] = credential;
+      notifyListeners();
+    }
+  }
+
+  Future<void> reorderCredentials(int oldIndex, int newIndex) async {
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final sortedList = credentials;
+    final item = sortedList.removeAt(oldIndex);
+    sortedList.insert(newIndex, item);
+
+    _credentials = _credentials.map((c) {
+      final newIndex = sortedList.indexWhere((s) => s.id == c.id);
+      if (newIndex != -1) {
+        return c.copyWith(order: newIndex);
+      }
+      return c;
+    }).toList();
+
+    await _storage.saveOrder(_credentials);
+    notifyListeners();
   }
 
   void selectCredential(String id) {

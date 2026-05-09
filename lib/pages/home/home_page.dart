@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/credential_state.dart';
+import '../../services/credential_storage.dart';
+import '../../services/credential_validation.dart';
 import '../../services/domain_state.dart';
 import '../../drivers/driver_factory.dart';
 import '../../utils/toast_util.dart';
@@ -54,37 +56,203 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  Widget _buildBody(BuildContext context, DomainState state, CredentialState credentialState, bool hasCredentials) {
+    if (!hasCredentials) {
+      return _buildEmptyCredentialState(context);
+    }
+
+    if (state.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (state.error != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ToastUtil.showError(context, state.error!, errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null);
+        state.clear();
+      });
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (state.domains.isEmpty) {
+      final selected = credentialState.selectedCredential;
+      return _buildEmptyDomainState(context, selected?.providerId ?? '');
+    }
+
+    final selected = credentialState.selectedCredential;
+    final driver = selected != null ? DriverFactory.get(selected.providerId) : null;
+    final supportsDelete = driver?.supportsDeleteDomain ?? false;
+    final supportsRenew = driver?.supportsRenewDomain ?? false;
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        if (selected != null) {
+          await state.loadDomains(selected.providerId, selected.credentials);
+        }
+      },
+      child: ListView.builder(
+        itemCount: state.domains.length,
+        itemBuilder: (context, index) {
+          final domain = state.domains[index];
+          final domainName = domain['name'] ?? 'Unknown';
+          final domainId = domain['id']?.toString() ?? '';
+          return ListTile(
+            title: Text(domainName),
+            subtitle: Text(_buildDomainStatusText(domain)),
+            trailing: PopupMenuButton<String>(
+              onSelected: (value) => _handleDomainAction(context, value, state, selected, domainName, domainId),
+              itemBuilder: (context) => [
+                if (supportsDelete)
+                  const PopupMenuItem(value: 'delete', child: Text('删除')),
+                if (supportsRenew)
+                  const PopupMenuItem(value: 'renew', child: Text('续期')),
+              ],
+            ),
+            onTap: () {
+              if (domainId.isNotEmpty) {
+                GoRouter.of(context).push(
+                  '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
+                );
+              }
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  String _buildDomainStatusText(Map<String, dynamic> domain) {
+    final status = domain['status'] ?? '';
+    final statusMap = {
+      'active': '活跃',
+      'pending': '待处理',
+      'expired': '已过期',
+      'suspended': '已暂停',
+      'deleted': '已删除',
+    };
+    return statusMap[status.toString().toLowerCase()] ?? status;
+  }
+
+  Future<void> _handleDomainAction(
+    BuildContext context,
+    String action,
+    DomainState state,
+    dynamic selected,
+    String domainName,
+    String domainId,
+  ) async {
+    if (action == 'delete') {
+      await _deleteDomain(context, state, selected, domainName, domainId);
+    } else if (action == 'renew') {
+      await _renewDomain(context, state, selected, domainId);
+    }
+  }
+
+  Future<void> _deleteDomain(
+    BuildContext context,
+    DomainState state,
+    dynamic selected,
+    String domainName,
+    String domainId,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除域名'),
+        content: Text('确定要删除 "$domainName" 吗？此操作无法撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && selected != null) {
+      final result = await state.deleteDomain(selected.providerId, domainId);
+      if (context.mounted) {
+        if (result['success']) {
+          ToastUtil.showSuccess(context, '域名已删除');
+        } else {
+          ToastUtil.showError(context, result['error'] ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
+        }
+      }
+    }
+  }
+
+  Future<void> _renewDomain(
+    BuildContext context,
+    DomainState state,
+    dynamic selected,
+    String domainId,
+  ) async {
+    if (selected == null) return;
+
+    final result = await state.renewDomain(selected.providerId, domainId);
+    if (context.mounted) {
+      if (result['success']) {
+        final msg = result['remaining_days'] != null
+            ? '续期成功，剩余 ${result['remaining_days']} 天'
+            : '续期成功';
+        ToastUtil.showSuccess(context, msg);
+      } else {
+        ToastUtil.showError(context, result['error'] ?? '续期失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
+      }
+    }
+  }
+
   void _showAddDomainDialog(BuildContext context, String providerId) {
     final domainState = context.read<DomainState>();
     final isDnshe = providerId == 'dnshe';
-    
+
     final subdomainController = TextEditingController();
     final rootDomainController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('添加域名'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isDnshe) ...[
-              TextField(
-                controller: subdomainController,
-                decoration: const InputDecoration(labelText: '子域名前缀'),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: rootDomainController,
-                decoration: const InputDecoration(labelText: '根域名'),
-              ),
-            ] else ...[
-              TextField(
-                controller: rootDomainController,
-                decoration: const InputDecoration(labelText: '域名'),
-              ),
+        title: Text(isDnshe ? '添加子域名' : '添加域名'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (isDnshe) ...[
+                TextField(
+                  controller: subdomainController,
+                  decoration: const InputDecoration(
+                    labelText: '子域名前缀',
+                    hintText: '例如: myapp',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: rootDomainController,
+                  decoration: const InputDecoration(
+                    labelText: '根域名',
+                    hintText: '例如: example.com',
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '将创建: {子域名}.{根域名}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ] else ...[
+                TextField(
+                  controller: rootDomainController,
+                  decoration: const InputDecoration(
+                    labelText: '域名',
+                    hintText: '例如: example.com',
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
         actions: [
           TextButton(
@@ -94,7 +262,16 @@ class _HomePageState extends State<HomePage> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              
+
+              if (isDnshe && (subdomainController.text.isEmpty || rootDomainController.text.isEmpty)) {
+                ToastUtil.showError(context, '请填写完整信息');
+                return;
+              }
+              if (!isDnshe && rootDomainController.text.isEmpty) {
+                ToastUtil.showError(context, '请填写域名');
+                return;
+              }
+
               Map<String, dynamic> domainData;
               if (isDnshe) {
                 domainData = {
@@ -128,133 +305,82 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildBody(BuildContext context, DomainState state, CredentialState credentialState, bool hasCredentials) {
-    if (!hasCredentials) {
-      return Center(
+  Widget _buildEmptyCredentialState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.key_off, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text('请先添加凭证', style: TextStyle(fontSize: 18)),
-            const SizedBox(height: 8),
-            const Text('点击右上角菜单或下方按钮添加'),
+            Icon(Icons.key_off, size: 72, color: Colors.grey.shade400),
             const SizedBox(height: 24),
+            const Text(
+              '请先添加凭证',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '凭证用于连接DNS服务商，管理您的域名和DNS记录',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () => GoRouter.of(context).push('/settings/credential/add'),
+              onPressed: () => _showAddCredentialDialog(context),
               icon: const Icon(Icons.add),
               label: const Text('添加凭证'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
             ),
           ],
         ),
-      );
-    }
-
-    if (state.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (state.error != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ToastUtil.showError(context, state.error!, errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null);
-        state.clear();
-      });
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    if (state.domains.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(Icons.dns, size: 64, color: Colors.grey),
-          ],
-        ),
-      );
-    }
-
-    final selected = credentialState.selectedCredential;
-    final driver = selected != null ? DriverFactory.get(selected.providerId) : null;
-    final supportsDelete = driver?.supportsDeleteDomain ?? false;
-    final supportsRenew = driver?.supportsRenewDomain ?? false;
-
-    return ListView.builder(
-      itemCount: state.domains.length,
-      itemBuilder: (context, index) {
-        final domain = state.domains[index];
-        final domainName = domain['name'] ?? 'Unknown';
-        final domainId = domain['id']?.toString() ?? '';
-        return ListTile(
-          title: Text(domainName),
-          subtitle: Text(domain['status'] ?? ''),
-          trailing: PopupMenuButton<String>(
-            onSelected: (value) async {
-              if (value == 'delete') {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('删除域名'),
-                    content: Text('确定要删除 $domainName 吗？'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('取消'),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('删除', style: TextStyle(color: Colors.red)),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true && selected != null) {
-                  final result = await state.deleteDomain(selected.providerId, domainId);
-                  if (context.mounted) {
-                    if (result['success']) {
-                      ToastUtil.showSuccess(context, '删除成功');
-                    } else {
-                      ToastUtil.showError(context, result['error'] ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
-                    }
-                  }
-                }
-              } else if (value == 'renew') {
-                if (selected != null) {
-                  final result = await state.renewDomain(selected.providerId, domainId);
-                  if (context.mounted) {
-                    if (result['success']) {
-                      final msg = result['remaining_days'] != null 
-                          ? '续期成功，剩余 ${result['remaining_days']} 天'
-                          : '续期成功';
-                      ToastUtil.showSuccess(context, msg);
-                    } else {
-                      ToastUtil.showError(context, result['error'] ?? '续期失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
-                    }
-                  }
-                }
-              }
-            },
-            itemBuilder: (context) => [
-              if (supportsDelete)
-                const PopupMenuItem(value: 'delete', child: Text('删除')),
-              if (supportsRenew)
-                const PopupMenuItem(value: 'renew', child: Text('续期')),
-            ],
-          ),
-          onTap: () {
-            if (domainId.isNotEmpty) {
-              GoRouter.of(context).push(
-                '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
-              );
-            }
-          },
-        );
-      },
+      ),
     );
   }
 
-  Widget _buildDrawer(BuildContext context, CredentialState state, DomainState domainState) {
+  Widget _buildEmptyDomainState(BuildContext context, String providerId) {
+    final driver = DriverFactory.get(providerId);
+    final supportsAdd = driver?.supportsAddDomain ?? false;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.dns, size: 72, color: Colors.grey.shade400),
+            const SizedBox(height: 24),
+            const Text(
+              '暂无域名',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '点击下方按钮添加域名，开始管理DNS记录',
+              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+            if (supportsAdd) ...[
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: () => _showAddDomainDialog(context, providerId),
+                icon: const Icon(Icons.add),
+                label: const Text('添加域名'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawer(BuildContext context, CredentialState credentialState, DomainState domainState) {
     return Drawer(
-      child: ListView(
+      child: Column(
         children: [
           DrawerHeader(
             decoration: const BoxDecoration(color: Colors.blue),
@@ -267,56 +393,24 @@ class _HomePageState extends State<HomePage> {
                 const Text('DNS管理工具', style: TextStyle(fontSize: 20, color: Colors.white)),
                 const SizedBox(height: 4),
                 Text(
-                  state.credentials.isNotEmpty
-                      ? '已添加 ${state.credentials.length} 个凭证'
+                  credentialState.credentials.isNotEmpty
+                      ? '已添加 ${credentialState.credentials.length} 个凭证'
                       : '未添加凭证',
                   style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ),
           ),
-          if (state.credentials.isNotEmpty) ...[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text('服务商凭证', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
-            ),
-            ...state.credentials.map((c) => ListTile(
-                  leading: Icon(
-                    state.selectedCredentialId == c.id ? Icons.check_circle : Icons.circle_outlined,
-                    color: state.selectedCredentialId == c.id ? Colors.green : null,
-                  ),
-                  title: Text(c.providerName),
-                  subtitle: Text(
-                    c.remark != null && c.remark!.isNotEmpty
-                        ? '${c.providerId} · ${c.remark}'
-                        : c.providerId,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  selected: state.selectedCredentialId == c.id,
-                  selectedTileColor: Colors.blue.withValues(alpha: 0.1),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      GoRouter.of(context).push('/settings/credential/${c.id}/edit');
-                    },
-                  ),
-                  onTap: () {
-                    state.selectCredential(c.id);
-                    domainState.clear();
-                    domainState.loadDomains(c.providerId, c.credentials);
-                    Navigator.pop(context);
-                  },
-                )),
-            const Divider(),
-          ],
+          Expanded(
+            child: credentialState.credentials.isEmpty
+                ? _buildEmptyCredentialList(context)
+                : _buildCredentialList(context, credentialState, domainState),
+          ),
+          const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.add),
             title: const Text('添加凭证'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).push('/settings/credential/add');
-            },
+            onTap: () => _showAddCredentialDialog(context),
           ),
           ListTile(
             leading: const Icon(Icons.settings),
@@ -329,5 +423,429 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+
+  Widget _buildEmptyCredentialList(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.key_off, size: 48, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              '暂无凭证\n点击下方按钮添加',
+              style: TextStyle(color: Colors.grey.shade600),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCredentialList(BuildContext context, CredentialState credentialState, DomainState domainState) {
+    return ReorderableListView.builder(
+      buildDefaultDragHandles: false,
+      itemCount: credentialState.credentials.length,
+      onReorder: (oldIndex, newIndex) {
+        credentialState.reorderCredentials(oldIndex, newIndex);
+      },
+      itemBuilder: (context, index) {
+        final credential = credentialState.credentials[index];
+        final isSelected = credentialState.selectedCredentialId == credential.id;
+
+        return ReorderableDragStartListener(
+          key: ValueKey(credential.id),
+          index: index,
+          child: _buildCredentialItem(
+            context,
+            credential,
+            isSelected,
+            credentialState,
+            domainState,
+            index,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCredentialItem(
+    BuildContext context,
+    CredentialModel credential,
+    bool isSelected,
+    CredentialState credentialState,
+    DomainState domainState,
+    int index,
+  ) {
+    return Container(
+      color: isSelected ? Colors.blue.withValues(alpha: 0.1) : null,
+      child: ListTile(
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ReorderableDragStartListener(
+              index: index,
+              child: const Icon(Icons.drag_handle, color: Colors.grey),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              isSelected ? Icons.check_circle : Icons.circle_outlined,
+              color: isSelected ? Colors.green : null,
+            ),
+          ],
+        ),
+        title: Text(credential.providerName),
+        subtitle: Text(
+          credential.remark != null && credential.remark!.isNotEmpty
+              ? credential.remark!
+              : credential.providerId,
+          style: const TextStyle(fontSize: 12),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, size: 20),
+          onSelected: (value) {
+            if (value == 'edit') {
+              _showEditCredentialDialog(context, credential);
+            } else if (value == 'delete') {
+              _showDeleteCredentialDialog(context, credential, credentialState);
+            }
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(value: 'edit', child: Text('编辑')),
+            const PopupMenuItem(
+              value: 'delete',
+              child: Text('删除', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        ),
+        onTap: () {
+          credentialState.selectCredential(credential.id);
+          domainState.clear();
+          domainState.loadDomains(credential.providerId, credential.credentials);
+          Navigator.pop(context);
+        },
+        onLongPress: () {
+          _showCredentialActionsSheet(context, credential, credentialState, domainState);
+        },
+      ),
+    );
+  }
+
+  void _showCredentialActionsSheet(
+    BuildContext context,
+    CredentialModel credential,
+    CredentialState credentialState,
+    DomainState domainState,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.check_circle),
+              title: const Text('选择此凭证'),
+              onTap: () {
+                Navigator.pop(ctx);
+                credentialState.selectCredential(credential.id);
+                domainState.clear();
+                domainState.loadDomains(credential.providerId, credential.credentials);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit),
+              title: const Text('编辑凭证'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showEditCredentialDialog(context, credential);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('删除凭证', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showDeleteCredentialDialog(context, credential, credentialState);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAddCredentialDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _CredentialDialog(
+        title: '添加凭证',
+        onSave: (credential) async {
+          final credentialState = context.read<CredentialState>();
+          await credentialState.addCredential(credential);
+          if (context.mounted) {
+            ToastUtil.showSuccess(context, '添加凭证成功');
+            Navigator.pop(ctx);
+          }
+        },
+      ),
+    );
+  }
+
+  void _showEditCredentialDialog(BuildContext context, CredentialModel credential) {
+    showDialog(
+      context: context,
+      builder: (ctx) => _CredentialDialog(
+        title: '编辑凭证',
+        credential: credential,
+        onSave: (updatedCredential) async {
+          final credentialState = context.read<CredentialState>();
+          await credentialState.updateCredential(updatedCredential);
+          if (context.mounted) {
+            ToastUtil.showSuccess(context, '更新凭证成功');
+            Navigator.pop(ctx);
+          }
+        },
+      ),
+    );
+  }
+
+  void _showDeleteCredentialDialog(
+    BuildContext context,
+    CredentialModel credential,
+    CredentialState credentialState,
+  ) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除凭证'),
+        content: Text('确定要删除 "${credential.providerName}" 的凭证吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await credentialState.removeCredential(credential.id);
+              if (context.mounted) {
+                ToastUtil.showSuccess(context, '删除凭证成功');
+              }
+            },
+            child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CredentialDialog extends StatefulWidget {
+  final String title;
+  final CredentialModel? credential;
+  final Function(CredentialModel) onSave;
+
+  const _CredentialDialog({
+    required this.title,
+    this.credential,
+    required this.onSave,
+  });
+
+  @override
+  State<_CredentialDialog> createState() => _CredentialDialogState();
+}
+
+class _CredentialDialogState extends State<_CredentialDialog> {
+  String? _selectedProviderId;
+  final Map<String, TextEditingController> _controllers = {};
+  final TextEditingController _remarkController = TextEditingController();
+  bool _isValidating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.credential != null) {
+      _selectedProviderId = widget.credential!.providerId;
+      _remarkController.text = widget.credential!.remark ?? '';
+      for (final key in widget.credential!.credentials.keys) {
+        _controllers[key] = TextEditingController(text: widget.credential!.credentials[key]);
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    _remarkController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final drivers = DriverFactory.getAll();
+    final isEditing = widget.credential != null;
+
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!isEditing)
+              DropdownButtonFormField<String>(
+                value: _selectedProviderId,
+                decoration: const InputDecoration(labelText: '选择服务商'),
+                items: drivers.map((d) => DropdownMenuItem(
+                  value: d.providerId,
+                  child: Text(d.providerName),
+                )).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedProviderId = value;
+                    _controllers.clear();
+                  });
+                },
+              ),
+            if (isEditing) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.cloud, size: 20),
+                    const SizedBox(width: 8),
+                    Text(widget.credential!.providerName),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            TextField(
+              controller: _remarkController,
+              decoration: const InputDecoration(
+                labelText: '备注（可选）',
+                hintText: '用于区分不同凭证',
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (_selectedProviderId != null) ..._buildCredentialFields(),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        ElevatedButton(
+          onPressed: _selectedProviderId != null && !_isValidating ? _saveCredential : null,
+          child: _isValidating
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('保存'),
+        ),
+      ],
+    );
+  }
+
+  List<Widget> _buildCredentialFields() {
+    final driver = DriverFactory.get(_selectedProviderId!);
+    if (driver == null) return [];
+
+    final fields = driver.getCredentialFields();
+    return fields.entries.map((entry) {
+      final key = entry.key;
+      final label = entry.value;
+      _controllers[key] = _controllers[key] ?? TextEditingController();
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: TextField(
+          controller: _controllers[key],
+          decoration: InputDecoration(labelText: label),
+          obscureText: key.toLowerCase().contains('secret'),
+        ),
+      );
+    }).toList();
+  }
+
+  Future<void> _saveCredential() async {
+    if (_selectedProviderId == null) return;
+
+    final driver = DriverFactory.get(_selectedProviderId!);
+    if (driver == null) return;
+
+    final credentials = <String, String>{};
+    for (final key in _controllers.keys) {
+      final value = _controllers[key]?.text;
+      if (value != null && value.isNotEmpty) {
+        credentials[key] = value;
+      }
+    }
+
+    if (credentials.isEmpty) {
+      ToastUtil.showError(context, '请填写密钥信息', errorCode: 400);
+      return;
+    }
+
+    setState(() {
+      _isValidating = true;
+    });
+
+    final result = await CredentialValidationService.validateCredential(
+      _selectedProviderId!,
+      credentials,
+    );
+
+    if (!result['success']) {
+      setState(() {
+        _isValidating = false;
+      });
+      if (mounted) {
+        ToastUtil.showError(
+          context,
+          result['error'] ?? '凭证校验失败',
+          errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+        );
+      }
+      return;
+    }
+
+    final remark = _remarkController.text.trim();
+
+    if (widget.credential != null) {
+      final updatedCredential = widget.credential!.copyWith(
+        providerId: _selectedProviderId!.toLowerCase(),
+        providerName: driver.providerName,
+        remark: remark.isEmpty ? null : remark,
+        credentials: credentials,
+      );
+      await widget.onSave(updatedCredential);
+    } else {
+      final credential = CredentialModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        providerId: _selectedProviderId!.toLowerCase(),
+        providerName: driver.providerName,
+        remark: remark.isEmpty ? null : remark,
+        credentials: credentials,
+        createdAt: DateTime.now(),
+      );
+      await widget.onSave(credential);
+    }
   }
 }

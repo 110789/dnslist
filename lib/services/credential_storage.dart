@@ -8,6 +8,7 @@ class CredentialModel {
   final String? remark;
   final Map<String, String> credentials;
   final DateTime createdAt;
+  final int order;
 
   CredentialModel({
     required this.id,
@@ -16,6 +17,7 @@ class CredentialModel {
     this.remark,
     required this.credentials,
     required this.createdAt,
+    this.order = 0,
   });
 
   Map<String, dynamic> toJson() {
@@ -26,6 +28,7 @@ class CredentialModel {
       'remark': remark,
       'credentials': credentials,
       'createdAt': createdAt.toIso8601String(),
+      'order': order,
     };
   }
 
@@ -37,6 +40,7 @@ class CredentialModel {
       remark: json['remark'],
       credentials: Map<String, String>.from(json['credentials'] ?? {}),
       createdAt: DateTime.parse(json['createdAt']),
+      order: json['order'] ?? 0,
     );
   }
 
@@ -47,6 +51,7 @@ class CredentialModel {
     String? remark,
     Map<String, String>? credentials,
     DateTime? createdAt,
+    int? order,
   }) {
     return CredentialModel(
       id: id ?? this.id,
@@ -55,6 +60,7 @@ class CredentialModel {
       remark: remark ?? this.remark,
       credentials: credentials ?? this.credentials,
       createdAt: createdAt ?? this.createdAt,
+      order: order ?? this.order,
     );
   }
 }
@@ -105,5 +111,22 @@ class CredentialStorage {
       list[index] = credential;
       await saveAll(list);
     }
+  }
+
+  Future<void> saveOrder(List<CredentialModel> credentials) async {
+    await saveAll(credentials);
+  }
+
+  Future<void> reorder(int oldIndex, int newIndex) async {
+    final list = await loadAll();
+    if (oldIndex < 0 || oldIndex >= list.length || newIndex < 0 || newIndex >= list.length) {
+      return;
+    }
+    final item = list.removeAt(oldIndex);
+    list.insert(newIndex, item);
+    for (int i = 0; i < list.length; i++) {
+      list[i] = list[i].copyWith(order: i);
+    }
+    await saveAll(list);
   }
 }

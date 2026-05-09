@@ -1,15 +1,11 @@
 import 'package:go_router/go_router.dart';
 import '../../pages/home/home_page.dart';
 import '../../pages/settings/settings_page.dart';
-import '../../pages/credential/add_credential_page.dart';
-import '../../pages/credential/edit_credential_page.dart';
 import '../../pages/domains/dns_records_page.dart';
 
 class RouteNames {
   static const String home = 'home';
   static const String settings = 'settings';
-  static const String addCredential = 'addCredential';
-  static const String editCredential = 'editCredential';
   static const String dnsRecords = 'dnsRecords';
 
   RouteNames._();
@@ -18,8 +14,6 @@ class RouteNames {
 class RoutePaths {
   static const String home = '/';
   static const String settings = '/settings';
-  static const String addCredential = '/settings/credential/add';
-  static const String editCredential = '/settings/credential/:credentialId/edit';
   static const String dnsRecords = '/domains/:domainId/records';
 
   RoutePaths._();
@@ -36,17 +30,6 @@ class AppRouter {
       GoRoute(
         path: RoutePaths.settings,
         builder: (context, state) => const SettingsPage(),
-      ),
-      GoRoute(
-        path: RoutePaths.addCredential,
-        builder: (context, state) => const AddCredentialPage(),
-      ),
-      GoRoute(
-        path: '/settings/credential/:credentialId/edit',
-        builder: (context, state) {
-          final credentialId = state.pathParameters['credentialId'] ?? '';
-          return EditCredentialPage(credentialId: credentialId);
-        },
       ),
       GoRoute(
         path: '/domains/:domainId/records',
