@@ -305,43 +305,7 @@ class DnsheDriver implements DriverInterface {
     required bool supportsDelete,
     required bool supportsRenew,
   }) {
-    final name = domainData['name']?.toString() ?? '';
-    final status = domainData['status']?.toString() ?? '';
-    final createdAt = domainData['created_at'];
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 44, height: 44,
-              decoration: BoxDecoration(
-                color: DnsDesignTokens.statusActive.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.language, color: DnsDesignTokens.dnsTypeCNAME, size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                  const SizedBox(height: 2),
-                  Text(_formatDate(createdAt), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                ],
-              ),
-            ),
-            _StatusBadge(status: _translateStatus(status)),
-            const SizedBox(width: 4),
-            Icon(Icons.more_vert, size: 20, color: Colors.grey[500]),
-          ],
-        ),
-      ),
-    );
+    return const SizedBox.shrink();
   }
 
   @override

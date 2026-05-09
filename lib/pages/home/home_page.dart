@@ -8,6 +8,7 @@ import '../../services/credential_validation.dart';
 import '../../services/domain_state.dart';
 import '../../drivers/driver_factory.dart';
 import '../../utils/toast_util.dart';
+import '../../core/ui/md3_widgets.dart';
 import '../../core/theme/design_system.dart';
 
 class HomePage extends StatefulWidget {
@@ -92,16 +93,28 @@ class _HomePageState extends State<HomePage> {
   ) {
     if (!hasCredentials) return _buildEmptyCredentialState(context);
 
-    if (state.isLoading && state.domains.isEmpty) return const Center(child: CircularProgressIndicator());
+    if (state.isLoading && state.domains.isEmpty) return const DnsLoading();
 
     if (state.error != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          ToastUtil.showError(context, state.error!, errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null);
+          ToastUtil.showError(
+            context,
+            state.error!,
+            errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null,
+          );
         }
       });
       if (state.domains.isEmpty) {
-        return _buildErrorState(state);
+        return DnsErrorState(
+          message: state.error!,
+          onRetry: () {
+            final selected = credentialState.selectedCredential;
+            if (selected != null) {
+              state.refreshDomains(selected.providerId, selected.credentials);
+            }
+          },
+        );
       }
     }
 
@@ -121,7 +134,7 @@ class _HomePageState extends State<HomePage> {
       child: ListView.separated(
         padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
         itemCount: state.domains.length,
-        separatorBuilder: (_, __) => const Divider(height: 1, indent: 72, endIndent: 16),
+        separatorBuilder: (_, __) => const DnsDivider(),
         itemBuilder: (listContext, index) {
           final domain = state.domains[index];
           return _DomainListItem(
@@ -134,35 +147,15 @@ class _HomePageState extends State<HomePage> {
               final domainId = domain['id']?.toString() ?? '';
               final domainName = domain['name']?.toString() ?? '';
               if (domainId.isNotEmpty) {
-                GoRouter.of(context).push('/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}');
+                GoRouter.of(context).push(
+                  '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
+                );
               }
             },
             onDelete: () => _handleDeleteDomain(context, state, selected, domain),
             onRenew: () => _handleRenewDomain(context, state, selected, domain),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildErrorState(DomainState state) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.error_outline, size: 72, color: Colors.red.withValues(alpha: 0.7)),
-            const SizedBox(height: 16),
-            Text(state.error ?? '未知错误', textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () => state.clear(),
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text('重试'),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -175,7 +168,13 @@ class _HomePageState extends State<HomePage> {
   ) async {
     final domainName = domain['name']?.toString() ?? '';
     final domainId = domain['id']?.toString() ?? '';
-    final confirm = await _showConfirmDialog(context, title: '删除域名', message: '确定要删除 "$domainName" 吗？此操作无法撤销。', confirmLabel: '删除', isDestructive: true);
+    final confirm = await showDnsConfirmDialog(
+      context,
+      title: '删除域名',
+      message: '确定要删除 "$domainName" 吗？此操作无法撤销。',
+      confirmLabel: '删除',
+      isDestructive: true,
+    );
 
     if (confirm == true && selected != null) {
       final result = await state.deleteDomain(selected.providerId, domainId);
@@ -216,43 +215,35 @@ class _HomePageState extends State<HomePage> {
   void _showAddDomainDialog(BuildContext context, String providerId) {
     final driver = DriverFactory.get(providerId);
     if (driver == null) return;
-
     final domainState = context.read<DomainState>();
-    final title = driver.getAddDomainTitle();
-    final isSubdomain = providerId == 'dnshe';
-
-    final controllers = <String, TextEditingController>{};
-    if (isSubdomain) {
-      controllers['subdomain'] = TextEditingController();
-      controllers['rootdomain'] = TextEditingController();
-    } else {
-      controllers['name'] = TextEditingController();
-    }
+    final isDnshe = providerId == 'dnshe';
+    final subdomainController = TextEditingController();
+    final rootDomainController = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(title),
+        title: Text(isDnshe ? '添加子域名' : '添加域名'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (isSubdomain) ...[
+              if (isDnshe) ...[
                 TextField(
-                  controller: controllers['subdomain'],
+                  controller: subdomainController,
                   decoration: const InputDecoration(labelText: '子域名前缀', hintText: '例如: myapp'),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
                 TextField(
-                  controller: controllers['rootdomain'],
+                  controller: rootDomainController,
                   decoration: const InputDecoration(labelText: '根域名', hintText: '例如: example.com'),
                 ),
                 const SizedBox(height: 8),
                 Text('将创建: {子域名}.{根域名}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
               ] else ...[
                 TextField(
-                  controller: controllers['name'],
+                  controller: rootDomainController,
                   decoration: const InputDecoration(labelText: '域名', hintText: '例如: example.com'),
                 ),
               ],
@@ -264,23 +255,15 @@ class _HomePageState extends State<HomePage> {
           FilledButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              final input = <String, dynamic>{};
-              if (isSubdomain) {
-                if (controllers['subdomain']!.text.isEmpty || controllers['rootdomain']!.text.isEmpty) {
-                  ToastUtil.showError(context, '请填写完整信息');
-                  return;
-                }
-                input['subdomain'] = controllers['subdomain']!.text;
-                input['rootdomain'] = controllers['rootdomain']!.text;
-              } else {
-                if (controllers['name']!.text.isEmpty) {
-                  ToastUtil.showError(context, '请填写域名');
-                  return;
-                }
-                input['name'] = controllers['name']!.text;
+              if (isDnshe && (subdomainController.text.isEmpty || rootDomainController.text.isEmpty)) {
+                ToastUtil.showError(context, '请填写完整信息');
+                return;
               }
-
-              final domainData = driver.prepareDomainData(input);
+              if (!isDnshe && rootDomainController.text.isEmpty) {
+                ToastUtil.showError(context, '请填写域名');
+                return;
+              }
+              final domainData = driver.prepareDomainData(isDnshe ? {'subdomain': subdomainController.text, 'rootdomain': rootDomainController.text} : {'name': rootDomainController.text});
               final result = await domainState.addDomain(providerId, domainData);
               if (!result['success'] && context.mounted) {
                 final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
@@ -298,40 +281,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildEmptyCredentialState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.key_off, size: 72, color: Colors.grey.withValues(alpha: 0.5)),
-            const SizedBox(height: 16),
-            const Text('请先添加凭证', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Text('凭证用于连接DNS服务商，管理您的域名和DNS记录', style: TextStyle(fontSize: 14, color: Colors.grey[600]), textAlign: TextAlign.center),
-            const SizedBox(height: 24),
-            FilledButton.icon(onPressed: () => _showAddCredentialDialog(context), icon: const Icon(Icons.add), label: const Text('添加凭证')),
-          ],
-        ),
+    return DnsEmptyState(
+      icon: Icons.key_off,
+      title: '请先添加凭证',
+      description: '凭证用于连接DNS服务商，管理您的域名和DNS记录',
+      action: FilledButton.icon(
+        onPressed: () => _showAddCredentialDialog(context),
+        icon: const Icon(Icons.add),
+        label: const Text('添加凭证'),
       ),
     );
   }
 
   Widget _buildEmptyDomainState(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.dns, size: 72, color: Colors.grey.withValues(alpha: 0.5)),
-            const SizedBox(height: 16),
-            const Text('暂无域名', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Text('暂无域名，请使用右下角按钮添加域名', style: TextStyle(fontSize: 14, color: Colors.grey[600]), textAlign: TextAlign.center),
-          ],
-        ),
-      ),
+    return DnsEmptyState(
+      icon: Icons.dns,
+      title: '暂无域名',
+      description: '暂无域名，请使用右下角按钮添加域名',
     );
   }
 
@@ -362,15 +328,15 @@ class _HomePageState extends State<HomePage> {
   Widget _buildEmptyCredentialList(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(DnsSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.key_off, size: 56, color: Colors.grey.withValues(alpha: 0.4)),
+            Icon(Icons.key_off, size: 56, color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
             const SizedBox(height: 16),
-            const Text('暂无凭证', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500), textAlign: TextAlign.center),
+            Text('暂无凭证', style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
             const SizedBox(height: 6),
-            Text('点击下方按钮添加', style: TextStyle(fontSize: 12, color: Colors.grey[600]), textAlign: TextAlign.center),
+            Text('点击下方按钮添加', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant), textAlign: TextAlign.center),
           ],
         ),
       ),
@@ -401,6 +367,7 @@ class _HomePageState extends State<HomePage> {
         return _CredentialCard(
           key: ValueKey(credential.id),
           index: index,
+          totalCount: credentialState.credentials.length,
           credential: credential,
           isSelected: isSelected,
           onTap: () {
@@ -423,12 +390,12 @@ class _HomePageState extends State<HomePage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: const EdgeInsets.fromLTRB(DnsSpacing.md, DnsSpacing.sm, DnsSpacing.md, DnsSpacing.sm),
               child: Text(credential.providerName, style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
             ),
             ListTile(leading: Icon(Icons.edit, color: Theme.of(ctx).colorScheme.primary), title: const Text('编辑凭证'), onTap: () { Navigator.pop(ctx); _showEditCredentialDialog(context, credential); }),
             ListTile(leading: Icon(Icons.delete, color: Theme.of(ctx).colorScheme.error), title: Text('删除凭证', style: TextStyle(color: Theme.of(ctx).colorScheme.error)), onTap: () { Navigator.pop(ctx); _showDeleteCredentialDialog(context, credential, credentialState); }),
-            const SizedBox(height: 16),
+            const SizedBox(height: DnsSpacing.md),
           ],
         ),
       ),
@@ -481,29 +448,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showDeleteCredentialDialog(BuildContext context, CredentialModel credential, CredentialState credentialState) async {
-    final confirm = await _showConfirmDialog(context, title: '删除凭证', message: '确定要删除 "${credential.providerName}" 的凭证吗？', confirmLabel: '删除', isDestructive: true);
+    final confirm = await showDnsConfirmDialog(context, title: '删除凭证', message: '确定要删除 "${credential.providerName}" 的凭证吗？', confirmLabel: '删除', isDestructive: true);
     if (confirm == true && context.mounted) {
       await credentialState.removeCredential(credential.id);
       if (context.mounted) ToastUtil.showSuccess(context, '删除凭证成功');
     }
-  }
-
-  Future<bool?> _showConfirmDialog(BuildContext context, {required String title, required String message, String confirmLabel = '确定', String cancelLabel = '取消', bool isDestructive = false}) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(message),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(cancelLabel)),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: isDestructive ? FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error, foregroundColor: Theme.of(context).colorScheme.onError) : null,
-            child: Text(confirmLabel),
-          ),
-        ],
-      ),
-    );
   }
 }
 
@@ -520,16 +469,16 @@ class _DrawerHeader extends StatelessWidget {
         color: colorScheme.surfaceContainerHighest,
         border: Border(bottom: BorderSide(color: colorScheme.outlineVariant.withValues(alpha: 0.5), width: 1)),
       ),
-      padding: EdgeInsets.fromLTRB(16, 16 + MediaQuery.of(context).padding.top, 8, 16),
+      padding: EdgeInsets.fromLTRB(DnsSpacing.md, DnsSpacing.md + MediaQuery.of(context).padding.top, DnsSpacing.sm, DnsSpacing.md),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 44, height: 44,
-            decoration: BoxDecoration(color: colorScheme.primaryContainer, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: colorScheme.primaryContainer, borderRadius: BorderRadius.circular(DnsRadius.md)),
             child: Icon(Icons.dns, size: 24, color: colorScheme.onPrimaryContainer),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: DnsSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -546,7 +495,7 @@ class _DrawerHeader extends StatelessWidget {
   }
 }
 
-class _DomainListItem extends StatefulWidget {
+class _DomainListItem extends StatelessWidget {
   final Map<String, dynamic> domain;
   final String providerId;
   final bool supportsDelete;
@@ -566,83 +515,44 @@ class _DomainListItem extends StatefulWidget {
     required this.onRenew,
   });
 
-  @override
-  State<_DomainListItem> createState() => _DomainListItemState();
-}
-
-class _DomainListItemState extends State<_DomainListItem> {
-  final GlobalKey _itemKey = GlobalKey();
-
-  void _handleLongPress() {
-    final driver = DriverFactory.get(widget.providerId);
+  void _showMenu(BuildContext ctx) {
+    final driver = DriverFactory.get(providerId);
     if (driver == null) return;
-    final ctx = _itemKey.currentContext;
-    if (ctx == null) return;
     driver.showDomainListItemMenu(
       ctx,
-      widget.domain,
-      onDelete: widget.onDelete,
-      onRenew: widget.onRenew,
-      supportsDelete: widget.supportsDelete,
-      supportsRenew: widget.supportsRenew,
+      domain,
+      onDelete: onDelete,
+      onRenew: onRenew,
+      supportsDelete: supportsDelete,
+      supportsRenew: supportsRenew,
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final driver = DriverFactory.get(widget.providerId);
-    if (driver != null) {
-      return GestureDetector(
-        onLongPress: _handleLongPress,
-        child: Container(
-          key: _itemKey,
-          child: driver.buildDomainListItem(
-            widget.domain,
-            onTap: widget.onTap,
-            onDelete: widget.onDelete,
-            onRenew: widget.onRenew,
-            supportsDelete: widget.supportsDelete,
-            supportsRenew: widget.supportsRenew,
-          ),
-        ),
-      );
-    }
-
-    final name = widget.domain['name']?.toString() ?? '';
-    final status = widget.domain['status']?.toString() ?? '';
-    final colorScheme = Theme.of(context).colorScheme;
-    return ListTile(
-      leading: Icon(Icons.language, color: colorScheme.primary),
-      title: Text(name),
-      subtitle: Text(status, style: TextStyle(fontSize: 12, color: DnsDesignTokens.getStatusColor(status))),
-      onTap: widget.onTap,
-      onLongPress: widget.supportsDelete || widget.supportsRenew
-          ? () {
-              showMenu<String>(
-                context: context,
-                position: RelativeRect.fromLTRB(200, 100, 0, 0),
-                items: [
-                  if (widget.supportsRenew) const PopupMenuItem(value: 'renew', child: Text('续期')),
-                  if (widget.supportsDelete) PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: colorScheme.error))),
-                ],
-              ).then((value) {
-                if (value == 'delete') widget.onDelete();
-                if (value == 'renew') widget.onRenew();
-              });
-            }
-          : null,
+    return GestureDetector(
+      onLongPress: () => _showMenu(context),
+      child: DnsDomainTile(
+        domain: domain,
+        supportsDelete: supportsDelete,
+        supportsRenew: supportsRenew,
+        onTap: onTap,
+        onDelete: onDelete,
+        onRenew: onRenew,
+      ),
     );
   }
 }
 
 class _CredentialCard extends StatefulWidget {
   final int index;
+  final int totalCount;
   final CredentialModel credential;
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
-  const _CredentialCard({super.key, required this.index, required this.credential, required this.isSelected, required this.onTap, required this.onLongPress});
+  const _CredentialCard({super.key, required this.index, required this.totalCount, required this.credential, required this.isSelected, required this.onTap, required this.onLongPress});
 
   @override
   State<_CredentialCard> createState() => _CredentialCardState();
@@ -656,44 +566,60 @@ class _CredentialCardState extends State<_CredentialCard> {
     final colorScheme = Theme.of(context).colorScheme;
     return ReorderableDragStartListener(
       index: widget.index,
-      child: AnimatedScale(
-        scale: _isDragging ? 1.03 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          decoration: BoxDecoration(
-            color: colorScheme.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: _isDragging ? colorScheme.primary : colorScheme.outlineVariant.withValues(alpha: 0.5), width: _isDragging ? 2 : 1),
-            boxShadow: _isDragging ? [BoxShadow(color: colorScheme.shadow.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))] : [BoxShadow(color: colorScheme.shadow.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1))],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-            child: InkWell(
-              onTap: widget.onTap,
-              onLongPress: widget.onLongPress,
-              borderRadius: BorderRadius.circular(12),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    _buildProviderIcon(colorScheme),
-                    const SizedBox(width: 16),
-                    Expanded(child: _buildInfo(colorScheme)),
-                    Listener(
-                      onPointerDown: (_) => setState(() => _isDragging = true),
-                      onPointerUp: (_) => setState(() => _isDragging = false),
-                      onPointerCancel: (_) => setState(() => _isDragging = false),
-                      child: Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(8)),
-                        child: Icon(Icons.drag_indicator, size: 18, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
-                      ),
-                    ),
-                  ],
-                ),
+      child: _DragAwareCredentialCard(
+        credential: widget.credential,
+        isSelected: widget.isSelected,
+        isDragging: _isDragging,
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        onDragStart: () => setState(() => _isDragging = true),
+        onDragEnd: () => setState(() => _isDragging = false),
+      ),
+    );
+  }
+}
+
+class _DragAwareCredentialCard extends StatelessWidget {
+  final CredentialModel credential;
+  final bool isSelected;
+  final bool isDragging;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final VoidCallback onDragStart;
+  final VoidCallback onDragEnd;
+
+  const _DragAwareCredentialCard({required this.credential, required this.isSelected, required this.isDragging, required this.onTap, required this.onLongPress, required this.onDragStart, required this.onDragEnd});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return AnimatedScale(
+      scale: isDragging ? 1.03 : 1.0,
+      duration: const Duration(milliseconds: 150),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(DnsRadius.lg),
+          border: Border.all(color: isDragging ? colorScheme.primary : colorScheme.outlineVariant.withValues(alpha: 0.5), width: isDragging ? 2 : 1),
+          boxShadow: isDragging ? [BoxShadow(color: colorScheme.shadow.withValues(alpha: 0.12), blurRadius: 12, offset: const Offset(0, 4))] : [BoxShadow(color: colorScheme.shadow.withValues(alpha: 0.04), blurRadius: 2, offset: const Offset(0, 1))],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(DnsRadius.lg),
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            borderRadius: BorderRadius.circular(DnsRadius.lg),
+            child: Padding(
+              padding: const EdgeInsets.all(DnsSpacing.md),
+              child: Row(
+                children: [
+                  _buildProviderIcon(colorScheme),
+                  const SizedBox(width: DnsSpacing.md),
+                  Expanded(child: _buildInfo(colorScheme)),
+                  _buildDragHandle(colorScheme),
+                ],
               ),
             ),
           ),
@@ -703,7 +629,7 @@ class _CredentialCardState extends State<_CredentialCard> {
   }
 
   Widget _buildProviderIcon(ColorScheme colorScheme) {
-    final driver = DriverFactory.get(widget.credential.providerId);
+    final driver = DriverFactory.get(credential.providerId);
     final iconPath = driver?.providerIcon ?? '';
     Widget iconWidget;
     if (iconPath.endsWith('.svg')) {
@@ -713,26 +639,39 @@ class _CredentialCardState extends State<_CredentialCard> {
     }
     return Container(
       width: 44, height: 44,
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: widget.isSelected ? colorScheme.primary : Colors.transparent, width: widget.isSelected ? 2 : 0), color: widget.isSelected ? colorScheme.primary.withValues(alpha: 0.12) : colorScheme.surfaceContainerHighest),
-      padding: EdgeInsets.all(widget.isSelected ? 2 : 0),
+      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isSelected ? colorScheme.primary : Colors.transparent, width: isSelected ? 2 : 0)),
+      padding: EdgeInsets.all(isSelected ? 2 : 0),
       child: ClipOval(child: SizedBox(width: 36, height: 36, child: iconWidget)),
     );
   }
 
   Widget _buildInfo(ColorScheme colorScheme) {
-    final hasRemark = widget.credential.remark != null && widget.credential.remark!.isNotEmpty;
+    final hasRemark = credential.remark != null && credential.remark!.isNotEmpty;
     if (hasRemark) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(widget.credential.remark!, style: TextStyle(fontSize: 15, fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(credential.remark!, style: TextStyle(fontSize: 15, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
-          Text(widget.credential.providerName, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(credential.providerName, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       );
     }
-    return Text(widget.credential.providerName, style: TextStyle(fontSize: 15, fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis);
+    return Text(credential.providerName, style: TextStyle(fontSize: 15, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis);
+  }
+
+  Widget _buildDragHandle(ColorScheme colorScheme) {
+    return Listener(
+      onPointerDown: (_) => onDragStart(),
+      onPointerUp: (_) => onDragEnd(),
+      onPointerCancel: (_) => onDragEnd(),
+      child: Container(
+        width: 36, height: 36,
+        decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(DnsRadius.sm)),
+        child: Icon(Icons.drag_indicator, size: 18, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+      ),
+    );
   }
 }
 
@@ -782,18 +721,18 @@ class _CredentialDialogState extends State<_CredentialDialog> {
       title: Text(widget.title),
       content: SingleChildScrollView(
         child: Column(
-     mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isEditing) ...[
               Container(
-                decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12), border: Border.all(color: colorScheme.outlineVariant)),
+                decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(DnsRadius.md), border: Border.all(color: colorScheme.outlineVariant)),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: DropdownButtonFormField<String>(
                   value: _selectedProviderId,
                   decoration: InputDecoration(labelText: '选择服务商', border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, fillColor: Colors.transparent, filled: false),
                   isExpanded: true,
-                  items: drivers.map((d) => DropdownMenuItem<String>(value: d.providerId, child: Text(d.providerName))).toList(),
+                  items: drivers.map((d) => DropdownMenuItem(value: d.providerId, child: Text(d.providerName))).toList(),
                   onChanged: (value) => setState(() { _selectedProviderId = value; _controllers.clear(); }),
                 ),
               ),
@@ -802,16 +741,14 @@ class _CredentialDialogState extends State<_CredentialDialog> {
             if (isEditing) ...[
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(DnsRadius.md)),
                 child: Row(children: [Icon(Icons.cloud, size: 20, color: colorScheme.primary), const SizedBox(width: 8), Text(widget.credential!.providerName)]),
               ),
               const SizedBox(height: 12),
             ],
             TextField(controller: _remarkController, decoration: const InputDecoration(labelText: '备注（可选）', hintText: '用于区分不同凭证')),
             const SizedBox(height: 12),
-            if (_selectedProviderId != null) ...[
-              Container(padding: const EdgeInsets.symmetric(vertical: 8), child: _buildCredentialFields()),
-            ],
+            if (_selectedProviderId != null) ...[Container(padding: const EdgeInsets.symmetric(vertical: 8), child: _buildCredentialFields())],
           ],
         ),
       ),
