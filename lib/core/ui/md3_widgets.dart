@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/design_system.dart';
 
 enum DnsLoadState { idle, loading, loaded, empty, error }
@@ -528,8 +529,8 @@ class DnsDomainTile extends StatelessWidget {
 
   String _getNameServersTitle(Map<String, dynamic> domainData) {
     final nameServers = domainData['name_servers'] as List? ?? [];
-    if (nameServers.isEmpty) return '无 NS 节点';
-    return '${nameServers.length} 个 NS 节点';
+    if (nameServers.isEmpty) return 'DNS 服务器';
+    return 'DNS 服务器 (${nameServers.length})';
   }
 
   void _showNameServersDialog(BuildContext context, Map<String, dynamic> domainData) {
@@ -545,23 +546,47 @@ class DnsDomainTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('NS 节点', style: Theme.of(ctx).textTheme.titleSmall),
+              Text('DNS 服务器', style: Theme.of(ctx).textTheme.titleSmall),
               const SizedBox(height: 8),
               if (nameServers.isEmpty)
                 Text('无', style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant))
               else
-                ...nameServers.map((ns) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(8),
+                ...nameServers.map((ns) {
+                  final nsValue = ns.toString();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(8),
+                        onTap: () {
+                          Clipboard.setData(ClipboardData(text: nsValue));
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(
+                              content: Text('已复制: $nsValue'),
+                              duration: const Duration(seconds: 1),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(nsValue, style: Theme.of(ctx).textTheme.bodyMedium)),
+                              Icon(Icons.copy, size: 16, color: colorScheme.onSurfaceVariant),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    child: Text(ns.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
-                  ),
-                )),
+                  );
+                }),
             ],
           ),
         ),
