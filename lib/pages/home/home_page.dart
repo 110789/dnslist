@@ -56,19 +56,15 @@ class _HomePageState extends State<HomePage> {
         scrolledUnderElevation: 2,
         actions: hasCredentials
             ? [
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  onPressed: () {
-                    if (selected != null) {
-                      domainState.loadDomains(selected.providerId, selected.credentials);
-                    }
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined),
-                  onPressed: () => GoRouter.of(context).push('/settings'),
-                ),
-              ]
+        IconButton(
+          icon: const Icon(Icons.refresh),
+          onPressed: () {
+            if (selected != null) {
+              domainState.loadDomains(selected.providerId, selected.credentials);
+            }
+          },
+        ),
+      ]
             : null,
       ),
       drawer: _buildDrawer(context, credentialState, domainState),
@@ -309,6 +305,13 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           _DrawerHeader(credentialCount: credentialState.credentials.length),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: _DrawerSettingsEntry(onTap: () {
+              Navigator.pop(context);
+              GoRouter.of(context).push('/settings');
+            }),
+          ),
           Expanded(
             child: credentialState.credentials.isEmpty
                 ? _buildEmptyCredentialList(context)
@@ -492,6 +495,42 @@ class _DrawerHeader extends StatelessWidget {
   }
 }
 
+class _DrawerSettingsEntry extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _DrawerSettingsEntry({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(DnsRadius.lg),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(DnsRadius.lg),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(DnsRadius.lg),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: DnsSpacing.md, vertical: DnsSpacing.sm + 4),
+            child: Row(
+              children: [
+                Icon(Icons.settings_outlined, size: 20, color: colorScheme.onSurfaceVariant),
+                const SizedBox(width: DnsSpacing.md),
+                Expanded(child: Text('设置', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: colorScheme.onSurface))),
+                Icon(Icons.chevron_right, size: 20, color: colorScheme.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _DomainListItem extends StatelessWidget {
   final Map<String, dynamic> domain;
   final bool supportsDelete;
@@ -603,42 +642,19 @@ class _CredentialCardContent extends StatelessWidget {
 
   Widget _buildInfo(ColorScheme colorScheme) {
     final hasRemark = credential.remark != null && credential.remark!.isNotEmpty;
-    final primaryColor = isSelected ? colorScheme.primary : colorScheme.onSurface;
-    final nameStyle = TextStyle(fontSize: 15, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: primaryColor);
+    final nameStyle = TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: colorScheme.onSurface);
     if (hasRemark) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              if (isSelected) ...[
-                Container(
-                  width: 6, height: 6,
-                  decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.primary),
-                ),
-                const SizedBox(width: 6),
-              ],
-              Expanded(child: Text(credential.remark!, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis)),
-            ],
-          ),
+          Text(credential.remark!, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 2),
           Text(credential.providerName, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       );
     }
-    return Row(
-      children: [
-        if (isSelected) ...[
-          Container(
-            width: 6, height: 6,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.primary),
-          ),
-          const SizedBox(width: 6),
-        ],
-        Expanded(child: Text(credential.providerName, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis)),
-      ],
-    );
+    return Text(credential.providerName, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 }
 
