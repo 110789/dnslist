@@ -52,4 +52,10 @@ abstract class DriverInterface {
   Map<String, String> getCredentialFields();
 
   List<String> getSupportedRecordTypes();
+
+  String mapErrorCode(String code);
+
+  String getAddDomainTitle();
+
+  Map<String, dynamic> prepareDomainData(Map<String, dynamic> input);
 }

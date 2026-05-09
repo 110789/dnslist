@@ -17,7 +17,7 @@ class CredentialValidationService {
       }
 
       final valid = await driver.validateCredential(credentials);
-      
+
       if (valid) {
         return {
           'success': true,
@@ -26,7 +26,7 @@ class CredentialValidationService {
       } else {
         return {
           'success': false,
-          'error': '凭证验证失败，请检查 API 凭据是否正确',
+          'error': driver.mapErrorCode('AUTH_FAILED'),
           'errorCode': 'AUTH_FAILED',
           'statusCode': 401,
         };
