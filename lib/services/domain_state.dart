@@ -163,43 +163,38 @@ class DomainState extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> deleteDomain(String providerId, String domainId) async {
-    _isLoading = true;
-    _error = null;
-    _errorCode = null;
-    notifyListeners();
-
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
         final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
         _error = result['error'] as String;
         _errorCode = result['errorCode'] as String;
-        _isLoading = false;
         notifyListeners();
         return result;
       }
 
       final result = await driver.deleteDomain(domainId);
-      
+
       if (result['success'] == true) {
         _domains.removeWhere((d) => d['id'].toString() == domainId.toString());
-        _isLoading = false;
         notifyListeners();
         return result;
       }
-      
+
       _error = result['error'] as String? ?? '删除失败';
       _errorCode = result['errorCode'] as String? ?? 'UNKNOWN';
-      _isLoading = false;
       notifyListeners();
       return result;
     } catch (e) {
       _error = e.toString();
       _errorCode = 'EXCEPTION';
-      _isLoading = false;
       notifyListeners();
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
+  }
+
+  Future<Map<String, dynamic>> refreshDomains(String providerId, Map<String, String> credentials) async {
+    return loadDomains(providerId, credentials);
   }
 
   Future<Map<String, dynamic>> renewDomain(String providerId, String domainId) async {
@@ -350,6 +345,12 @@ class DomainState extends ChangeNotifier {
     _domains = [];
     _dnsRecords = {};
     _selectedDomainId = null;
+    _error = null;
+    _errorCode = null;
+    notifyListeners();
+  }
+
+  void clearError() {
     _error = null;
     _errorCode = null;
     notifyListeners();

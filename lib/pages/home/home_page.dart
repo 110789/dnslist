@@ -17,6 +17,28 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeAndRefresh();
+    });
+  }
+
+  Future<void> _initializeAndRefresh() async {
+    final credentialState = context.read<CredentialState>();
+    final domainState = context.read<DomainState>();
+
+    await credentialState.loadCredentials();
+
+    if (mounted) {
+      final selected = credentialState.selectedCredential;
+      if (selected != null) {
+        await domainState.loadDomains(selected.providerId, selected.credentials);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final credentialState = context.watch<CredentialState>();
     final domainState = context.watch<DomainState>();
@@ -61,45 +83,59 @@ class _HomePageState extends State<HomePage> {
       return _buildEmptyCredentialState(context);
     }
 
-    if (state.isLoading) {
+    if (state.isLoading && state.domains.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
     if (state.error != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ToastUtil.showError(context, state.error!, errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null);
-        final currentDomains = state.domains;
-        state.clear();
-        if (currentDomains.isNotEmpty) {
-          final selected = credentialState.selectedCredential;
-          if (selected != null) {
-            state.loadDomains(selected.providerId, selected.credentials);
-          }
+        if (mounted) {
+          ToastUtil.showError(context, state.error!, errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null);
         }
       });
-      if (state.domains.isNotEmpty) {
-        return RefreshIndicator(
-          onRefresh: () async {
-            final selected = credentialState.selectedCredential;
-            if (selected != null) {
-              await state.loadDomains(selected.providerId, selected.credentials);
-            }
-          },
-          child: ListView.builder(
-            itemCount: state.domains.length,
-            itemBuilder: (listContext, index) {
-              final domain = state.domains[index];
-              return _buildDomainItemWithContext(listContext, domain, state, credentialState);
-            },
+
+      if (state.domains.isEmpty) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.grey.shade400),
+              const SizedBox(height: 16),
+              Text(state.error!, textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600)),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  final selected = credentialState.selectedCredential;
+                  if (selected != null) {
+                    state.refreshDomains(selected.providerId, selected.credentials);
+                  }
+                },
+                child: const Text('重试'),
+              ),
+            ],
           ),
         );
       }
-      return const Center(child: CircularProgressIndicator());
+
+      return RefreshIndicator(
+        onRefresh: () async {
+          final selected = credentialState.selectedCredential;
+          if (selected != null) {
+            await state.refreshDomains(selected.providerId, selected.credentials);
+          }
+        },
+        child: ListView.builder(
+          itemCount: state.domains.length,
+          itemBuilder: (listContext, index) {
+            final domain = state.domains[index];
+            return _buildDomainItemWithContext(listContext, domain, state, credentialState);
+          },
+        ),
+      );
     }
 
     if (state.domains.isEmpty) {
-      final selected = credentialState.selectedCredential;
-      return _buildEmptyDomainState(context, selected?.providerId ?? '');
+      return _buildEmptyDomainState(context);
     }
 
     final selected = credentialState.selectedCredential;
@@ -110,7 +146,7 @@ class _HomePageState extends State<HomePage> {
 return RefreshIndicator(
       onRefresh: () async {
         if (selected != null) {
-          await state.loadDomains(selected.providerId, selected.credentials);
+          await state.refreshDomains(selected.providerId, selected.credentials);
         }
       },
       child: ListView.builder(
@@ -266,6 +302,7 @@ return RefreshIndicator(
           ToastUtil.showSuccess(context, '域名已删除');
         } else {
           ToastUtil.showError(context, result['error'] ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
+          await state.refreshDomains(selected.providerId, selected.credentials);
         }
       }
     }
@@ -426,7 +463,7 @@ return RefreshIndicator(
     );
   }
 
-  Widget _buildEmptyDomainState(BuildContext context, String providerId) {
+  Widget _buildEmptyDomainState(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
