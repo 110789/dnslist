@@ -91,51 +91,21 @@ class _HomePageState extends State<HomePage> {
       itemCount: state.domains.length,
       itemBuilder: (context, index) {
         final domain = state.domains[index];
+        final domainName = domain['name'] ?? 'Unknown';
+        final domainId = domain['id']?.toString() ?? '';
         return ListTile(
-          title: Text(domain['name'] ?? 'Unknown'),
+          title: Text(domainName),
           subtitle: Text(domain['status'] ?? ''),
+          trailing: const Icon(Icons.chevron_right),
           onTap: () {
-            final credential = context.read<CredentialState>().selectedCredential;
-            if (credential != null) {
-              state.loadDnsRecords(credential.providerId, domain['id']);
-              _showDnsRecords(context, domain['name']);
+            if (domainId.isNotEmpty) {
+              GoRouter.of(context).push(
+                '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
+              );
             }
           },
         );
       },
-    );
-  }
-
-  void _showDnsRecords(BuildContext context, String domainName) {
-    showModalBottomSheet(
-      context: context,
-      builder: (ctx) => Consumer<DomainState>(
-        builder: (context, state, _) {
-          final records = state.currentDnsRecords;
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('$domainName - DNS记录', style: Theme.of(context).textTheme.titleLarge),
-              ),
-              Expanded(
-                child: records.isEmpty
-                    ? const Center(child: Text('暂无记录'))
-                    : ListView.builder(
-                        itemCount: records.length,
-                        itemBuilder: (context, index) {
-                          final record = records[index];
-                          return ListTile(
-                            title: Text(record['name'] ?? ''),
-                            subtitle: Text('${record['type']} - ${record['content']}'),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          );
-        },
-      ),
     );
   }
 
