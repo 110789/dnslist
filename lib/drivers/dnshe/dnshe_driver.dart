@@ -7,7 +7,7 @@ import '../../core/config/app_config.dart';
 class DnsheDriver implements DriverInterface {
   static const String _providerId = 'dnshe';
   static const String _providerName = 'DNSHE';
-  static const String _providerIcon = 'dns';
+  static const String _providerIcon = 'assets/icons/dnshe.jpg';
 
   static final Map<String, String> _errorCodeMap = {
     'auth_invalid_credentials': 'API 密钥或密钥 Secret 错误',

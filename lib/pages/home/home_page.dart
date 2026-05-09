@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/credential_state.dart';
@@ -748,7 +749,9 @@ class _DragAwareCredentialCard extends StatelessWidget {
               child: Row(
                 children: [
                   _buildLeadingIndicator(colorScheme),
-                  const SizedBox(width: DnsSpacing.md),
+                  const SizedBox(width: DnsSpacing.sm),
+                  _buildProviderIcon(colorScheme),
+                  const SizedBox(width: DnsSpacing.sm),
                   Expanded(child: _buildInfo(colorScheme)),
                   _buildDragHandle(colorScheme),
                 ],
@@ -756,6 +759,40 @@ class _DragAwareCredentialCard extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildProviderIcon(ColorScheme colorScheme) {
+    final driver = DriverFactory.get(credential.providerId);
+    final iconPath = driver?.providerIcon ?? '';
+
+    Widget iconWidget;
+    if (iconPath.endsWith('.svg')) {
+      iconWidget = SvgPicture.asset(
+        iconPath,
+        width: 32,
+        height: 32,
+        colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
+      );
+    } else {
+      iconWidget = Image.asset(
+        iconPath,
+        width: 32,
+        height: 32,
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.language,
+          size: 28,
+          color: colorScheme.primary,
+        ),
+      );
+    }
+
+    return ClipOval(
+      child: SizedBox(
+        width: 36,
+        height: 36,
+        child: iconWidget,
       ),
     );
   }

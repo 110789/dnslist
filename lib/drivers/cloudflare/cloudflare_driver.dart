@@ -7,7 +7,7 @@ import '../../core/config/app_config.dart';
 class CloudflareDriver implements DriverInterface {
   static const String _providerId = 'cloudflare';
   static const String _providerName = 'Cloudflare';
-  static const String _providerIcon = 'cloud';
+  static const String _providerIcon = 'assets/icons/cloudflare.svg';
 
   static final Map<String, String> _errorCodeMap = {
     '1000': '认证失败，请检查 API Token 是否正确',
