@@ -421,7 +421,6 @@ class _HomePageState extends State<HomePage> {
             leading: Icon(Icons.add, color: colorScheme.primary),
             title: Text('添加凭证', style: TextStyle(color: colorScheme.primary)),
             onTap: () {
-              Navigator.pop(context);
               _showAddCredentialDialog(context);
             },
           ),
@@ -819,6 +818,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
   Widget build(BuildContext context) {
     final drivers = DriverFactory.getAll();
     final isEditing = widget.credential != null;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return AlertDialog(
       title: Text(widget.title),
@@ -827,47 +827,70 @@ class _CredentialDialogState extends State<_CredentialDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!isEditing)
-              DropdownButtonFormField<String>(
-                value: _selectedProviderId,
-                decoration: const InputDecoration(labelText: '选择服务商'),
-                items: drivers.map((d) => DropdownMenuItem(
-                  value: d.providerId,
-                  child: Text(d.providerName),
-                )).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedProviderId = value;
-                    _controllers.clear();
-                  });
-                },
+            if (!isEditing) ...[
+              Container(
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(DnsRadius.md),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: DropdownButtonFormField<String>(
+                  value: _selectedProviderId,
+                  decoration: InputDecoration(
+                    labelText: '选择服务商',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    fillColor: Colors.transparent,
+                    filled: false,
+                  ),
+                  isExpanded: true,
+                  items: drivers.map((d) => DropdownMenuItem(
+                    value: d.providerId,
+                    child: Text(d.providerName),
+                  )).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedProviderId = value;
+                      _controllers.clear();
+                    });
+                  },
+                ),
               ),
+              const SizedBox(height: 12),
+            ],
             if (isEditing) ...[
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  color: colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(DnsRadius.md),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.cloud, size: 20, color: Theme.of(context).colorScheme.primary),
+                    Icon(Icons.cloud, size: 20, color: colorScheme.primary),
                     const SizedBox(width: 8),
                     Text(widget.credential!.providerName),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
             ],
             TextField(
               controller: _remarkController,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: '备注（可选）',
                 hintText: '用于区分不同凭证',
               ),
             ),
-            const SizedBox(height: 16),
-            if (_selectedProviderId != null) ..._buildCredentialFields(),
+            const SizedBox(height: 12),
+            if (_selectedProviderId != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: _buildCredentialFields(),
+              ),
+            ],
           ],
         ),
       ),
@@ -889,24 +912,27 @@ class _CredentialDialogState extends State<_CredentialDialog> {
     );
   }
 
-  List<Widget> _buildCredentialFields() {
+  Widget _buildCredentialFields() {
     final driver = DriverFactory.get(_selectedProviderId!);
-    if (driver == null) return [];
+    if (driver == null) return const SizedBox.shrink();
 
     final fields = driver.getCredentialFields();
-    return fields.entries.map((entry) {
-      final key = entry.key;
-      final label = entry.value;
-      _controllers[key] = _controllers[key] ?? TextEditingController();
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: TextField(
-          controller: _controllers[key],
-          decoration: InputDecoration(labelText: label),
-          obscureText: key.toLowerCase().contains('secret'),
-        ),
-      );
-    }).toList();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: fields.entries.map((entry) {
+        final key = entry.key;
+        final label = entry.value;
+        _controllers[key] = _controllers[key] ?? TextEditingController();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: TextField(
+            controller: _controllers[key],
+            decoration: InputDecoration(labelText: label),
+            obscureText: key.toLowerCase().contains('secret'),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   Future<void> _saveCredential() async {
