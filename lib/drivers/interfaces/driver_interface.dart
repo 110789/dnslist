@@ -62,6 +62,8 @@ abstract class DriverInterface {
 
   bool get supportsRenewDomain;
 
+  bool get supportsShowNameServers;
+
   Widget buildDomainListItem(
     Map<String, dynamic> domainData, {
     required VoidCallback onTap,
@@ -90,7 +92,9 @@ abstract class DriverInterface {
     Map<String, dynamic> domainData, {
     required VoidCallback onDelete,
     required VoidCallback onRenew,
+    required VoidCallback onShowNameServers,
     required bool supportsDelete,
     required bool supportsRenew,
+    required bool supportsShowNameServers,
   });
 }

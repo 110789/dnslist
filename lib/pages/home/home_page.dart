@@ -124,6 +124,7 @@ class _HomePageState extends State<HomePage> {
     final driver = selected != null ? DriverFactory.get(selected.providerId) : null;
     final supportsDelete = driver?.supportsDeleteDomain ?? false;
     final supportsRenew = driver?.supportsRenewDomain ?? false;
+    final supportsShowNameServers = driver?.supportsShowNameServers ?? false;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -142,6 +143,7 @@ class _HomePageState extends State<HomePage> {
             domain: domain,
             supportsDelete: supportsDelete,
             supportsRenew: supportsRenew,
+            supportsShowNameServers: supportsShowNameServers,
             onTap: () {
               final domainId = domain['id']?.toString() ?? '';
               final domainName = domain['name']?.toString() ?? '';
@@ -535,6 +537,7 @@ class _DomainListItem extends StatelessWidget {
   final Map<String, dynamic> domain;
   final bool supportsDelete;
   final bool supportsRenew;
+  final bool supportsShowNameServers;
   final VoidCallback onTap;
   final VoidCallback onDelete;
   final VoidCallback onRenew;
@@ -544,6 +547,7 @@ class _DomainListItem extends StatelessWidget {
     required this.domain,
     required this.supportsDelete,
     required this.supportsRenew,
+    required this.supportsShowNameServers,
     required this.onTap,
     required this.onDelete,
     required this.onRenew,
@@ -555,6 +559,7 @@ class _DomainListItem extends StatelessWidget {
       domain: domain,
       supportsDelete: supportsDelete,
       supportsRenew: supportsRenew,
+      supportsShowNameServers: supportsShowNameServers,
       onTap: onTap,
       onDelete: onDelete,
       onRenew: onRenew,

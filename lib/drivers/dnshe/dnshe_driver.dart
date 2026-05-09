@@ -577,6 +577,9 @@ class DnsheDriver implements DriverInterface {
   bool get supportsRenewDomain => true;
 
   @override
+  bool get supportsShowNameServers => false;
+
+  @override
   Widget buildDomainListItem(Map<String, dynamic> domainData, {
     required VoidCallback onTap,
     required VoidCallback onDelete,
@@ -591,8 +594,10 @@ class DnsheDriver implements DriverInterface {
   void showDomainListItemMenu(BuildContext context, Map<String, dynamic> domainData, {
     required VoidCallback onDelete,
     required VoidCallback onRenew,
+    required VoidCallback onShowNameServers,
     required bool supportsDelete,
     required bool supportsRenew,
+    required bool supportsShowNameServers,
   }) {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final offset = renderBox.localToGlobal(Offset.zero);

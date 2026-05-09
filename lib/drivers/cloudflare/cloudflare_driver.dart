@@ -416,6 +416,9 @@ class CloudflareDriver implements DriverInterface {
   bool get supportsRenewDomain => false;
 
   @override
+  bool get supportsShowNameServers => true;
+
+  @override
   Widget buildDomainListItem(Map<String, dynamic> domainData, {
     required VoidCallback onTap,
     required VoidCallback onDelete,
@@ -430,8 +433,10 @@ class CloudflareDriver implements DriverInterface {
   void showDomainListItemMenu(BuildContext context, Map<String, dynamic> domainData, {
     required VoidCallback onDelete,
     required VoidCallback onRenew,
+    required VoidCallback onShowNameServers,
     required bool supportsDelete,
     required bool supportsRenew,
+    required bool supportsShowNameServers,
   }) {
     final RenderBox renderBox = context.findRenderObject() as RenderBox;
     final offset = renderBox.localToGlobal(Offset.zero);
@@ -439,13 +444,49 @@ class CloudflareDriver implements DriverInterface {
       context: context,
       position: RelativeRect.fromLTRB(offset.dx + renderBox.size.width / 2, offset.dy + renderBox.size.height / 2, offset.dx + renderBox.size.width, offset.dy + renderBox.size.height),
       items: [
+        if (supportsShowNameServers) const PopupMenuItem(value: 'nameservers', child: Text('NS节点')),
         if (supportsRenew) const PopupMenuItem(value: 'renew', child: Text('续期')),
         if (supportsDelete) PopupMenuItem(value: 'delete', child: const Text('删除', style: TextStyle(color: Color(0xFFEF4444)))),
       ],
     ).then((value) {
       if (value == 'delete') onDelete();
       if (value == 'renew') onRenew();
+      if (value == 'nameservers') {
+        onShowNameServers();
+        _showNameServersDialog(context, domainData);
+      }
     });
+  }
+
+  void _showNameServersDialog(BuildContext context, Map<String, dynamic> domainData) {
+    final nameServers = domainData['name_servers'] as List? ?? [];
+    final domainName = domainData['name']?.toString() ?? '';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(domainName),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('NS节点', style: Theme.of(ctx).textTheme.titleSmall),
+              const SizedBox(height: 8),
+              if (nameServers.isEmpty)
+                Text('无', style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant))
+              else
+                ...nameServers.map((ns) => Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(ns.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
+                )),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
+        ],
+      ),
+    );
   }
 
   @override

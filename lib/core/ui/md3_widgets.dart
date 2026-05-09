@@ -424,8 +424,10 @@ class DnsDomainTile extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final VoidCallback? onRenew;
+  final VoidCallback? onShowNameServers;
   final bool supportsDelete;
   final bool supportsRenew;
+  final bool supportsShowNameServers;
 
   const DnsDomainTile({
     super.key,
@@ -433,8 +435,10 @@ class DnsDomainTile extends StatelessWidget {
     this.onTap,
     this.onDelete,
     this.onRenew,
+    this.onShowNameServers,
     this.supportsDelete = false,
     this.supportsRenew = false,
+    this.supportsShowNameServers = false,
   });
 
   @override
@@ -447,12 +451,8 @@ class DnsDomainTile extends StatelessWidget {
     final createdAt = domain['created_at'] ?? domain['created_on'];
     final expiresAt = domain['expires_at'] ?? domain['expiry_at'];
     final ttl = domain['ttl'];
-    final registrar = domain['registrar']?.toString();
 
     final dateLines = <String>[];
-    if (registrar != null && registrar.isNotEmpty) {
-      dateLines.add('注册商: $registrar');
-    }
     if (createdAt != null) {
       final formatted = _formatDate(createdAt);
       if (formatted.isNotEmpty) dateLines.add('添加: $formatted');
@@ -511,8 +511,11 @@ class DnsDomainTile extends StatelessWidget {
         onSelected: (value) {
           if (value == 'delete') onDelete?.call();
           if (value == 'renew') onRenew?.call();
+          if (value == 'nameservers') onShowNameServers?.call();
         },
         itemBuilder: (ctx) => [
+          if (supportsShowNameServers)
+            const PopupMenuItem(value: 'nameservers', child: Text('NS节点')),
           if (supportsRenew)
             const PopupMenuItem(value: 'renew', child: Text('续期')),
           if (supportsDelete)
