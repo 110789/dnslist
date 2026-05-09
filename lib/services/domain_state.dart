@@ -35,10 +35,19 @@ class DomainState extends ChangeNotifier {
 
       final valid = await driver.validateCredential(credentials);
       if (!valid) {
-        throw Exception('Invalid credentials');
+        throw Exception('凭证无效或权限不足，请检查 API Token 是否正确且具有 Zone:Read 权限');
       }
 
       final result = await driver.getDomains();
+      
+      if (result['error'] != null) {
+        final errorCode = result['errorCode'];
+        if (errorCode == 9109) {
+          throw Exception('权限不足 (9109)：API Token 缺少访问域名的权限，请确保 Token 具有 Zone:Read 和 DNS:Read 权限');
+        }
+        throw Exception(result['error']);
+      }
+      
       _domains = List<Map<String, dynamic>>.from(result['domains'] ?? []);
 
       DriverManager().setCredential(providerId, credentials);
@@ -63,6 +72,15 @@ class DomainState extends ChangeNotifier {
       }
 
       final result = await driver.getDnsRecords(domainId);
+      
+      if (result['error'] != null) {
+        final errorCode = result['errorCode'];
+        if (errorCode == 9109) {
+          throw Exception('权限不足 (9109)：API Token 缺少读取 DNS 记录的权限');
+        }
+        throw Exception(result['error']);
+      }
+      
       _dnsRecords[domainId] = List<Map<String, dynamic>>.from(result['records'] ?? []);
       _selectedDomainId = domainId;
       _isLoading = false;

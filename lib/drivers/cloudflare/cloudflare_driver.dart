@@ -9,7 +9,6 @@ class CloudflareDriver implements DriverInterface {
   static const String _providerName = 'Cloudflare';
   static const String _providerIcon = 'cloud';
 
-  String? _apiToken;
   ApiClient? _client;
 
   @override
@@ -29,16 +28,28 @@ class CloudflareDriver implements DriverInterface {
     }
 
     try {
-      _apiToken = apiToken;
       _client = ApiClient(
         baseUrl: AppConfig.cloudflareBaseUrl,
-        headers: {'Authorization': 'Bearer $apiToken'},
+        headers: {
+          'Authorization': 'Bearer $apiToken',
+        },
       );
 
-      final response = await _client!.get('/user');
-      return response.data['success'] == true;
+      final response = await _client!.get('/user/tokens/verify');
+      if (response.data['success'] == true) {
+        return true;
+      }
+      
+      if (response.data['errors'] != null && response.data['errors'].isNotEmpty) {
+        final error = response.data['errors'][0];
+        final code = error['code'];
+        if (code == 9109) {
+          return false;
+        }
+      }
+      
+      return false;
     } catch (e) {
-      _apiToken = null;
       _client = null;
       return false;
     }
@@ -51,7 +62,7 @@ class CloudflareDriver implements DriverInterface {
     Map<String, String>? filters,
   }) async {
     if (_client == null) {
-      return {'domains': [], 'pagination': {}};
+      return {'domains': [], 'pagination': {}, 'error': 'Not authenticated'};
     }
 
     try {
@@ -75,6 +86,17 @@ class CloudflareDriver implements DriverInterface {
         final pagination = response.data['result_info'] ?? {};
         return {'domains': domains, 'pagination': pagination};
       }
+      
+      if (response.data['errors'] != null && response.data['errors'].isNotEmpty) {
+        final error = response.data['errors'][0];
+        return {
+          'domains': [],
+          'pagination': {},
+          'error': 'Error ${error['code']}: ${error['message']}',
+          'errorCode': error['code'],
+        };
+      }
+      
       return {'domains': [], 'pagination': {}};
     } catch (e) {
       return {'domains': [], 'pagination': {}, 'error': e.toString()};
@@ -89,7 +111,7 @@ class CloudflareDriver implements DriverInterface {
     Map<String, String>? filters,
   }) async {
     if (_client == null) {
-      return {'records': [], 'pagination': {}};
+      return {'records': [], 'pagination': {}, 'error': 'Not authenticated'};
     }
 
     try {
@@ -114,6 +136,17 @@ class CloudflareDriver implements DriverInterface {
         final pagination = response.data['result_info'] ?? {};
         return {'records': records, 'pagination': pagination};
       }
+      
+      if (response.data['errors'] != null && response.data['errors'].isNotEmpty) {
+        final error = response.data['errors'][0];
+        return {
+          'records': [],
+          'pagination': {},
+          'error': 'Error ${error['code']}: ${error['message']}',
+          'errorCode': error['code'],
+        };
+      }
+      
       return {'records': [], 'pagination': {}};
     } catch (e) {
       return {'records': [], 'pagination': {}, 'error': e.toString()};
