@@ -588,27 +588,53 @@ class _CredentialCardContent extends StatelessWidget {
       iconWidget = Image.asset(iconPath, width: 32, height: 32, errorBuilder: (_, __, ___) => Icon(Icons.language, size: 28, color: colorScheme.onSurfaceVariant));
     }
     return Container(
-      width: 44, height: 44,
-      decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: isSelected ? colorScheme.primary : Colors.transparent, width: isSelected ? 2 : 0)),
-      padding: EdgeInsets.all(isSelected ? 2 : 0),
-      child: ClipOval(child: SizedBox(width: 36, height: 36, child: iconWidget)),
+      width: 40, height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: colorScheme.surfaceContainerHighest,
+      ),
+      child: ClipOval(child: SizedBox(width: 40, height: 40, child: iconWidget)),
     );
   }
 
   Widget _buildInfo(ColorScheme colorScheme) {
     final hasRemark = credential.remark != null && credential.remark!.isNotEmpty;
+    final primaryColor = isSelected ? colorScheme.primary : colorScheme.onSurface;
+    final nameStyle = TextStyle(fontSize: 15, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: primaryColor);
     if (hasRemark) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(credential.remark!, style: TextStyle(fontSize: 15, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Row(
+            children: [
+              if (isSelected) ...[
+                Container(
+                  width: 6, height: 6,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.primary),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Expanded(child: Text(credential.remark!, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis)),
+            ],
+          ),
           const SizedBox(height: 2),
           Text(credential.providerName, style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       );
     }
-    return Text(credential.providerName, style: TextStyle(fontSize: 15, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500, color: colorScheme.onSurface), maxLines: 1, overflow: TextOverflow.ellipsis);
+    return Row(
+      children: [
+        if (isSelected) ...[
+          Container(
+            width: 6, height: 6,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: colorScheme.primary),
+          ),
+          const SizedBox(width: 6),
+        ],
+        Expanded(child: Text(credential.providerName, style: nameStyle, maxLines: 1, overflow: TextOverflow.ellipsis)),
+      ],
+    );
   }
 }
 
