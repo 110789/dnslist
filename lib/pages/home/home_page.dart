@@ -536,79 +536,28 @@ return RefreshIndicator(
       onReorder: (oldIndex, newIndex) {
         credentialState.reorderCredentials(oldIndex, newIndex);
       },
-      itemBuilder: (context, index) {
+      itemBuilder: (ctx, index) {
         final credential = credentialState.credentials[index];
         final isSelected = credentialState.selectedCredentialId == credential.id;
 
-        return ReorderableDragStartListener(
+        return _CredentialListItem(
           key: ValueKey(credential.id),
           index: index,
-          child: _buildCredentialItem(
-            context,
-            credential,
-            isSelected,
-            credentialState,
-            domainState,
-            index,
-          ),
+          credential: credential,
+          isSelected: isSelected,
+          onTap: () {
+            credentialState.selectCredential(credential.id);
+            domainState.clear();
+            domainState.loadDomains(credential.providerId, credential.credentials);
+            Navigator.pop(ctx);
+          },
+          onLongPress: () {
+            _showCredentialActionsSheet(ctx, credential, credentialState);
+          },
+          onReorderStart: () {},
+          onReorderEnd: (_) {},
         );
       },
-    );
-  }
-
-  Widget _buildCredentialItem(
-    BuildContext context,
-    CredentialModel credential,
-    bool isSelected,
-    CredentialState credentialState,
-    DomainState domainState,
-    int index,
-  ) {
-    return Container(
-      color: isSelected ? Colors.blue.withValues(alpha: 0.1) : null,
-      child: InkWell(
-        onTap: () {
-          credentialState.selectCredential(credential.id);
-          domainState.clear();
-          domainState.loadDomains(credential.providerId, credential.credentials);
-          Navigator.pop(context);
-        },
-        onLongPress: () {
-          _showCredentialActionsSheet(context, credential, credentialState);
-        },
-        child: Row(
-          children: [
-            Expanded(
-              child: ListTile(
-                leading: Icon(
-                  isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected ? Colors.green : null,
-                ),
-                title: Text(credential.providerName),
-                subtitle: Text(
-                  credential.remark != null && credential.remark!.isNotEmpty
-                      ? credential.remark!
-                      : credential.providerId,
-                  style: const TextStyle(fontSize: 12),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ),
-            ReorderableDragStartListener(
-              index: index,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onLongPress: () {},
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                  child: Icon(Icons.drag_handle, color: Colors.grey),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -704,6 +653,72 @@ return RefreshIndicator(
               }
             },
             child: const Text('删除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CredentialListItem extends StatelessWidget {
+  final int index;
+  final CredentialModel credential;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final VoidCallback onReorderStart;
+  final void Function(int) onReorderEnd;
+
+  const _CredentialListItem({
+    super.key,
+    required this.index,
+    required this.credential,
+    required this.isSelected,
+    required this.onTap,
+    required this.onLongPress,
+    required this.onReorderStart,
+    required this.onReorderEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: isSelected ? Colors.blue.withValues(alpha: 0.1) : null,
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onHorizontalDragStart: (_) => onReorderStart(),
+              onHorizontalDragEnd: (_) => onReorderEnd(index),
+              onLongPressStart: (_) => onLongPress(),
+              child: ListTile(
+                leading: Icon(
+                  isSelected ? Icons.check_circle : Icons.circle_outlined,
+                  color: isSelected ? Colors.green : null,
+                ),
+                title: Text(credential.providerName),
+                subtitle: Text(
+                  credential.remark != null && credential.remark!.isNotEmpty
+                      ? credential.remark!
+                      : credential.providerId,
+                  style: const TextStyle(fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                onTap: onTap,
+              ),
+            ),
+          ),
+          Listener(
+            onPointerDown: (_) {},
+            child: ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                child: Icon(Icons.drag_handle, color: Colors.grey),
+              ),
+            ),
           ),
         ],
       ),
