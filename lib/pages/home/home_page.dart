@@ -347,94 +347,70 @@ class _HomePageState extends State<HomePage> {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Drawer(
+      surfaceTintColor: colorScheme.surfaceTint,
       child: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 48, 12, 20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  colorScheme.primary,
-                  colorScheme.primary.withValues(alpha: 0.8),
-                ],
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 52,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(DnsRadius.md),
-                      ),
-                      child: const Icon(Icons.dns, size: 28, color: Colors.white),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: Colors.white70, size: 20),
-                      onPressed: () {
-                        credentialState.loadCredentials();
-                        if (mounted) {
-                          ToastUtil.showSuccess(context, '已刷新凭证列表');
-                        }
-                      },
-                      tooltip: '刷新凭证',
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'DNS管理工具',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  credentialState.credentials.isNotEmpty
-                      ? '已添加 ${credentialState.credentials.length} 个凭证'
-                      : '未添加凭证',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 13,
-                  ),
-                ),
-              ],
-            ),
+          _DrawerHeader(
+            credentialCount: credentialState.credentials.length,
+            onRefresh: () {
+              credentialState.loadCredentials();
+              if (mounted) {
+                ToastUtil.showSuccess(context, '已刷新凭证列表');
+              }
+            },
           ),
           Expanded(
             child: credentialState.credentials.isEmpty
                 ? _buildEmptyCredentialList(context)
                 : _buildCredentialList(context, credentialState, domainState),
           ),
-          const DnsDivider(),
-          ListTile(
-            leading: Icon(Icons.add, color: colorScheme.primary),
-            title: Text('添加凭证', style: TextStyle(color: colorScheme.primary)),
-            onTap: () {
-              _showAddCredentialDialog(context);
-            },
+          Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: () {
+                  _showAddCredentialDialog(context);
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('添加凭证'),
+              ),
+            ),
           ),
-          const SizedBox(height: 8),
         ],
       ),
     );
   }
 
   Widget _buildEmptyCredentialList(BuildContext context) {
-    return DnsEmptyState(
-      icon: Icons.key_off,
-      title: '暂无凭证',
-      description: '点击下方按钮添加',
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(DnsSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.key_off,
+              size: 56,
+              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              '暂无凭证',
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '点击下方按钮添加',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -445,18 +421,37 @@ class _HomePageState extends State<HomePage> {
   ) {
     return ReorderableListView.builder(
       buildDefaultDragHandles: false,
-      padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       itemCount: credentialState.credentials.length,
       onReorder: (oldIndex, newIndex) {
         credentialState.reorderCredentials(oldIndex, newIndex);
+      },
+      proxyDecorator: (child, index, animation) {
+        return AnimatedBuilder(
+          animation: animation,
+          builder: (ctx, child) {
+            final animValue = Curves.easeInOut.transform(animation.value);
+            final scale = 1.0 + (animValue * 0.04);
+            final shadowAlpha = animValue * 0.2;
+            return Transform.scale(scale: scale, child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(DnsRadius.lg),
+              elevation: 8,
+              shadowColor: Theme.of(ctx).colorScheme.shadow.withValues(alpha: shadowAlpha),
+              child: child,
+            ));
+          },
+          child: child,
+        );
       },
       itemBuilder: (ctx, index) {
         final credential = credentialState.credentials[index];
         final isSelected = credentialState.selectedCredentialId == credential.id;
 
-        return _CredentialItem(
+        return _CredentialCard(
           key: ValueKey(credential.id),
           index: index,
+          totalCount: credentialState.credentials.length,
           credential: credential,
           isSelected: isSelected,
           onTap: () {
@@ -581,16 +576,98 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _CredentialItem extends StatefulWidget {
+class _DrawerHeader extends StatelessWidget {
+  final int credentialCount;
+  final VoidCallback onRefresh;
+
+  const _DrawerHeader({
+    required this.credentialCount,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        border: Border(
+          bottom: BorderSide(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            width: 1,
+          ),
+        ),
+      ),
+      padding: EdgeInsets.fromLTRB(
+        DnsSpacing.md,
+        DnsSpacing.md + MediaQuery.of(context).padding.top,
+        DnsSpacing.sm,
+        DnsSpacing.md,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(DnsRadius.md),
+            ),
+            child: Icon(Icons.dns, size: 24, color: colorScheme.onPrimaryContainer),
+          ),
+          const SizedBox(width: DnsSpacing.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'DNS管理工具',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onSurface,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  credentialCount > 0
+                      ? '$credentialCount 个凭证'
+                      : '未添加凭证',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.refresh, color: colorScheme.onSurfaceVariant, size: 20),
+            onPressed: onRefresh,
+            tooltip: '刷新凭证',
+            style: IconButton.styleFrom(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.sm)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CredentialCard extends StatefulWidget {
   final int index;
+  final int totalCount;
   final CredentialModel credential;
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
-  const _CredentialItem({
+  const _CredentialCard({
     super.key,
     required this.index,
+    required this.totalCount,
     required this.credential,
     required this.isSelected,
     required this.onTap,
@@ -598,174 +675,180 @@ class _CredentialItem extends StatefulWidget {
   });
 
   @override
-  State<_CredentialItem> createState() => _CredentialItemState();
+  State<_CredentialCard> createState() => _CredentialCardState();
 }
 
-class _CredentialItemState extends State<_CredentialItem> {
-  bool _bodyPressed = false;
-  bool _dragPressed = false;
+class _CredentialCardState extends State<_CredentialCard> {
+  bool _isDragging = false;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: DnsSpacing.md,
-        vertical: DnsSpacing.xs,
-      ),
-      child: Material(
-        color: widget.isSelected
-            ? colorScheme.primaryContainer.withValues(alpha: 0.4)
-            : colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(DnsRadius.md),
-        child: Container(
-          height: 72,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(DnsRadius.md),
-            border: Border.all(
-              color: widget.isSelected
-                  ? colorScheme.primary.withValues(alpha: 0.5)
-                  : colorScheme.outlineVariant.withValues(alpha: 0.6),
-              width: widget.isSelected ? 1.5 : 1,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(DnsRadius.md),
-            child: Row(
-              children: [
-                Expanded(child: _buildItemBody(context, colorScheme)),
-                _buildDragHandle(context, colorScheme),
-              ],
-            ),
-          ),
-        ),
+    return ReorderableDragStartListener(
+      index: widget.index,
+      child: _DragAwareCredentialCard(
+        credential: widget.credential,
+        isSelected: widget.isSelected,
+        isDragging: _isDragging,
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        onDragStart: () => setState(() => _isDragging = true),
+        onDragEnd: () => setState(() => _isDragging = false),
       ),
     );
   }
+}
 
-  Widget _buildItemBody(BuildContext context, ColorScheme colorScheme) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: (_) {
-        if (mounted) setState(() => _bodyPressed = true);
-      },
-      onTapUp: (_) {
-        if (mounted) setState(() => _bodyPressed = false);
-      },
-      onTapCancel: () {
-        if (mounted) setState(() => _bodyPressed = false);
-      },
-      onTap: widget.onTap,
-      onLongPress: widget.onLongPress,
+class _DragAwareCredentialCard extends StatelessWidget {
+  final CredentialModel credential;
+  final bool isSelected;
+  final bool isDragging;
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  final VoidCallback onDragStart;
+  final VoidCallback onDragEnd;
+
+  const _DragAwareCredentialCard({
+    required this.credential,
+    required this.isSelected,
+    required this.isDragging,
+    required this.onTap,
+    required this.onLongPress,
+    required this.onDragStart,
+    required this.onDragEnd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return AnimatedScale(
+      scale: isDragging ? 1.03 : 1.0,
+      duration: const Duration(milliseconds: 150),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        color: _bodyPressed
-            ? colorScheme.onSurface.withValues(alpha: 0.04)
-            : Colors.transparent,
-        padding: const EdgeInsets.symmetric(
-          horizontal: DnsSpacing.md,
-          vertical: DnsSpacing.sm + 2,
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? colorScheme.primaryContainer.withValues(alpha: 0.3)
+              : colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(DnsRadius.lg),
+          border: Border.all(
+            color: isDragging
+                ? colorScheme.primary
+                : (isSelected ? colorScheme.primary.withValues(alpha: 0.6) : colorScheme.outlineVariant.withValues(alpha: 0.5)),
+            width: isDragging ? 2 : 1,
+          ),
+          boxShadow: isDragging
+              ? [
+                  BoxShadow(
+                    color: colorScheme.shadow.withValues(alpha: 0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  )
+                ]
+              : [
+                  BoxShadow(
+                    color: colorScheme.shadow.withValues(alpha: 0.04),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  )
+                ],
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.isSelected
-                    ? colorScheme.primary.withValues(alpha: 0.15)
-                    : colorScheme.surfaceContainerHighest,
-                border: widget.isSelected
-                    ? Border.all(color: colorScheme.primary, width: 2)
-                    : Border.all(color: colorScheme.outlineVariant, width: 1),
-              ),
-              child: Icon(
-                widget.isSelected ? Icons.check_circle : Icons.circle_outlined,
-                color: widget.isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: DnsSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(DnsRadius.lg),
+          child: InkWell(
+            onTap: onTap,
+            onLongPress: onLongPress,
+            borderRadius: BorderRadius.circular(DnsRadius.lg),
+            child: Padding(
+              padding: const EdgeInsets.all(DnsSpacing.md),
+              child: Row(
                 children: [
-                  Text(
-                    widget.credential.providerName,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (widget.credential.remark != null && widget.credential.remark!.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.credential.remark!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: colorScheme.onSurfaceVariant,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                  _buildLeadingIndicator(colorScheme),
+                  const SizedBox(width: DnsSpacing.md),
+                  Expanded(child: _buildInfo(colorScheme)),
+                  _buildDragHandle(colorScheme),
                 ],
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Icon(
-                Icons.chevron_right,
-                size: 20,
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDragHandle(BuildContext context, ColorScheme colorScheme) {
-    return Listener(
-      onPointerDown: (_) {
-        if (mounted) setState(() => _dragPressed = true);
-      },
-      onPointerUp: (_) {
-        if (mounted) setState(() => _dragPressed = false);
-      },
-      onPointerCancel: (_) {
-        if (mounted) setState(() => _dragPressed = false);
-      },
-      child: ReorderableDragStartListener(
-        index: widget.index,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          width: 48,
-          color: _dragPressed
-              ? colorScheme.onSurface.withValues(alpha: 0.06)
-              : Colors.transparent,
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.drag_indicator,
-                  size: 20,
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
-                const SizedBox(height: 2),
-                Icon(
-                  Icons.drag_indicator,
-                  size: 20,
-                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                ),
-              ],
-            ),
+  Widget _buildLeadingIndicator(ColorScheme colorScheme) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isSelected
+            ? colorScheme.primary.withValues(alpha: 0.12)
+            : colorScheme.surfaceContainerHighest,
+        border: Border.all(
+          color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
+          width: isSelected ? 2 : 1,
+        ),
+      ),
+      child: Icon(
+        isSelected ? Icons.check : Icons.circle_outlined,
+        size: 18,
+        color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+      ),
+    );
+  }
+
+  Widget _buildInfo(ColorScheme colorScheme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          credential.providerName,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: colorScheme.onSurface,
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        if (credential.remark != null && credential.remark!.isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            credential.remark!,
+            style: TextStyle(
+              fontSize: 12,
+              color: colorScheme.onSurfaceVariant,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDragHandle(ColorScheme colorScheme) {
+    return Listener(
+      onPointerDown: (_) => onDragStart(),
+      onPointerUp: (_) => onDragEnd(),
+      onPointerCancel: (_) => onDragEnd(),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(DnsRadius.sm),
+        ),
+        child: Icon(
+          Icons.drag_indicator,
+          size: 18,
+          color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
         ),
       ),
     );
