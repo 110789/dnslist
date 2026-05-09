@@ -25,6 +25,7 @@ class DomainState extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> loadDomains(String providerId, Map<String, String> credentials) async {
+    _domains = [];
     _isLoading = true;
     _error = null;
     _errorCode = null;
@@ -78,7 +79,9 @@ class DomainState extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> loadDnsRecords(String providerId, String domainId) async {
+    _dnsRecords[domainId] = [];
     _isLoading = true;
+    _error = null;
     _error = null;
     _errorCode = null;
     notifyListeners();
@@ -194,6 +197,8 @@ class DomainState extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> refreshDomains(String providerId, Map<String, String> credentials) async {
+    _domains = [];
+    notifyListeners();
     return loadDomains(providerId, credentials);
   }
 

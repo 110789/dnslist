@@ -177,14 +177,14 @@ class _HomePageState extends State<HomePage> {
       final result = await state.deleteDomain(selected.providerId, domainId);
       if (context.mounted) {
         if (result['success']) {
-          ToastUtil.showSuccess(context, '域名已删除');
+          await state.refreshDomains(selected.providerId, selected.credentials);
+          if (context.mounted) ToastUtil.showSuccess(context, '域名已删除');
         } else {
           ToastUtil.showError(
             context,
             result['error'] ?? '删除失败',
             errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
           );
-          await state.refreshDomains(selected.providerId, selected.credentials);
         }
       }
     }
@@ -352,12 +352,6 @@ class _HomePageState extends State<HomePage> {
         children: [
           _DrawerHeader(
             credentialCount: credentialState.credentials.length,
-            onRefresh: () {
-              credentialState.loadCredentials();
-              if (mounted) {
-                ToastUtil.showSuccess(context, '已刷新凭证列表');
-              }
-            },
           ),
           Expanded(
             child: credentialState.credentials.isEmpty
@@ -497,7 +491,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            const DnsDivider(),
             ListTile(
               leading: Icon(Icons.edit, color: Theme.of(ctx).colorScheme.primary),
               title: const Text('编辑凭证'),
@@ -578,12 +571,8 @@ class _HomePageState extends State<HomePage> {
 
 class _DrawerHeader extends StatelessWidget {
   final int credentialCount;
-  final VoidCallback onRefresh;
 
-  const _DrawerHeader({
-    required this.credentialCount,
-    required this.onRefresh,
-  });
+  const _DrawerHeader({required this.credentialCount});
 
   @override
   Widget build(BuildContext context) {
@@ -640,14 +629,6 @@ class _DrawerHeader extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.refresh, color: colorScheme.onSurfaceVariant, size: 20),
-            onPressed: onRefresh,
-            tooltip: '刷新凭证',
-            style: IconButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.sm)),
             ),
           ),
         ],
