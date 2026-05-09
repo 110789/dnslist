@@ -711,14 +711,12 @@ class _DragAwareCredentialCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: isSelected
-              ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-              : colorScheme.surfaceContainerLow,
+          color: colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(DnsRadius.lg),
           border: Border.all(
             color: isDragging
                 ? colorScheme.primary
-                : (isSelected ? colorScheme.primary.withValues(alpha: 0.6) : colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                : colorScheme.outlineVariant.withValues(alpha: 0.5),
             width: isDragging ? 2 : 1,
           ),
           boxShadow: isDragging
@@ -773,7 +771,6 @@ class _DragAwareCredentialCard extends StatelessWidget {
         iconPath,
         width: 32,
         height: 32,
-        colorFilter: ColorFilter.mode(colorScheme.primary, BlendMode.srcIn),
       );
     } else {
       iconWidget = Image.asset(
@@ -783,16 +780,27 @@ class _DragAwareCredentialCard extends StatelessWidget {
         errorBuilder: (_, __, ___) => Icon(
           Icons.language,
           size: 28,
-          color: colorScheme.primary,
+          color: colorScheme.onSurfaceVariant,
         ),
       );
     }
 
-    return ClipOval(
-      child: SizedBox(
-        width: 36,
-        height: 36,
-        child: iconWidget,
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isSelected ? colorScheme.primary : Colors.transparent,
+          width: isSelected ? 2 : 0,
+        ),
+      ),
+      child: ClipOval(
+        child: SizedBox(
+          width: 36,
+          height: 36,
+          child: iconWidget,
+        ),
       ),
     );
   }
