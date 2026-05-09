@@ -9,6 +9,22 @@ class CloudflareDriver implements DriverInterface {
   static const String _providerName = 'Cloudflare';
   static const String _providerIcon = 'cloud';
 
+  static final Map<String, String> _errorCodeMap = {
+    '1000': '认证失败，请检查 API Token 是否正确',
+    '1001': '资源不存在',
+    '1002': '请求参数验证失败',
+    '1003': '操作失败，请稍后重试',
+    '1004': '请求频率超限，请稍后重试',
+    '1005': '资源已存在',
+    '7000': '区域不存在',
+    '7001': '区域已存在',
+    '7003': '区域不可用',
+    '9100': '权限不足，缺少必要权限',
+    '9101': '权限不足，无法访问此资源',
+    '9109': '未授权访问请求的资源',
+    '10200': '账户问题导致操作被阻止',
+  };
+
   ApiClient? _client;
 
   @override
@@ -19,6 +35,28 @@ class CloudflareDriver implements DriverInterface {
 
   @override
   String get providerIcon => _providerIcon;
+
+  Map<String, dynamic> _parseError(dynamic responseData) {
+    if (responseData == null) {
+      return {'error': '未知错误', 'errorCode': 'UNKNOWN', 'success': false};
+    }
+    
+    final data = responseData is Map ? responseData : {};
+    final errors = data['errors'] as List?;
+    
+    if (errors != null && errors.isNotEmpty) {
+      final error = errors[0] as Map?;
+      final code = error?['code']?.toString() ?? 'UNKNOWN';
+      final message = _errorCodeMap[code] ?? error?['message'] ?? '操作失败';
+      return {
+        'error': message,
+        'errorCode': code,
+        'success': false,
+      };
+    }
+    
+    return {'error': '未知错误', 'errorCode': 'UNKNOWN', 'success': false};
+  }
 
   @override
   Future<bool> validateCredential(Map<String, String> credentials) async {
@@ -40,14 +78,7 @@ class CloudflareDriver implements DriverInterface {
         return true;
       }
       
-      if (response.data['errors'] != null && response.data['errors'].isNotEmpty) {
-        final error = response.data['errors'][0];
-        final code = error['code'];
-        if (code == 9109) {
-          return false;
-        }
-      }
-      
+      final errorResult = _parseError(response.data);
       return false;
     } catch (e) {
       _client = null;
@@ -62,7 +93,7 @@ class CloudflareDriver implements DriverInterface {
     Map<String, String>? filters,
   }) async {
     if (_client == null) {
-      return {'domains': [], 'pagination': {}, 'error': 'Not authenticated'};
+      return {'domains': [], 'pagination': {}, 'error': 'Not authenticated', 'errorCode': 'AUTH_REQUIRED'};
     }
 
     try {
@@ -84,22 +115,12 @@ class CloudflareDriver implements DriverInterface {
         }).toList();
 
         final pagination = response.data['result_info'] ?? {};
-        return {'domains': domains, 'pagination': pagination};
+        return {'domains': domains, 'pagination': pagination, 'success': true, 'statusCode': 'OK'};
       }
       
-      if (response.data['errors'] != null && response.data['errors'].isNotEmpty) {
-        final error = response.data['errors'][0];
-        return {
-          'domains': [],
-          'pagination': {},
-          'error': 'Error ${error['code']}: ${error['message']}',
-          'errorCode': error['code'],
-        };
-      }
-      
-      return {'domains': [], 'pagination': {}};
+      return _parseError(response.data);
     } catch (e) {
-      return {'domains': [], 'pagination': {}, 'error': e.toString()};
+      return {'domains': [], 'pagination': {}, 'error': e.toString(), 'errorCode': 'NETWORK_ERROR'};
     }
   }
 
@@ -111,7 +132,7 @@ class CloudflareDriver implements DriverInterface {
     Map<String, String>? filters,
   }) async {
     if (_client == null) {
-      return {'records': [], 'pagination': {}, 'error': 'Not authenticated'};
+      return {'records': [], 'pagination': {}, 'error': 'Not authenticated', 'errorCode': 'AUTH_REQUIRED'};
     }
 
     try {
@@ -134,22 +155,12 @@ class CloudflareDriver implements DriverInterface {
         }).toList();
 
         final pagination = response.data['result_info'] ?? {};
-        return {'records': records, 'pagination': pagination};
+        return {'records': records, 'pagination': pagination, 'success': true, 'statusCode': 'OK'};
       }
       
-      if (response.data['errors'] != null && response.data['errors'].isNotEmpty) {
-        final error = response.data['errors'][0];
-        return {
-          'records': [],
-          'pagination': {},
-          'error': 'Error ${error['code']}: ${error['message']}',
-          'errorCode': error['code'],
-        };
-      }
-      
-      return {'records': [], 'pagination': {}};
+      return _parseError(response.data);
     } catch (e) {
-      return {'records': [], 'pagination': {}, 'error': e.toString()};
+      return {'records': [], 'pagination': {}, 'error': e.toString(), 'errorCode': 'NETWORK_ERROR'};
     }
   }
 
@@ -158,16 +169,16 @@ class CloudflareDriver implements DriverInterface {
     String domainId,
     Map<String, dynamic> recordData,
   ) async {
-    if (_client == null) return {};
+    if (_client == null) return {'error': 'Not authenticated', 'errorCode': 'AUTH_REQUIRED'};
 
     try {
       final response = await _client!.post('/zones/$domainId/dns_records', data: recordData);
       if (response.data['success'] == true) {
-        return response.data['result'];
+        return {'success': true, 'statusCode': 'OK', 'data': response.data['result']};
       }
-      return {};
+      return _parseError(response.data);
     } catch (e) {
-      return {'error': e.toString()};
+      return {'error': e.toString(), 'errorCode': 'NETWORK_ERROR'};
     }
   }
 
@@ -177,16 +188,16 @@ class CloudflareDriver implements DriverInterface {
     String recordId,
     Map<String, dynamic> recordData,
   ) async {
-    if (_client == null) return {};
+    if (_client == null) return {'error': 'Not authenticated', 'errorCode': 'AUTH_REQUIRED'};
 
     try {
       final response = await _client!.put('/zones/$domainId/dns_records/$recordId', data: recordData);
       if (response.data['success'] == true) {
-        return response.data['result'];
+        return {'success': true, 'statusCode': 'OK', 'data': response.data['result']};
       }
-      return {};
+      return _parseError(response.data);
     } catch (e) {
-      return {'error': e.toString()};
+      return {'error': e.toString(), 'errorCode': 'NETWORK_ERROR'};
     }
   }
 
@@ -203,20 +214,16 @@ class CloudflareDriver implements DriverInterface {
 
   @override
   Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData) async {
-    if (_client == null) return {'error': 'Not authenticated'};
+    if (_client == null) return {'error': 'Not authenticated', 'errorCode': 'AUTH_REQUIRED'};
 
     try {
       final response = await _client!.post('/zones', data: domainData);
       if (response.data['success'] == true) {
-        return response.data['result'];
+        return {'success': true, 'statusCode': 'OK', 'data': response.data['result']};
       }
-      if (response.data['errors'] != null && response.data['errors'].isNotEmpty) {
-        final error = response.data['errors'][0];
-        return {'error': '${error['message']} (code: ${error['code']})'};
-      }
-      return {'error': 'Failed to create domain'};
+      return _parseError(response.data);
     } catch (e) {
-      return {'error': e.toString()};
+      return {'error': e.toString(), 'errorCode': 'NETWORK_ERROR'};
     }
   }
 
@@ -233,7 +240,7 @@ class CloudflareDriver implements DriverInterface {
 
   @override
   Future<Map<String, dynamic>> renewDomain(String domainId) async {
-    return {'error': 'Cloudflare domains are managed via account subscription, not API renewal'};
+    return {'error': 'Cloudflare domains are managed via account subscription, not API renewal', 'errorCode': 'NOT_SUPPORTED'};
   }
 
   @override

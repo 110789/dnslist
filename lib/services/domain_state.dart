@@ -7,6 +7,7 @@ class DomainState extends ChangeNotifier {
   Map<String, List<Map<String, dynamic>>> _dnsRecords = {};
   bool _isLoading = false;
   String? _error;
+  String? _errorCode;
   String? _selectedDomainId;
 
   DomainState();
@@ -15,6 +16,7 @@ class DomainState extends ChangeNotifier {
   Map<String, List<Map<String, dynamic>>> get dnsRecords => _dnsRecords;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get errorCode => _errorCode;
   String? get selectedDomainId => _selectedDomainId;
 
   List<Map<String, dynamic>> get currentDnsRecords {
@@ -22,73 +24,99 @@ class DomainState extends ChangeNotifier {
     return _dnsRecords[_selectedDomainId] ?? [];
   }
 
-  Future<void> loadDomains(String providerId, Map<String, String> credentials) async {
+  Future<Map<String, dynamic>> loadDomains(String providerId, Map<String, String> credentials) async {
     _isLoading = true;
     _error = null;
+    _errorCode = null;
     notifyListeners();
 
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        throw Exception('Provider not found: $providerId');
+        final result = <String, dynamic>{'success': false, 'error': 'Provider not found: $providerId', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
+        _error = result['error'] as String;
+        _errorCode = result['errorCode'] as String;
+        _isLoading = false;
+        notifyListeners();
+        return result;
       }
 
       final valid = await driver.validateCredential(credentials);
       if (!valid) {
-        throw Exception('凭证无效或权限不足，请检查 API Token 是否正确且具有 Zone:Read 权限');
+        final result = <String, dynamic>{'success': false, 'error': '凭证无效或权限不足', 'errorCode': 'AUTH_FAILED', 'statusCode': 401};
+        _error = result['error'] as String;
+        _errorCode = result['errorCode'] as String;
+        _isLoading = false;
+        notifyListeners();
+        return result;
       }
 
       final result = await driver.getDomains();
       
       if (result['error'] != null) {
-        final errorCode = result['errorCode'];
-        if (errorCode == 9109) {
-          throw Exception('权限不足 (9109)：API Token 缺少访问域名的权限，请确保 Token 具有 Zone:Read 和 DNS:Read 权限');
-        }
-        throw Exception(result['error']);
+        final errorCode = result['errorCode'] ?? 'UNKNOWN';
+        final errorMessage = result['error'] ?? '操作失败';
+        _error = errorMessage;
+        _errorCode = errorCode;
+        _isLoading = false;
+        notifyListeners();
+        return {'success': false, 'error': errorMessage, 'errorCode': errorCode, 'statusCode': result['statusCode']};
       }
       
       _domains = List<Map<String, dynamic>>.from(result['domains'] ?? []);
-
       DriverManager().setCredential(providerId, credentials);
       _isLoading = false;
       notifyListeners();
+      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK'};
     } catch (e) {
       _error = e.toString();
+      _errorCode = 'EXCEPTION';
       _isLoading = false;
       notifyListeners();
+      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
 
-  Future<void> loadDnsRecords(String providerId, String domainId) async {
+  Future<Map<String, dynamic>> loadDnsRecords(String providerId, String domainId) async {
     _isLoading = true;
     _error = null;
+    _errorCode = null;
     notifyListeners();
 
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        throw Exception('Provider not found');
+        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
+        _error = result['error'] as String;
+        _errorCode = result['errorCode'] as String;
+        _isLoading = false;
+        notifyListeners();
+        return result;
       }
 
       final result = await driver.getDnsRecords(domainId);
       
       if (result['error'] != null) {
-        final errorCode = result['errorCode'];
-        if (errorCode == 9109) {
-          throw Exception('权限不足 (9109)：API Token 缺少读取 DNS 记录的权限');
-        }
-        throw Exception(result['error']);
+        final errorCode = result['errorCode'] ?? 'UNKNOWN';
+        final errorMessage = result['error'] ?? '操作失败';
+        _error = errorMessage;
+        _errorCode = errorCode;
+        _isLoading = false;
+        notifyListeners();
+        return {'success': false, 'error': errorMessage, 'errorCode': errorCode, 'statusCode': result['statusCode']};
       }
       
       _dnsRecords[domainId] = List<Map<String, dynamic>>.from(result['records'] ?? []);
       _selectedDomainId = domainId;
       _isLoading = false;
       notifyListeners();
+      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK'};
     } catch (e) {
       _error = e.toString();
+      _errorCode = 'EXCEPTION';
       _isLoading = false;
       notifyListeners();
+      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
 
@@ -100,68 +128,212 @@ class DomainState extends ChangeNotifier {
   Future<Map<String, dynamic>> addDomain(String providerId, Map<String, dynamic> domainData) async {
     _isLoading = true;
     _error = null;
+    _errorCode = null;
     notifyListeners();
 
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        throw Exception('Provider not found');
+        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
+        _error = result['error'] as String;
+        _errorCode = result['errorCode'] as String;
+        _isLoading = false;
+        notifyListeners();
+        return result;
       }
 
       final result = await driver.createDomain(domainData);
       _isLoading = false;
       notifyListeners();
-      return result;
+      
+      if (result['error'] != null) {
+        _error = result['error'];
+        _errorCode = result['errorCode'];
+        return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
+      }
+      
+      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
     } catch (e) {
       _error = e.toString();
+      _errorCode = 'EXCEPTION';
       _isLoading = false;
       notifyListeners();
-      return {'error': e.toString()};
+      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
 
-  Future<void> deleteDomain(String providerId, String domainId) async {
+  Future<Map<String, dynamic>> deleteDomain(String providerId, String domainId) async {
     _isLoading = true;
     _error = null;
+    _errorCode = null;
     notifyListeners();
 
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        throw Exception('Provider not found');
+        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
+        _error = result['error'] as String;
+        _errorCode = result['errorCode'] as String;
+        _isLoading = false;
+        notifyListeners();
+        return result;
       }
 
       await driver.deleteDomain(domainId);
       _domains.removeWhere((d) => d['id'].toString() == domainId.toString());
       _isLoading = false;
       notifyListeners();
+      return {'success': true, 'statusCode': 'OK'};
     } catch (e) {
       _error = e.toString();
+      _errorCode = 'EXCEPTION';
       _isLoading = false;
       notifyListeners();
+      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
 
   Future<Map<String, dynamic>> renewDomain(String providerId, String domainId) async {
     _isLoading = true;
     _error = null;
+    _errorCode = null;
     notifyListeners();
 
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        throw Exception('Provider not found');
+        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
+        _error = result['error'] as String;
+        _errorCode = result['errorCode'] as String;
+        _isLoading = false;
+        notifyListeners();
+        return result;
       }
 
       final result = await driver.renewDomain(domainId);
       _isLoading = false;
       notifyListeners();
-      return result;
+      
+      if (result['error'] != null) {
+        _error = result['error'];
+        _errorCode = result['errorCode'];
+        return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
+      }
+      
+      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
     } catch (e) {
       _error = e.toString();
+      _errorCode = 'EXCEPTION';
       _isLoading = false;
       notifyListeners();
-      return {'error': e.toString()};
+      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+    }
+  }
+
+  Future<Map<String, dynamic>> createDnsRecord(String providerId, String domainId, Map<String, dynamic> recordData) async {
+    _isLoading = true;
+    _error = null;
+    _errorCode = null;
+    notifyListeners();
+
+    try {
+      final driver = DriverFactory.get(providerId);
+      if (driver == null) {
+        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
+        _error = result['error'] as String;
+        _errorCode = result['errorCode'] as String;
+        _isLoading = false;
+        notifyListeners();
+        return result;
+      }
+
+      final result = await driver.createDnsRecord(domainId, recordData);
+      _isLoading = false;
+      notifyListeners();
+      
+      if (result['error'] != null) {
+        _error = result['error'];
+        _errorCode = result['errorCode'];
+        return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
+      }
+      
+      await loadDnsRecords(providerId, domainId);
+      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
+    } catch (e) {
+      _error = e.toString();
+      _errorCode = 'EXCEPTION';
+      _isLoading = false;
+      notifyListeners();
+      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+    }
+  }
+
+  Future<Map<String, dynamic>> updateDnsRecord(String providerId, String domainId, String recordId, Map<String, dynamic> recordData) async {
+    _isLoading = true;
+    _error = null;
+    _errorCode = null;
+    notifyListeners();
+
+    try {
+      final driver = DriverFactory.get(providerId);
+      if (driver == null) {
+        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
+        _error = result['error'] as String;
+        _errorCode = result['errorCode'] as String;
+        _isLoading = false;
+        notifyListeners();
+        return result;
+      }
+
+      final result = await driver.updateDnsRecord(domainId, recordId, recordData);
+      _isLoading = false;
+      notifyListeners();
+      
+      if (result['error'] != null) {
+        _error = result['error'];
+        _errorCode = result['errorCode'];
+        return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
+      }
+      
+      await loadDnsRecords(providerId, domainId);
+      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
+    } catch (e) {
+      _error = e.toString();
+      _errorCode = 'EXCEPTION';
+      _isLoading = false;
+      notifyListeners();
+      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+    }
+  }
+
+  Future<Map<String, dynamic>> deleteDnsRecord(String providerId, String domainId, String recordId) async {
+    _isLoading = true;
+    _error = null;
+    _errorCode = null;
+    notifyListeners();
+
+    try {
+      final driver = DriverFactory.get(providerId);
+      if (driver == null) {
+        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
+        _error = result['error'] as String;
+        _errorCode = result['errorCode'] as String;
+        _isLoading = false;
+        notifyListeners();
+        return result;
+      }
+
+      await driver.deleteDnsRecord(domainId, recordId);
+      await loadDnsRecords(providerId, domainId);
+      _isLoading = false;
+      notifyListeners();
+      return {'success': true, 'statusCode': 'OK'};
+    } catch (e) {
+      _error = e.toString();
+      _errorCode = 'EXCEPTION';
+      _isLoading = false;
+      notifyListeners();
+      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
 
@@ -170,6 +342,7 @@ class DomainState extends ChangeNotifier {
     _dnsRecords = {};
     _selectedDomainId = null;
     _error = null;
+    _errorCode = null;
     notifyListeners();
   }
 }

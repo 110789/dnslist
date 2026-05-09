@@ -54,9 +54,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showAddDomainDialog(BuildContext context, String providerId) {
-    final driver = DriverFactory.get(providerId);
-    if (driver == null) return;
-
     final domainState = context.read<DomainState>();
     final isDnshe = providerId == 'dnshe';
     
@@ -111,25 +108,35 @@ class _HomePageState extends State<HomePage> {
               }
 
               final result = await domainState.addDomain(providerId, domainData);
-              if (result['error'] != null && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('添加失败: ${result['error']}')),
-                );
+              if (!result['success'] && context.mounted) {
+                _showResultSnackBar(context, false, result['error'], result['errorCode']);
               } else {
                 domainState.loadDomains(
                   providerId,
                   context.read<CredentialState>().selectedCredential!.credentials,
                 );
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('添加成功')),
-                  );
+                  _showResultSnackBar(context, true, '添加成功', result['statusCode']);
                 }
               }
             },
             child: const Text('添加'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showResultSnackBar(BuildContext context, bool success, String? message, String? statusCode) {
+    final content = statusCode != null 
+        ? '${message ?? (success ? '操作成功' : '操作失败')}\n状态码: $statusCode'
+        : (message ?? (success ? '操作成功' : '操作失败'));
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(content),
+        backgroundColor: success ? Colors.green : Colors.red,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -165,7 +172,26 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(state.error!, style: const TextStyle(color: Colors.red)),
+            Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Text(state.error!, style: const TextStyle(color: Colors.red)),
+                  if (state.errorCode != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '状态码: ${state.errorCode}',
+                      style: TextStyle(color: Colors.red.shade300, fontSize: 12),
+                    ),
+                  ],
+                ],
+              ),
+            ),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () => state.clear(),
@@ -215,23 +241,23 @@ class _HomePageState extends State<HomePage> {
                   ),
                 );
                 if (confirm == true && selected != null) {
-                  await state.deleteDomain(selected.providerId, domainId);
+                  final result = await state.deleteDomain(selected.providerId, domainId);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('删除成功')),
-                    );
+                    _showResultSnackBar(context, result['success'], result['error'] ?? '删除成功', result['statusCode']);
                   }
                 }
               } else if (value == 'renew') {
                 if (selected != null) {
                   final result = await state.renewDomain(selected.providerId, domainId);
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(result['error'] ?? 
-                          (result['remaining_days'] != null ? '续期成功，剩余 ${result['remaining_days']} 天' : '续期成功')),
-                      ),
-                    );
+                    if (result['success']) {
+                      final msg = result['remaining_days'] != null 
+                          ? '续期成功，剩余 ${result['remaining_days']} 天'
+                          : '续期成功';
+                      _showResultSnackBar(context, true, msg, result['statusCode']);
+                    } else {
+                      _showResultSnackBar(context, false, result['error'], result['errorCode']);
+                    }
                   }
                 }
               }

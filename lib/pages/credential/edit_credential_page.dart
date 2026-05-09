@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/credential_state.dart';
 import '../../services/credential_storage.dart';
+import '../../services/credential_validation.dart';
 import '../../drivers/driver_factory.dart';
 
 class EditCredentialPage extends StatefulWidget {
@@ -24,6 +25,7 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
   bool _isInitialized = false;
   bool _isValidating = false;
   String? _errorMessage;
+  String? _errorCode;
 
   @override
   void initState() {
@@ -87,6 +89,7 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
                 _selectedProviderId = value;
                 _controllers.clear();
                 _errorMessage = null;
+                _errorCode = null;
               });
             },
           ),
@@ -108,13 +111,25 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
                 color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.red),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                  Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.red),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                      ),
+                    ],
                   ),
+                  if (_errorCode != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      '状态码: $_errorCode',
+                      style: TextStyle(color: Colors.red.shade300, fontSize: 12),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -172,6 +187,7 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
     if (credentials.isEmpty) {
       setState(() {
         _errorMessage = '请填写密钥信息';
+        _errorCode = 'EMPTY_CREDENTIALS';
       });
       return;
     }
@@ -179,42 +195,40 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
     setState(() {
       _isValidating = true;
       _errorMessage = null;
+      _errorCode = null;
     });
 
-    try {
-      final isValid = await driver.validateCredential(credentials);
-      
-      if (!isValid) {
-        setState(() {
-          _errorMessage = '凭证校验失败，请检查密钥是否正确';
-          _isValidating = false;
-        });
-        return;
-      }
+    final result = await CredentialValidationService.validateCredential(
+      _selectedProviderId!,
+      credentials,
+    );
 
-      final remark = _remarkController.text.trim();
-      final oldCredential = context.read<CredentialState>().credentials.firstWhere(
-        (c) => c.id == widget.credentialId,
-      );
-
-      final updatedCredential = CredentialModel(
-        id: oldCredential.id,
-        providerId: _selectedProviderId!.toLowerCase(),
-        providerName: driver.providerName,
-        remark: remark.isEmpty ? null : remark,
-        credentials: credentials,
-        createdAt: oldCredential.createdAt,
-      );
-
-      await context.read<CredentialState>().updateCredential(updatedCredential);
-      if (mounted) {
-        context.pop();
-      }
-    } catch (e) {
+    if (!result['success']) {
       setState(() {
-        _errorMessage = '校验失败：${e.toString()}';
+        _errorMessage = result['error'] ?? '凭证校验失败';
+        _errorCode = result['errorCode'] ?? 'UNKNOWN';
         _isValidating = false;
       });
+      return;
+    }
+
+    final remark = _remarkController.text.trim();
+    final oldCredential = context.read<CredentialState>().credentials.firstWhere(
+      (c) => c.id == widget.credentialId,
+    );
+
+    final updatedCredential = CredentialModel(
+      id: oldCredential.id,
+      providerId: _selectedProviderId!.toLowerCase(),
+      providerName: driver.providerName,
+      remark: remark.isEmpty ? null : remark,
+      credentials: credentials,
+      createdAt: oldCredential.createdAt,
+    );
+
+    await context.read<CredentialState>().updateCredential(updatedCredential);
+    if (mounted) {
+      context.pop();
     }
   }
 }
