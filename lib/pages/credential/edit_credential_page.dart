@@ -25,8 +25,6 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
   final TextEditingController _remarkController = TextEditingController();
   bool _isInitialized = false;
   bool _isValidating = false;
-  String? _errorMessage;
-  String? _errorCode;
 
   @override
   void initState() {
@@ -89,8 +87,6 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
               setState(() {
                 _selectedProviderId = value;
                 _controllers.clear();
-                _errorMessage = null;
-                _errorCode = null;
               });
             },
           ),
@@ -104,37 +100,6 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
           ),
           const SizedBox(height: 16),
           if (_selectedProviderId != null) ..._buildCredentialFields(),
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.error_outline, color: Colors.red),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
-                      ),
-                    ],
-                  ),
-                  if (_errorCode != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      '状态码: $_errorCode',
-                      style: TextStyle(color: Colors.red.shade300, fontSize: 12),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: _selectedProviderId != null && !_isValidating ? _saveCredential : null,
@@ -186,17 +151,12 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
     }
 
     if (credentials.isEmpty) {
-      setState(() {
-        _errorMessage = '请填写密钥信息';
-        _errorCode = 'EMPTY_CREDENTIALS';
-      });
+      ToastUtil.showError(context, '请填写密钥信息', errorCode: 400);
       return;
     }
 
     setState(() {
       _isValidating = true;
-      _errorMessage = null;
-      _errorCode = null;
     });
 
     final result = await CredentialValidationService.validateCredential(
@@ -206,10 +166,15 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
 
     if (!result['success']) {
       setState(() {
-        _errorMessage = result['error'] ?? '凭证校验失败';
-        _errorCode = result['errorCode'] ?? 'UNKNOWN';
         _isValidating = false;
       });
+      if (mounted) {
+        ToastUtil.showError(
+          context,
+          result['error'] ?? '凭证校验失败',
+          errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+        );
+      }
       return;
     }
 

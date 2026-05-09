@@ -271,47 +271,22 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     }
 
     if (state.error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Column(
-                children: [
-                  Text(state.error!, style: const TextStyle(color: Colors.red)),
-                  if (state.errorCode != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      '状态码: ${state.errorCode}',
-                      style: TextStyle(color: Colors.red.shade300, fontSize: 12),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () {
-                final credential = context.read<CredentialState>().selectedCredential;
-                if (credential != null) {
-                  state.loadDnsRecords(credential.providerId, widget.domainId);
-                }
-              },
-              child: const Text('重试'),
-            ),
-          ],
-        ),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ToastUtil.showError(context, state.error!, errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null);
+        state.clear();
+      });
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (records.isEmpty) {
-      return const Center(child: Text('暂无DNS记录'));
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.dns, size: 64, color: Colors.grey),
+          ],
+        ),
+      );
     }
 
     return ListView.builder(
