@@ -202,6 +202,50 @@ class CloudflareDriver implements DriverInterface {
   }
 
   @override
+  Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData) async {
+    if (_client == null) return {'error': 'Not authenticated'};
+
+    try {
+      final response = await _client!.post('/zones', data: domainData);
+      if (response.data['success'] == true) {
+        return response.data['result'];
+      }
+      if (response.data['errors'] != null && response.data['errors'].isNotEmpty) {
+        final error = response.data['errors'][0];
+        return {'error': '${error['message']} (code: ${error['code']})'};
+      }
+      return {'error': 'Failed to create domain'};
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
+  @override
+  Future<void> deleteDomain(String domainId) async {
+    if (_client == null) return;
+
+    try {
+      await _client!.delete('/zones/$domainId');
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> renewDomain(String domainId) async {
+    return {'error': 'Cloudflare domains are managed via account subscription, not API renewal'};
+  }
+
+  @override
+  bool get supportsAddDomain => true;
+
+  @override
+  bool get supportsDeleteDomain => true;
+
+  @override
+  bool get supportsRenewDomain => false;
+
+  @override
   Widget buildDomainListItem(Map<String, dynamic> domainData) {
     return const SizedBox.shrink();
   }

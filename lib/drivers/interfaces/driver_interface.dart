@@ -33,6 +33,18 @@ abstract class DriverInterface {
 
   Future<void> deleteDnsRecord(String domainId, String recordId);
 
+  Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData);
+
+  Future<void> deleteDomain(String domainId);
+
+  Future<Map<String, dynamic>> renewDomain(String domainId);
+
+  bool get supportsAddDomain;
+
+  bool get supportsDeleteDomain;
+
+  bool get supportsRenewDomain;
+
   Widget buildDomainListItem(Map<String, dynamic> domainData);
 
   Widget buildDnsRecordListItem(Map<String, dynamic> recordData);

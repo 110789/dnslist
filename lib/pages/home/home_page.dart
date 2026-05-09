@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/credential_state.dart';
 import '../../services/domain_state.dart';
+import '../../drivers/driver_factory.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -36,12 +37,104 @@ class _HomePageState extends State<HomePage> {
               ]
             : null,
       ),
-      body: _buildBody(context, domainState, hasCredentials),
+      body: _buildBody(context, domainState, credentialState, hasCredentials),
       drawer: _buildDrawer(context, credentialState, domainState),
+      floatingActionButton: hasCredentials ? _buildFab(context, selected!.providerId) : null,
     );
   }
 
-  Widget _buildBody(BuildContext context, DomainState state, bool hasCredentials) {
+  Widget? _buildFab(BuildContext context, String providerId) {
+    final driver = DriverFactory.get(providerId);
+    if (driver == null || !driver.supportsAddDomain) return null;
+
+    return FloatingActionButton(
+      onPressed: () => _showAddDomainDialog(context, providerId),
+      child: const Icon(Icons.add),
+    );
+  }
+
+  void _showAddDomainDialog(BuildContext context, String providerId) {
+    final driver = DriverFactory.get(providerId);
+    if (driver == null) return;
+
+    final domainState = context.read<DomainState>();
+    final isDnshe = providerId == 'dnshe';
+    
+    final subdomainController = TextEditingController();
+    final rootDomainController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('添加域名'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isDnshe) ...[
+              TextField(
+                controller: subdomainController,
+                decoration: const InputDecoration(labelText: '子域名前缀'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: rootDomainController,
+                decoration: const InputDecoration(labelText: '根域名'),
+              ),
+            ] else ...[
+              TextField(
+                controller: rootDomainController,
+                decoration: const InputDecoration(labelText: '域名'),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              
+              Map<String, dynamic> domainData;
+              if (isDnshe) {
+                domainData = {
+                  'subdomain': subdomainController.text,
+                  'rootdomain': rootDomainController.text,
+                };
+              } else {
+                domainData = {
+                  'name': rootDomainController.text,
+                  'type': 'full',
+                };
+              }
+
+              final result = await domainState.addDomain(providerId, domainData);
+              if (result['error'] != null && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('添加失败: ${result['error']}')),
+                );
+              } else {
+                domainState.loadDomains(
+                  providerId,
+                  context.read<CredentialState>().selectedCredential!.credentials,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('添加成功')),
+                  );
+                }
+              }
+            },
+            child: const Text('添加'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context, DomainState state, CredentialState credentialState, bool hasCredentials) {
     if (!hasCredentials) {
       return Center(
         child: Column(
@@ -87,6 +180,11 @@ class _HomePageState extends State<HomePage> {
       return const Center(child: Text('暂无域名'));
     }
 
+    final selected = credentialState.selectedCredential;
+    final driver = selected != null ? DriverFactory.get(selected.providerId) : null;
+    final supportsDelete = driver?.supportsDeleteDomain ?? false;
+    final supportsRenew = driver?.supportsRenewDomain ?? false;
+
     return ListView.builder(
       itemCount: state.domains.length,
       itemBuilder: (context, index) {
@@ -96,7 +194,55 @@ class _HomePageState extends State<HomePage> {
         return ListTile(
           title: Text(domainName),
           subtitle: Text(domain['status'] ?? ''),
-          trailing: const Icon(Icons.chevron_right),
+          trailing: PopupMenuButton<String>(
+            onSelected: (value) async {
+              if (value == 'delete') {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('删除域名'),
+                    content: Text('确定要删除 $domainName 吗？'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('取消'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('删除', style: TextStyle(color: Colors.red)),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true && selected != null) {
+                  await state.deleteDomain(selected.providerId, domainId);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('删除成功')),
+                    );
+                  }
+                }
+              } else if (value == 'renew') {
+                if (selected != null) {
+                  final result = await state.renewDomain(selected.providerId, domainId);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(result['error'] ?? 
+                          (result['remaining_days'] != null ? '续期成功，剩余 ${result['remaining_days']} 天' : '续期成功')),
+                      ),
+                    );
+                  }
+                }
+              }
+            },
+            itemBuilder: (context) => [
+              if (supportsDelete)
+                const PopupMenuItem(value: 'delete', child: Text('删除')),
+              if (supportsRenew)
+                const PopupMenuItem(value: 'renew', child: Text('续期')),
+            ],
+          ),
           onTap: () {
             if (domainId.isNotEmpty) {
               GoRouter.of(context).push(

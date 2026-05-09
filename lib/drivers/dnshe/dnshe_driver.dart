@@ -208,6 +208,74 @@ class DnsheDriver implements DriverInterface {
   }
 
   @override
+  Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData) async {
+    if (_client == null) return {'error': 'Not authenticated'};
+
+    try {
+      final response = await _client!.post('', queryParameters: {
+        'm': 'domain_hub',
+        'endpoint': 'subdomains',
+        'action': 'register',
+      }, data: domainData);
+
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      return {'error': response.data['message'] ?? 'Failed to create domain'};
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
+  @override
+  Future<void> deleteDomain(String domainId) async {
+    if (_client == null) return;
+
+    try {
+      await _client!.post('', queryParameters: {
+        'm': 'domain_hub',
+        'endpoint': 'subdomains',
+        'action': 'delete',
+      }, data: {
+        'subdomain_id': int.tryParse(domainId) ?? domainId,
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  @override
+  Future<Map<String, dynamic>> renewDomain(String domainId) async {
+    if (_client == null) return {'error': 'Not authenticated'};
+
+    try {
+      final response = await _client!.post('', queryParameters: {
+        'm': 'domain_hub',
+        'endpoint': 'subdomains',
+        'action': 'renew',
+      }, data: {
+        'subdomain_id': int.tryParse(domainId) ?? domainId,
+      });
+
+      if (response.data['success'] == true) {
+        return response.data;
+      }
+      return {'error': response.data['message'] ?? 'Failed to renew domain'};
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
+
+  @override
+  bool get supportsAddDomain => true;
+
+  @override
+  bool get supportsDeleteDomain => true;
+
+  @override
+  bool get supportsRenewDomain => true;
+
+  @override
   Widget buildDomainListItem(Map<String, dynamic> domainData) {
     return const SizedBox.shrink();
   }

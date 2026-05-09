@@ -97,6 +97,74 @@ class DomainState extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<Map<String, dynamic>> addDomain(String providerId, Map<String, dynamic> domainData) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final driver = DriverFactory.get(providerId);
+      if (driver == null) {
+        throw Exception('Provider not found');
+      }
+
+      final result = await driver.createDomain(domainData);
+      _isLoading = false;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return {'error': e.toString()};
+    }
+  }
+
+  Future<void> deleteDomain(String providerId, String domainId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final driver = DriverFactory.get(providerId);
+      if (driver == null) {
+        throw Exception('Provider not found');
+      }
+
+      await driver.deleteDomain(domainId);
+      _domains.removeWhere((d) => d['id'].toString() == domainId.toString());
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<Map<String, dynamic>> renewDomain(String providerId, String domainId) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final driver = DriverFactory.get(providerId);
+      if (driver == null) {
+        throw Exception('Provider not found');
+      }
+
+      final result = await driver.renewDomain(domainId);
+      _isLoading = false;
+      notifyListeners();
+      return result;
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+      return {'error': e.toString()};
+    }
+  }
+
   void clear() {
     _domains = [];
     _dnsRecords = {};
