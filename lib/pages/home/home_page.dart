@@ -311,18 +311,18 @@ class _HomePageState extends State<HomePage> {
                 : _buildCredentialList(context, credentialState, domainState),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: _DrawerSettingsEntry(onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).push('/settings');
-            }),
-          ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(onPressed: () => _showAddCredentialDialog(context), icon: const Icon(Icons.add), label: const Text('添加凭证')),
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+            child: _DrawerSettingsEntry(onTap: () {
+              Navigator.pop(context);
+              GoRouter.of(context).push('/settings');
+            }),
           ),
         ],
       ),

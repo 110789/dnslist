@@ -27,6 +27,7 @@ class CredentialState extends ChangeNotifier {
 
   Future<void> loadCredentials() async {
     _credentials = await _storage.loadAll();
+    _selectedCredentialId = _storage.getSelectedId();
     if (_credentials.isNotEmpty && _selectedCredentialId == null) {
       final sorted = List<CredentialModel>.from(_credentials);
       sorted.sort((a, b) => a.order.compareTo(b.order));
@@ -96,6 +97,7 @@ class CredentialState extends ChangeNotifier {
 
   void selectCredential(String id) {
     _selectedCredentialId = id;
+    _storage.saveSelectedId(id);
     notifyListeners();
   }
 

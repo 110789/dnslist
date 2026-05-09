@@ -132,6 +132,7 @@ class _AesCipher {
 class CredentialStorage {
   static const String _key = 'credentials_v2';
   static const String _storageKey = 'credential_cipher_seed';
+  static const String _selectedIdKey = 'selected_credential_id';
   final LocalStorage _storage;
   late String _cipherSeed;
 
@@ -194,6 +195,18 @@ class CredentialStorage {
 
   Future<void> saveOrder(List<CredentialModel> credentials) async {
     await saveAll(credentials);
+  }
+
+  Future<void> saveSelectedId(String? id) async {
+    if (id == null) {
+      await _storage.remove(_selectedIdKey);
+    } else {
+      await _storage.setString(_selectedIdKey, id);
+    }
+  }
+
+  String? getSelectedId() {
+    return _storage.getString(_selectedIdKey);
   }
 
   Future<void> reorder(int oldIndex, int newIndex) async {
