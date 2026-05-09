@@ -123,7 +123,6 @@ class DnsListTile extends StatelessWidget {
   final String title;
   final Widget? subtitle;
   final Widget? trailing;
-  final List<Widget>? tags;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
@@ -133,7 +132,6 @@ class DnsListTile extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailing,
-    this.tags,
     this.onTap,
     this.onLongPress,
   });
@@ -177,14 +175,6 @@ class DnsListTile extends StatelessWidget {
                           color: colorScheme.onSurfaceVariant,
                         ),
                         child: subtitle!,
-                      ),
-                    ],
-                    if (tags != null && tags!.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: tags!,
                       ),
                     ],
                   ],
@@ -281,32 +271,6 @@ class DnsTypeBadge extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoTag extends StatelessWidget {
-  final String label;
-  final ColorScheme colorScheme;
-
-  const _InfoTag({required this.label, required this.colorScheme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(DnsRadius.sm),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-          color: colorScheme.onSurfaceVariant,
         ),
       ),
     );
@@ -480,33 +444,60 @@ class DnsDomainTile extends StatelessWidget {
     final displayStatus = _translateStatus(status);
     final colorScheme = Theme.of(context).colorScheme;
 
-    final createdAt = domain['created_at'];
-    final expiresAt = domain['expires_at'];
+    final createdAt = domain['created_at'] ?? domain['created_on'];
+    final expiresAt = domain['expires_at'] ?? domain['expiry_at'];
     final ttl = domain['ttl'];
 
-    final tags = <Widget>[];
+    final dateLines = <String>[];
     if (createdAt != null) {
-      tags.add(_InfoTag(label: '添加: ${_formatDate(createdAt)}', colorScheme: colorScheme));
+      final formatted = _formatDate(createdAt);
+      if (formatted.isNotEmpty) dateLines.add('添加: $formatted');
     }
     if (expiresAt != null && expiresAt.toString().isNotEmpty) {
-      tags.add(_InfoTag(label: '过期: ${_formatDate(expiresAt)}', colorScheme: colorScheme));
+      final formatted = _formatDate(expiresAt);
+      if (formatted.isNotEmpty) dateLines.add('过期: $formatted');
     }
     if (ttl != null) {
-      tags.add(DnsTtlTag(ttl: ttl is int ? ttl : int.tryParse(ttl.toString()) ?? 0));
+      final ttlInt = ttl is int ? ttl : int.tryParse(ttl.toString()) ?? 0;
+      dateLines.add('TTL: ${_ttlLabel(ttlInt)}');
     }
+
+    final subtitleChild = dateLines.isEmpty
+        ? (displayStatus.isNotEmpty
+            ? Text(
+                displayStatus,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: DnsDesignTokens.getStatusColor(status),
+                ),
+              )
+            : null)
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (displayStatus.isNotEmpty)
+                Text(
+                  displayStatus,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: DnsDesignTokens.getStatusColor(status),
+                  ),
+                ),
+              ...dateLines.map((line) => Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  line,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.8),
+                  ),
+                ),
+              )),
+            ],
+          );
 
     return DnsListTile(
       leading: Icon(Icons.language, color: colorScheme.primary),
       title: name,
-      subtitle: displayStatus.isNotEmpty
-          ? Text(
-              displayStatus,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: DnsDesignTokens.getStatusColor(status),
-              ),
-            )
-          : null,
-      tags: tags.isNotEmpty ? tags : null,
+      subtitle: subtitleChild,
       onTap: onTap,
       trailing: PopupMenuButton<String>(
         icon: Icon(Icons.more_vert, size: 20, color: colorScheme.onSurfaceVariant),
@@ -527,19 +518,34 @@ class DnsDomainTile extends StatelessWidget {
     );
   }
 
+  String _ttlLabel(int ttl) {
+    if (ttl <= 0) return '$ttl';
+    if (ttl < 60) return '${ttl}s';
+    if (ttl < 3600) return '${(ttl / 60).round()}m';
+    if (ttl < 86400) return '${(ttl / 3600).round()}h';
+    return '${(ttl / 86400).round()}d';
+  }
+
   String _formatDate(dynamic dateVal) {
+    if (dateVal == null) return '';
     try {
-      if (dateVal is int) {
-        return '${dateVal ~/ 1000000}-??';
+      final s = dateVal is int ? dateVal.toString() : dateVal.toString();
+      if (s.isEmpty) return '';
+      if (dateVal is int && dateVal > 10000000000) {
+        final dt = DateTime.fromMillisecondsSinceEpoch(dateVal, isUtc: true);
+        return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
       }
-      final s = dateVal.toString();
+      if (s.contains('T') || s.contains('-')) {
+        final dt = DateTime.tryParse(s);
+        if (dt != null) return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+      }
       if (s.length >= 10) {
         final dt = DateTime.tryParse(s);
         if (dt != null) return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
       }
       return s;
     } catch (_) {
-      return '无';
+      return '';
     }
   }
 
