@@ -374,10 +374,6 @@ class _HomePageState extends State<HomePage> {
           credential: credential,
           isSelected: isSelected,
           onTap: () => _showCredentialBottomSheet(ctx, credential, credentialState, domainState),
-          onSwipeRight: () {
-            credentialState.selectCredential(credential.id);
-            domainState.loadDomains(credential.providerId, credential.credentials);
-          },
         );
       },
     );
@@ -571,38 +567,17 @@ class _CredentialCard extends StatelessWidget {
   final CredentialModel credential;
   final bool isSelected;
   final VoidCallback onTap;
-  final VoidCallback onSwipeRight;
 
-  const _CredentialCard({super.key, required this.index, required this.credential, required this.isSelected, required this.onTap, required this.onSwipeRight});
+  const _CredentialCard({super.key, required this.index, required this.credential, required this.isSelected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Dismissible(
-      key: ValueKey('swipe_${credential.id}'),
-      direction: DismissDirection.startToEnd,
-      confirmDismiss: (_) async {
-        if (!isSelected) {
-          onSwipeRight();
-        }
-        return false;
-      },
-      background: Container(
-        alignment: Alignment.centerLeft,
-        margin: const EdgeInsets.only(bottom: DnsSpacing.sm),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(DnsRadius.lg),
-        ),
-        padding: const EdgeInsets.only(left: DnsSpacing.md),
-        child: Icon(Icons.check_circle_outline, color: Theme.of(context).colorScheme.primary, size: 20),
-      ),
-      child: ReorderableDragStartListener(
-        index: index,
-        child: _CredentialCardContent(
-          credential: credential,
-          isSelected: isSelected,
-          onTap: onTap,
-        ),
+    return ReorderableDragStartListener(
+      index: index,
+      child: _CredentialCardContent(
+        credential: credential,
+        isSelected: isSelected,
+        onTap: onTap,
       ),
     );
   }
