@@ -232,13 +232,20 @@ class DnsTypeBadge extends StatelessWidget {
   final String type;
   final bool compact;
   static const double _size = 52.0;
-  static const double _fontSize = 13.0;
 
   const DnsTypeBadge({super.key, required this.type, this.compact = false});
 
+  double get _fontSize {
+    final len = type.length;
+    if (len <= 2) return 18.0;
+    if (len == 3) return 15.0;
+    if (len == 4) return 13.0;
+    return 11.0;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final color = DnsDesignTokens.getDnsTypeColor(type);
+    final colorScheme = Theme.of(context).colorScheme;
 
     return SizedBox(
       width: _size,
@@ -248,12 +255,16 @@ class DnsTypeBadge extends StatelessWidget {
           fit: BoxFit.scaleDown,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
             child: Text(
               type,
               style: TextStyle(
                 fontSize: _fontSize,
                 fontWeight: FontWeight.w700,
-                color: color,
+                color: colorScheme.onPrimary,
               ),
             ),
           ),
