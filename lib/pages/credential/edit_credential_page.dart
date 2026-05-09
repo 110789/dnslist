@@ -22,6 +22,8 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
   final Map<String, TextEditingController> _controllers = {};
   final TextEditingController _remarkController = TextEditingController();
   bool _isInitialized = false;
+  bool _isValidating = false;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -84,6 +86,7 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
               setState(() {
                 _selectedProviderId = value;
                 _controllers.clear();
+                _errorMessage = null;
               });
             },
           ),
@@ -97,10 +100,35 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
           ),
           const SizedBox(height: 16),
           if (_selectedProviderId != null) ..._buildCredentialFields(),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _selectedProviderId != null ? _saveCredential : null,
-            child: const Text('保存'),
+            onPressed: _selectedProviderId != null && !_isValidating ? _saveCredential : null,
+            child: _isValidating
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('保存'),
           ),
         ],
       ),
@@ -141,23 +169,52 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
       }
     }
 
-    final remark = _remarkController.text.trim();
-    final oldCredential = context.read<CredentialState>().credentials.firstWhere(
-      (c) => c.id == widget.credentialId,
-    );
+    if (credentials.isEmpty) {
+      setState(() {
+        _errorMessage = '请填写密钥信息';
+      });
+      return;
+    }
 
-    final updatedCredential = CredentialModel(
-      id: oldCredential.id,
-      providerId: _selectedProviderId!.toLowerCase(),
-      providerName: driver.providerName,
-      remark: remark.isEmpty ? null : remark,
-      credentials: credentials,
-      createdAt: oldCredential.createdAt,
-    );
+    setState(() {
+      _isValidating = true;
+      _errorMessage = null;
+    });
 
-    await context.read<CredentialState>().updateCredential(updatedCredential);
-    if (mounted) {
-      context.pop();
+    try {
+      final isValid = await driver.validateCredential(credentials);
+      
+      if (!isValid) {
+        setState(() {
+          _errorMessage = '凭证校验失败，请检查密钥是否正确';
+          _isValidating = false;
+        });
+        return;
+      }
+
+      final remark = _remarkController.text.trim();
+      final oldCredential = context.read<CredentialState>().credentials.firstWhere(
+        (c) => c.id == widget.credentialId,
+      );
+
+      final updatedCredential = CredentialModel(
+        id: oldCredential.id,
+        providerId: _selectedProviderId!.toLowerCase(),
+        providerName: driver.providerName,
+        remark: remark.isEmpty ? null : remark,
+        credentials: credentials,
+        createdAt: oldCredential.createdAt,
+      );
+
+      await context.read<CredentialState>().updateCredential(updatedCredential);
+      if (mounted) {
+        context.pop();
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = '校验失败：${e.toString()}';
+        _isValidating = false;
+      });
     }
   }
 }

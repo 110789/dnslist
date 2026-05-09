@@ -16,6 +16,8 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
   String? _selectedProviderId;
   final Map<String, TextEditingController> _controllers = {};
   final TextEditingController _remarkController = TextEditingController();
+  bool _isValidating = false;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -45,6 +47,7 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
               setState(() {
                 _selectedProviderId = value;
                 _controllers.clear();
+                _errorMessage = null;
               });
             },
           ),
@@ -60,10 +63,35 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
             const SizedBox(height: 16),
             ..._buildCredentialFields(),
           ],
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: _selectedProviderId != null ? _saveCredential : null,
-            child: const Text('保存'),
+            onPressed: _selectedProviderId != null && !_isValidating ? _saveCredential : null,
+            child: _isValidating
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('保存'),
           ),
         ],
       ),
@@ -104,20 +132,49 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
       }
     }
 
-    final remark = _remarkController.text.trim();
+    if (credentials.isEmpty) {
+      setState(() {
+        _errorMessage = '请填写密钥信息';
+      });
+      return;
+    }
 
-    final credential = CredentialModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      providerId: _selectedProviderId!.toLowerCase(),
-      providerName: driver.providerName,
-      remark: remark.isEmpty ? null : remark,
-      credentials: credentials,
-      createdAt: DateTime.now(),
-    );
+    setState(() {
+      _isValidating = true;
+      _errorMessage = null;
+    });
 
-    await context.read<CredentialState>().addCredential(credential);
-    if (mounted) {
-      context.pop();
+    try {
+      final isValid = await driver.validateCredential(credentials);
+      
+      if (!isValid) {
+        setState(() {
+          _errorMessage = '凭证校验失败，请检查密钥是否正确';
+          _isValidating = false;
+        });
+        return;
+      }
+
+      final remark = _remarkController.text.trim();
+
+      final credential = CredentialModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        providerId: _selectedProviderId!.toLowerCase(),
+        providerName: driver.providerName,
+        remark: remark.isEmpty ? null : remark,
+        credentials: credentials,
+        createdAt: DateTime.now(),
+      );
+
+      await context.read<CredentialState>().addCredential(credential);
+      if (mounted) {
+        context.pop();
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = '校验失败：${e.toString()}';
+        _isValidating = false;
+      });
     }
   }
 }
