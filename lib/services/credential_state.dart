@@ -48,6 +48,11 @@ class CredentialState extends ChangeNotifier {
     await loadCredentials();
   }
 
+  Future<void> updateCredential(CredentialModel credential) async {
+    await _storage.update(credential);
+    await loadCredentials();
+  }
+
   void selectCredential(String id) {
     _selectedCredentialId = id;
     notifyListeners();

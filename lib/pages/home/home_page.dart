@@ -151,6 +151,13 @@ class _HomePageState extends State<HomePage> {
                   ),
                   selected: state.selectedCredentialId == c.id,
                   selectedTileColor: Colors.blue.withValues(alpha: 0.1),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      GoRouter.of(context).push('/settings/credential/${c.id}/edit');
+                    },
+                  ),
                   onTap: () {
                     state.selectCredential(c.id);
                     domainState.clear();
