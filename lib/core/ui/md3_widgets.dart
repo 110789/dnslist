@@ -424,7 +424,6 @@ class DnsDomainTile extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   final VoidCallback? onRenew;
-  final VoidCallback? onShowNameServers;
   final bool supportsDelete;
   final bool supportsRenew;
   final bool supportsShowNameServers;
@@ -435,7 +434,6 @@ class DnsDomainTile extends StatelessWidget {
     this.onTap,
     this.onDelete,
     this.onRenew,
-    this.onShowNameServers,
     this.supportsDelete = false,
     this.supportsRenew = false,
     this.supportsShowNameServers = false,
@@ -511,11 +509,11 @@ class DnsDomainTile extends StatelessWidget {
         onSelected: (value) {
           if (value == 'delete') onDelete?.call();
           if (value == 'renew') onRenew?.call();
-          if (value == 'nameservers') onShowNameServers?.call();
+          if (value == 'nameservers') _showNameServersDialog(context, domain);
         },
         itemBuilder: (ctx) => [
           if (supportsShowNameServers)
-            const PopupMenuItem(value: 'nameservers', child: Text('NS节点')),
+            PopupMenuItem(value: 'nameservers', child: Text(_getNameServersTitle(domain))),
           if (supportsRenew)
             const PopupMenuItem(value: 'renew', child: Text('续期')),
           if (supportsDelete)
@@ -523,6 +521,52 @@ class DnsDomainTile extends StatelessWidget {
               value: 'delete',
               child: Text('删除', style: TextStyle(color: colorScheme.error)),
             ),
+        ],
+      ),
+    );
+  }
+
+  String _getNameServersTitle(Map<String, dynamic> domainData) {
+    final nameServers = domainData['name_servers'] as List? ?? [];
+    if (nameServers.isEmpty) return '无 NS 节点';
+    return '${nameServers.length} 个 NS 节点';
+  }
+
+  void _showNameServersDialog(BuildContext context, Map<String, dynamic> domainData) {
+    final nameServers = domainData['name_servers'] as List? ?? [];
+    final domainName = domainData['name']?.toString() ?? '';
+    final colorScheme = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(domainName, style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('NS 节点', style: Theme.of(ctx).textTheme.titleSmall),
+              const SizedBox(height: 8),
+              if (nameServers.isEmpty)
+                Text('无', style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant))
+              else
+                ...nameServers.map((ns) => Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(ns.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
+                  ),
+                )),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
         ],
       ),
     );
