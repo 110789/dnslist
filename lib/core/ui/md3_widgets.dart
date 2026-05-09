@@ -475,13 +475,6 @@ class DnsDomainTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (displayStatus.isNotEmpty)
-                Text(
-                  displayStatus,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: DnsDesignTokens.getStatusColor(status),
-                  ),
-                ),
               ...dateLines.map((line) => Padding(
                 padding: const EdgeInsets.only(top: 2),
                 child: Text(
@@ -491,6 +484,16 @@ class DnsDomainTile extends StatelessWidget {
                   ),
                 ),
               )),
+              if (displayStatus.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    displayStatus,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: DnsDesignTokens.getStatusColor(status),
+                    ),
+                  ),
+                ),
             ],
           );
 
