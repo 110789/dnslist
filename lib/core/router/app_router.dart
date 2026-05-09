@@ -1,25 +1,20 @@
 import 'package:go_router/go_router.dart';
+import '../../pages/home/home_page.dart';
+import '../../pages/settings/settings_page.dart';
+import '../../pages/credential/add_credential_page.dart';
 
 class RouteNames {
   static const String home = 'home';
-  static const String domains = 'domains';
-  static const String domainDetail = 'domainDetail';
-  static const String dnsRecords = 'dnsRecords';
   static const String settings = 'settings';
   static const String addCredential = 'addCredential';
-  static const String editCredential = 'editCredential';
 
   RouteNames._();
 }
 
 class RoutePaths {
   static const String home = '/';
-  static const String domains = '/domains';
-  static const String domainDetail = '/domains/:domainId';
-  static const String dnsRecords = '/domains/:domainId/records';
   static const String settings = '/settings';
   static const String addCredential = '/settings/credential/add';
-  static const String editCredential = '/settings/credential/:providerId/edit';
 
   RoutePaths._();
 }
@@ -27,7 +22,20 @@ class RoutePaths {
 class AppRouter {
   static final GoRouter router = GoRouter(
     initialLocation: RoutePaths.home,
-    routes: [],
+    routes: [
+      GoRoute(
+        path: RoutePaths.home,
+        builder: (context, state) => const HomePage(),
+      ),
+      GoRoute(
+        path: RoutePaths.settings,
+        builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.addCredential,
+        builder: (context, state) => const AddCredentialPage(),
+      ),
+    ],
   );
 
   AppRouter._();
