@@ -5,6 +5,7 @@ import '../../services/credential_state.dart';
 import '../../services/credential_storage.dart';
 import '../../services/credential_validation.dart';
 import '../../drivers/driver_factory.dart';
+import '../../utils/status_code_dialog.dart';
 
 class EditCredentialPage extends StatefulWidget {
   final String credentialId;
@@ -228,7 +229,15 @@ class _EditCredentialPageState extends State<EditCredentialPage> {
 
     await context.read<CredentialState>().updateCredential(updatedCredential);
     if (mounted) {
-      context.pop();
+      await StatusCodeDialog.showResult(
+        context: context,
+        success: true,
+        message: '更新凭证成功',
+        statusCode: result['statusCode'],
+      );
+      if (mounted) {
+        context.pop();
+      }
     }
   }
 }
