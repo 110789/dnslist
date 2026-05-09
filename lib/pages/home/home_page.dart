@@ -470,7 +470,6 @@ class _HomePageState extends State<HomePage> {
   ) {
     showModalBottomSheet(
       context: context,
-      showDragHandle: false,
       builder: (ctx) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -540,8 +539,16 @@ class _HomePageState extends State<HomePage> {
         credential: credential,
         onSave: (updatedCredential) async {
           final credentialState = context.read<CredentialState>();
+          final selected = credentialState.selectedCredential;
           await credentialState.updateCredential(updatedCredential);
           if (context.mounted) {
+            if (selected != null && selected.id == updatedCredential.id) {
+              context.read<DomainState>().clear();
+              context.read<DomainState>().loadDomains(
+                updatedCredential.providerId,
+                updatedCredential.credentials,
+              );
+            }
             ToastUtil.showSuccess(context, '更新凭证成功');
             Navigator.pop(ctx);
           }
