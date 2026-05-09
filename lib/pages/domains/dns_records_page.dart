@@ -455,65 +455,47 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     final recordName = record['name'] ?? '';
     final recordType = record['type'] ?? '';
     final recordContent = record['content'] ?? '';
-    final recordTtl = record['ttl'];
 
     return ListTile(
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: _getTypeColor(recordType).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              recordType,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: _getTypeColor(recordType),
-              ),
-            ),
+      leading: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: _getTypeColor(recordType).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: Text(
+          recordType,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _getTypeColor(recordType),
           ),
-          const SizedBox(width: 12),
+        ),
+      ),
+      title: Text(
+        recordName,
+        style: const TextStyle(fontWeight: FontWeight.w500),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Row(
+        children: [
           Expanded(
             child: Text(
-              recordName,
-              style: const TextStyle(fontWeight: FontWeight.w500),
+              recordContent,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (record['proxied'] == true) ...[
+            const SizedBox(width: 8),
+            Icon(Icons.cloud, size: 14, color: Colors.orange.shade400),
+          ],
         ],
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 4),
-          Text(
-            recordContent,
-            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (recordTtl != null)
-            Text(
-              'TTL: $recordTtl秒',
-              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-            ),
-          if (record['proxied'] == true)
-            Row(
-              children: [
-                Icon(Icons.cloud, size: 12, color: Colors.orange.shade400),
-                const SizedBox(width: 4),
-                Text(
-                  '已代理',
-                  style: TextStyle(fontSize: 11, color: Colors.orange.shade400),
-                ),
-              ],
-            ),
-        ],
-      ),
-      isThreeLine: true,
       trailing: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert, size: 20),
         onSelected: (value) {
           if (value == 'edit') {
             _showEditRecordDialog(context, providerId, record);

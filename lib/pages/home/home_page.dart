@@ -95,28 +95,60 @@ class _HomePageState extends State<HomePage> {
           final domain = state.domains[index];
           final domainName = domain['name'] ?? 'Unknown';
           final domainId = domain['id']?.toString() ?? '';
-          return ListTile(
-            title: Text(domainName),
-            subtitle: Text(_buildDomainStatusText(domain)),
-            trailing: PopupMenuButton<String>(
-              onSelected: (value) => _handleDomainAction(context, value, state, selected, domainName, domainId),
-              itemBuilder: (context) => [
-                if (supportsDelete)
-                  const PopupMenuItem(value: 'delete', child: Text('删除')),
-                if (supportsRenew)
-                  const PopupMenuItem(value: 'renew', child: Text('续期')),
-              ],
-            ),
-            onTap: () {
-              if (domainId.isNotEmpty) {
-                GoRouter.of(context).push(
-                  '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
-                );
-              }
-            },
-          );
+          return _buildDomainItem(context, domain, domainName, domainId, state, selected, supportsDelete, supportsRenew);
         },
       ),
+    );
+  }
+
+  Widget _buildDomainItem(
+    BuildContext context,
+    Map<String, dynamic> domain,
+    String domainName,
+    String domainId,
+    DomainState state,
+    dynamic selected,
+    bool supportsDelete,
+    bool supportsRenew,
+  ) {
+    final status = _buildDomainStatusText(domain);
+
+    return ListTile(
+      leading: Icon(
+        Icons.language,
+        color: Colors.blue.shade400,
+      ),
+      title: Text(
+        domainName,
+        style: const TextStyle(fontWeight: FontWeight.w500),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        status,
+        style: TextStyle(
+          fontSize: 12,
+          color: _getStatusColor(status),
+        ),
+        maxLines: 1,
+      ),
+      trailing: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert, size: 20),
+        onSelected: (value) => _handleDomainAction(context, value, state, selected, domainName, domainId),
+        itemBuilder: (context) => [
+          if (supportsDelete)
+            const PopupMenuItem(value: 'delete', child: Text('删除')),
+          if (supportsRenew)
+            const PopupMenuItem(value: 'renew', child: Text('续期')),
+        ],
+      ),
+      onTap: () {
+        if (domainId.isNotEmpty) {
+          GoRouter.of(context).push(
+            '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
+          );
+        }
+      },
     );
   }
 
@@ -130,6 +162,23 @@ class _HomePageState extends State<HomePage> {
       'deleted': '已删除',
     };
     return statusMap[status.toString().toLowerCase()] ?? status;
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case '活跃':
+        return Colors.green.shade600;
+      case '待处理':
+        return Colors.orange.shade600;
+      case '已过期':
+        return Colors.red.shade600;
+      case '已暂停':
+        return Colors.grey.shade600;
+      case '已删除':
+        return Colors.red.shade400;
+      default:
+        return Colors.grey.shade600;
+    }
   }
 
   Future<void> _handleDomainAction(
