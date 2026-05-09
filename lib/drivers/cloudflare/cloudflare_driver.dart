@@ -244,40 +244,92 @@ class CloudflareDriver implements DriverInterface {
   bool get supportsRenewDomain => false;
 
   @override
-  Widget buildDomainListItem(Map<String, dynamic> domainData) {
+  Widget buildDomainListItem(Map<String, dynamic> domainData, {
+    required VoidCallback onTap,
+    required VoidCallback onDelete,
+    required VoidCallback onRenew,
+    required bool supportsDelete,
+    required bool supportsRenew,
+  }) {
     final name = domainData['name']?.toString() ?? '';
     final status = domainData['status']?.toString() ?? '';
     final createdOn = domainData['created_on'];
-    final colorScheme = DnsDesignTokens.statusActive;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: colorScheme.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: onTap,
+      onLongPress: () => _showDomainMenu(null, name, onDelete, onRenew, supportsDelete, supportsRenew),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: DnsDesignTokens.statusActive.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.language, color: DnsDesignTokens.dnsTypeA, size: 22),
             ),
-            child: const Icon(Icons.language, color: DnsDesignTokens.dnsTypeA, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                const SizedBox(height: 2),
-                Text(_formatDate(createdOn), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-              ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+                  const SizedBox(height: 2),
+                  Text(_formatDate(createdOn), style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                ],
+              ),
             ),
-          ),
-          _StatusBadge(status: _translateStatus(status)),
-        ],
+            _StatusBadge(status: _translateStatus(status)),
+            const SizedBox(width: 4),
+            Icon(Icons.more_vert, size: 20, color: Colors.grey[500]),
+          ],
+        ),
       ),
     );
+  }
+
+  void _showDomainMenu(BuildContext? ctx, String name, VoidCallback onDelete, VoidCallback onRenew, bool supportsDelete, bool supportsRenew) {
+    if (ctx == null) {
+      onDelete;
+      onRenew;
+      return;
+    }
+    showMenu<String>(
+      context: ctx,
+      position: RelativeRect.fromLTRB(200, 100, 0, 0),
+      items: [
+        if (supportsRenew) const PopupMenuItem(value: 'renew', child: Text('续期')),
+        if (supportsDelete) PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: const Color(0xFFEF4444)))),
+      ],
+    ).then((value) {
+      if (value == 'delete') onDelete();
+      if (value == 'renew') onRenew();
+    });
+  }
+
+  @override
+  void showDomainListItemMenu(BuildContext context, Map<String, dynamic> domainData, {
+    required VoidCallback onDelete,
+    required VoidCallback onRenew,
+    required bool supportsDelete,
+    required bool supportsRenew,
+  }) {
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final offset = renderBox.localToGlobal(Offset.zero);
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(offset.dx + renderBox.size.width / 2, offset.dy + renderBox.size.height / 2, offset.dx + renderBox.size.width, offset.dy + renderBox.size.height),
+      items: [
+        if (supportsRenew) const PopupMenuItem(value: 'renew', child: Text('续期')),
+        if (supportsDelete) PopupMenuItem(value: 'delete', child: const Text('删除', style: TextStyle(color: Color(0xFFEF4444)))),
+      ],
+    ).then((value) {
+      if (value == 'delete') onDelete();
+      if (value == 'renew') onRenew();
+    });
   }
 
   @override

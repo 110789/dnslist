@@ -125,6 +125,7 @@ class _HomePageState extends State<HomePage> {
         itemBuilder: (listContext, index) {
           final domain = state.domains[index];
           return _DomainListItem(
+            key: ValueKey(domain['id']?.toString() ?? index),
             domain: domain,
             providerId: selected!.providerId,
             supportsDelete: supportsDelete,
@@ -545,7 +546,7 @@ class _DrawerHeader extends StatelessWidget {
   }
 }
 
-class _DomainListItem extends StatelessWidget {
+class _DomainListItem extends StatefulWidget {
   final Map<String, dynamic> domain;
   final String providerId;
   final bool supportsDelete;
@@ -555,6 +556,7 @@ class _DomainListItem extends StatelessWidget {
   final VoidCallback onRenew;
 
   const _DomainListItem({
+    super.key,
     required this.domain,
     required this.providerId,
     required this.supportsDelete,
@@ -565,45 +567,70 @@ class _DomainListItem extends StatelessWidget {
   });
 
   @override
+  State<_DomainListItem> createState() => _DomainListItemState();
+}
+
+class _DomainListItemState extends State<_DomainListItem> {
+  final GlobalKey _itemKey = GlobalKey();
+
+  void _handleLongPress() {
+    final driver = DriverFactory.get(widget.providerId);
+    if (driver == null) return;
+    final ctx = _itemKey.currentContext;
+    if (ctx == null) return;
+    driver.showDomainListItemMenu(
+      ctx,
+      widget.domain,
+      onDelete: widget.onDelete,
+      onRenew: widget.onRenew,
+      supportsDelete: widget.supportsDelete,
+      supportsRenew: widget.supportsRenew,
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final driver = DriverFactory.get(providerId);
+    final driver = DriverFactory.get(widget.providerId);
     if (driver != null) {
-      return InkWell(
-        onTap: onTap,
-        child: PopupMenuButton<String>(
-          icon: Icon(Icons.more_vert, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
-          onSelected: (value) {
-            if (value == 'delete') onDelete();
-            if (value == 'renew') onRenew();
-          },
-          itemBuilder: (ctx) => [
-            if (supportsRenew) const PopupMenuItem(value: 'renew', child: Text('续期')),
-            if (supportsDelete) PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: Theme.of(context).colorScheme.error))),
-          ],
-          child: driver.buildDomainListItem(domain),
+      return GestureDetector(
+        onLongPress: _handleLongPress,
+        child: Container(
+          key: _itemKey,
+          child: driver.buildDomainListItem(
+            widget.domain,
+            onTap: widget.onTap,
+            onDelete: widget.onDelete,
+            onRenew: widget.onRenew,
+            supportsDelete: widget.supportsDelete,
+            supportsRenew: widget.supportsRenew,
+          ),
         ),
       );
     }
 
-    final name = domain['name']?.toString() ?? '';
-    final status = domain['status']?.toString() ?? '';
+    final name = widget.domain['name']?.toString() ?? '';
+    final status = widget.domain['status']?.toString() ?? '';
     final colorScheme = Theme.of(context).colorScheme;
     return ListTile(
       leading: Icon(Icons.language, color: colorScheme.primary),
       title: Text(name),
       subtitle: Text(status, style: TextStyle(fontSize: 12, color: DnsDesignTokens.getStatusColor(status))),
-      onTap: onTap,
-      trailing: PopupMenuButton<String>(
-        icon: Icon(Icons.more_vert, size: 20, color: colorScheme.onSurfaceVariant),
-        onSelected: (value) {
-          if (value == 'delete') onDelete();
-          if (value == 'renew') onRenew();
-        },
-        itemBuilder: (ctx) => [
-          if (supportsRenew) const PopupMenuItem(value: 'renew', child: Text('续期')),
-          if (supportsDelete) PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: colorScheme.error))),
-        ],
-      ),
+      onTap: widget.onTap,
+      onLongPress: widget.supportsDelete || widget.supportsRenew
+          ? () {
+              showMenu<String>(
+                context: context,
+                position: RelativeRect.fromLTRB(200, 100, 0, 0),
+                items: [
+                  if (widget.supportsRenew) const PopupMenuItem(value: 'renew', child: Text('续期')),
+                  if (widget.supportsDelete) PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: colorScheme.error))),
+                ],
+              ).then((value) {
+                if (value == 'delete') widget.onDelete();
+                if (value == 'renew') widget.onRenew();
+              });
+            }
+          : null,
     );
   }
 }

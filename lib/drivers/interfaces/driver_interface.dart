@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
 abstract class DriverInterface {
@@ -45,7 +46,14 @@ abstract class DriverInterface {
 
   bool get supportsRenewDomain;
 
-  Widget buildDomainListItem(Map<String, dynamic> domainData);
+  Widget buildDomainListItem(
+    Map<String, dynamic> domainData, {
+    required VoidCallback onTap,
+    required VoidCallback onDelete,
+    required VoidCallback onRenew,
+    required bool supportsDelete,
+    required bool supportsRenew,
+  });
 
   Widget buildDnsRecordListItem(Map<String, dynamic> recordData);
 
@@ -58,4 +66,13 @@ abstract class DriverInterface {
   String getAddDomainTitle();
 
   Map<String, dynamic> prepareDomainData(Map<String, dynamic> input);
+
+  void showDomainListItemMenu(
+    BuildContext context,
+    Map<String, dynamic> domainData, {
+    required VoidCallback onDelete,
+    required VoidCallback onRenew,
+    required bool supportsDelete,
+    required bool supportsRenew,
+  });
 }
