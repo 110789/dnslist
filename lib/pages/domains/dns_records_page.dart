@@ -427,23 +427,9 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              '点击下方按钮添加DNS记录，开始配置解析',
+              '暂无DNS记录，请使用右下角按钮添加记录',
               style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () {
-                final credential = context.read<CredentialState>().selectedCredential;
-                if (credential != null) {
-                  _showAddRecordDialog(context, credential.providerId);
-                }
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('添加记录'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
             ),
           ],
         ),

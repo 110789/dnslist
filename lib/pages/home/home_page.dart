@@ -427,9 +427,6 @@ return RefreshIndicator(
   }
 
   Widget _buildEmptyDomainState(BuildContext context, String providerId) {
-    final driver = DriverFactory.get(providerId);
-    final supportsAdd = driver?.supportsAddDomain ?? false;
-
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -444,21 +441,10 @@ return RefreshIndicator(
             ),
             const SizedBox(height: 12),
             Text(
-              '点击下方按钮添加域名，开始管理DNS记录',
+              '暂无域名，请使用右下角按钮添加域名',
               style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
-            if (supportsAdd) ...[
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: () => _showAddDomainDialog(context, providerId),
-                icon: const Icon(Icons.add),
-                label: const Text('添加域名'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                ),
-              ),
-            ],
           ],
         ),
       ),
