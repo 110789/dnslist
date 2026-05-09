@@ -577,8 +577,6 @@ return RefreshIndicator(
           onLongPress: () {
             _showCredentialActionsSheet(ctx, credential, credentialState);
           },
-          onReorderStart: () {},
-          onReorderEnd: (_) {},
         );
       },
     );
@@ -689,8 +687,6 @@ class _CredentialListItem extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
-  final VoidCallback onReorderStart;
-  final void Function(int) onReorderEnd;
 
   const _CredentialListItem({
     super.key,
@@ -699,52 +695,88 @@ class _CredentialListItem extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     required this.onLongPress,
-    required this.onReorderStart,
-    required this.onReorderEnd,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: isSelected ? Colors.blue.withValues(alpha: 0.1) : null,
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onHorizontalDragStart: (_) => onReorderStart(),
-              onHorizontalDragEnd: (_) => onReorderEnd(index),
-              onLongPressStart: (_) => onLongPress(),
-              child: ListTile(
-                leading: Icon(
-                  isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected ? Colors.green : null,
+    return Row(
+      children: [
+        Expanded(
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              onLongPress: onLongPress,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(color: Colors.green, width: 2)
+                            : null,
+                        color: Colors.grey.shade100,
+                      ),
+                      child: Icon(
+                        isSelected ? Icons.check_circle : Icons.circle_outlined,
+                        color: isSelected ? Colors.green : Colors.grey,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            credential.providerName,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (credential.remark != null && credential.remark!.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              credential.remark!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                title: Text(credential.providerName),
-                subtitle: Text(
-                  credential.remark != null && credential.remark!.isNotEmpty
-                      ? credential.remark!
-                      : credential.providerId,
-                  style: const TextStyle(fontSize: 12),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                onTap: onTap,
               ),
             ),
           ),
-          Listener(
-            onPointerDown: (_) {},
-            child: ReorderableDragStartListener(
-              index: index,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-                child: Icon(Icons.drag_handle, color: Colors.grey),
+        ),
+        Listener(
+          onPointerDown: (_) {},
+          child: ReorderableDragStartListener(
+            index: index,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Icon(
+                Icons.drag_handle,
+                color: Colors.grey.shade400,
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
