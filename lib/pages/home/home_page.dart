@@ -305,20 +305,20 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         children: [
           _DrawerHeader(credentialCount: credentialState.credentials.length),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            child: _DrawerSettingsEntry(onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).push('/settings');
-            }),
-          ),
           Expanded(
             child: credentialState.credentials.isEmpty
                 ? _buildEmptyCredentialList(context)
                 : _buildCredentialList(context, credentialState, domainState),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: _DrawerSettingsEntry(onTap: () {
+              Navigator.pop(context);
+              GoRouter.of(context).push('/settings');
+            }),
+          ),
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: SizedBox(
               width: double.infinity,
               child: FilledButton.icon(onPressed: () => _showAddCredentialDialog(context), icon: const Icon(Icons.add), label: const Text('添加凭证')),
@@ -607,12 +607,13 @@ class _CredentialCardContent extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(DnsRadius.lg),
           child: Padding(
-            padding: const EdgeInsets.all(DnsSpacing.md),
+            padding: const EdgeInsets.symmetric(horizontal: DnsSpacing.md, vertical: DnsSpacing.sm + 4),
             child: Row(
               children: [
                 _buildProviderIcon(colorScheme),
                 const SizedBox(width: DnsSpacing.md),
                 Expanded(child: _buildInfo(colorScheme)),
+                Icon(Icons.chevron_right, size: 20, color: colorScheme.onSurfaceVariant),
               ],
             ),
           ),
@@ -626,18 +627,11 @@ class _CredentialCardContent extends StatelessWidget {
     final iconPath = driver?.providerIcon ?? '';
     Widget iconWidget;
     if (iconPath.endsWith('.svg')) {
-      iconWidget = SvgPicture.asset(iconPath, width: 32, height: 32);
+      iconWidget = SvgPicture.asset(iconPath, width: 20, height: 20);
     } else {
-      iconWidget = Image.asset(iconPath, width: 32, height: 32, errorBuilder: (_, __, ___) => Icon(Icons.language, size: 28, color: colorScheme.onSurfaceVariant));
+      iconWidget = Image.asset(iconPath, width: 20, height: 20, errorBuilder: (_, __, ___) => Icon(Icons.language, size: 20, color: colorScheme.onSurfaceVariant));
     }
-    return Container(
-      width: 40, height: 40,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: colorScheme.surfaceContainerHighest,
-      ),
-      child: ClipOval(child: SizedBox(width: 40, height: 40, child: iconWidget)),
-    );
+    return SizedBox(width: 20, height: 20, child: iconWidget);
   }
 
   Widget _buildInfo(ColorScheme colorScheme) {
