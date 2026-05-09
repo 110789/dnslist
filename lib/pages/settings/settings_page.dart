@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/state/theme_provider.dart';
-import '../../core/ui/adaptive_widgets.dart';
+import '../../core/ui/md3_widgets.dart';
+import '../../core/theme/design_system.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -9,26 +10,46 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.watch<ThemeProvider>();
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return AdaptiveScaffold(
-      title: '设置',
-      showBackButton: true,
+    return Scaffold(
+      backgroundColor: colorScheme.surface,
+      appBar: AppBar(
+        title: const Text('设置'),
+        centerTitle: true,
+        elevation: 0,
+        scrolledUnderElevation: 2,
+      ),
       body: ListView(
+        padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
         children: [
-          const SizedBox(height: 16),
-          _SectionHeader(title: '外观'),
-          _buildUIStyleTile(context, themeProvider),
-          _buildDarkModeTile(context, themeProvider),
-          const Divider(height: 32),
-          _SectionHeader(title: '关于'),
-          ListTile(
-            leading: const Icon(Icons.info_outline),
-            title: const Text('版本'),
+          DnsSectionHeader(title: '外观'),
+          DnsListTile(
+            leading: Icon(Icons.palette_outlined, color: colorScheme.primary),
+            title: '界面风格',
+            subtitle: Text(themeProvider.uiStyle == UIStyle.md3 ? 'Material Design 3' : 'Cupertino'),
+            trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+            onTap: () => _showUIStyleSheet(context, themeProvider),
+          ),
+          const DnsDivider(indent: 72),
+          DnsListTile(
+            leading: Icon(Icons.dark_mode_outlined, color: colorScheme.primary),
+            title: '深色模式',
+            subtitle: Text(_getDarkModeLabel(themeProvider.darkMode)),
+            trailing: Icon(Icons.chevron_right, color: colorScheme.onSurfaceVariant),
+            onTap: () => _showDarkModeSheet(context, themeProvider),
+          ),
+          const SizedBox(height: DnsSpacing.md),
+          DnsSectionHeader(title: '关于'),
+          DnsListTile(
+            leading: Icon(Icons.info_outline, color: colorScheme.primary),
+            title: '版本',
             subtitle: const Text('1.0.0'),
           ),
-          ListTile(
-            leading: const Icon(Icons.code),
-            title: const Text('Flutter'),
+          const DnsDivider(indent: 72),
+          DnsListTile(
+            leading: Icon(Icons.flutter_dash, color: colorScheme.primary),
+            title: 'Flutter',
             subtitle: const Text('跨平台DNS域名管理工具'),
           ),
         ],
@@ -36,13 +57,12 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildUIStyleTile(BuildContext context, ThemeProvider themeProvider) {
-    return ListTile(
-      leading: const Icon(Icons.palette_outlined),
-      title: const Text('界面风格'),
-      subtitle: Text(themeProvider.uiStyle == UIStyle.md3 ? 'Material Design 3' : 'Cupertino'),
-      onTap: () => _showUIStyleSheet(context, themeProvider),
-    );
+  String _getDarkModeLabel(DarkModeOption mode) {
+    switch (mode) {
+      case DarkModeOption.light: return '浅色';
+      case DarkModeOption.dark: return '深色';
+      case DarkModeOption.system: return '跟随系统';
+    }
   }
 
   void _showUIStyleSheet(BuildContext context, ThemeProvider themeProvider) {
@@ -52,63 +72,51 @@ class SettingsPage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                '选择界面风格',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.android),
-              title: const Text('Material Design 3'),
+            Padding(
+              padding: const EdgeInsets.all(DnsSpacing.md),
+              child: Text(
+                '选择界面风格',
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+            ),
+            DnsListTile(
+              leading: Icon(Icons.android, color: Theme.of(ctx).colorScheme.primary),
+              title: 'Material Design 3',
               subtitle: const Text('现代Android风格'),
               trailing: themeProvider.uiStyle == UIStyle.md3
-                  ? const Icon(Icons.check, color: Colors.green)
+                  ? Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary)
                   : null,
               onTap: () {
                 themeProvider.setUIStyle(UIStyle.md3);
                 Navigator.pop(ctx);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.apple),
-              title: const Text('Cupertino'),
+            const DnsDivider(indent: 72),
+            DnsListTile(
+              leading: Icon(Icons.apple, color: Theme.of(ctx).colorScheme.primary),
+              title: 'Cupertino',
               subtitle: const Text('iOS风格'),
               trailing: themeProvider.uiStyle == UIStyle.cupertino
-                  ? const Icon(Icons.check, color: Colors.green)
+                  ? Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary)
                   : null,
               onTap: () {
                 themeProvider.setUIStyle(UIStyle.cupertino);
                 Navigator.pop(ctx);
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: DnsSpacing.lg),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDarkModeTile(BuildContext context, ThemeProvider themeProvider) {
-    String darkModeLabel;
-    switch (themeProvider.darkMode) {
-      case DarkModeOption.light:
-        darkModeLabel = '浅色';
-        break;
-      case DarkModeOption.dark:
-        darkModeLabel = '深色';
-        break;
-      case DarkModeOption.system:
-        darkModeLabel = '跟随系统';
-        break;
-    }
-
-    return ListTile(
-      leading: const Icon(Icons.dark_mode_outlined),
-      title: const Text('深色模式'),
-      subtitle: Text(darkModeLabel),
-      onTap: () => _showDarkModeSheet(context, themeProvider),
     );
   }
 
@@ -119,69 +127,59 @@ class SettingsPage extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                '选择深色模式',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.light_mode),
-              title: const Text('浅色'),
+            Padding(
+              padding: const EdgeInsets.all(DnsSpacing.md),
+              child: Text(
+                '选择深色模式',
+                style: Theme.of(ctx).textTheme.titleMedium,
+              ),
+            ),
+            DnsListTile(
+              leading: Icon(Icons.light_mode, color: Theme.of(ctx).colorScheme.primary),
+              title: '浅色',
               trailing: themeProvider.darkMode == DarkModeOption.light
-                  ? const Icon(Icons.check, color: Colors.green)
+                  ? Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary)
                   : null,
               onTap: () {
                 themeProvider.setDarkMode(DarkModeOption.light);
                 Navigator.pop(ctx);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.dark_mode),
-              title: const Text('深色'),
+            const DnsDivider(indent: 72),
+            DnsListTile(
+              leading: Icon(Icons.dark_mode, color: Theme.of(ctx).colorScheme.primary),
+              title: '深色',
               trailing: themeProvider.darkMode == DarkModeOption.dark
-                  ? const Icon(Icons.check, color: Colors.green)
+                  ? Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary)
                   : null,
               onTap: () {
                 themeProvider.setDarkMode(DarkModeOption.dark);
                 Navigator.pop(ctx);
               },
             ),
-            ListTile(
-              leading: const Icon(Icons.settings_suggest),
-              title: const Text('跟随系统'),
+            const DnsDivider(indent: 72),
+            DnsListTile(
+              leading: Icon(Icons.settings_suggest, color: Theme.of(ctx).colorScheme.primary),
+              title: '跟随系统',
               trailing: themeProvider.darkMode == DarkModeOption.system
-                  ? const Icon(Icons.check, color: Colors.green)
+                  ? Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary)
                   : null,
               onTap: () {
                 themeProvider.setDarkMode(DarkModeOption.system);
                 Navigator.pop(ctx);
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: DnsSpacing.lg),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  final String title;
-
-  const _SectionHeader({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: Theme.of(context).colorScheme.primary,
         ),
       ),
     );

@@ -28,7 +28,6 @@ class AdaptiveScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeProvider = context.read<ThemeProvider>();
-    final isDark = themeProvider.isDarkMode;
     final isCupertino = themeProvider.uiStyle == UIStyle.cupertino;
 
     if (isCupertino) {
@@ -115,8 +114,7 @@ class AdaptiveButton extends StatelessWidget {
           : null,
       child: isLoading
           ? const SizedBox(
-              height: 20,
-              width: 20,
+              height: 20, width: 20,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : Row(
@@ -164,10 +162,7 @@ class AdaptiveTextField extends StatelessWidget {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
+          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           CupertinoTextField(
             controller: controller,
@@ -179,21 +174,13 @@ class AdaptiveTextField extends StatelessWidget {
             decoration: BoxDecoration(
               color: CupertinoColors.systemGrey6,
               borderRadius: BorderRadius.circular(12),
-              border: errorText != null
-                  ? Border.all(color: CupertinoColors.destructiveRed)
-                  : null,
+              border: errorText != null ? Border.all(color: CupertinoColors.destructiveRed) : null,
             ),
             onChanged: onChanged,
           ),
           if (errorText != null) ...[
             const SizedBox(height: 4),
-            Text(
-              errorText!,
-              style: const TextStyle(
-                fontSize: 12,
-                color: CupertinoColors.destructiveRed,
-              ),
-            ),
+            Text(errorText!, style: const TextStyle(fontSize: 12, color: CupertinoColors.destructiveRed)),
           ],
         ],
       );
@@ -201,11 +188,7 @@ class AdaptiveTextField extends StatelessWidget {
 
     return TextField(
       controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        errorText: errorText,
-      ),
+      decoration: InputDecoration(labelText: label, hintText: hint, errorText: errorText),
       obscureText: obscureText,
       keyboardType: keyboardType,
       maxLines: maxLines,
@@ -365,10 +348,7 @@ class AdaptiveSwitch extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           if (label != null) Text(label!),
-          CupertinoSwitch(
-            value: value,
-            onChanged: onChanged,
-          ),
+          CupertinoSwitch(value: value, onChanged: onChanged),
         ],
       );
     }
@@ -409,10 +389,7 @@ class AdaptiveSegmentedControl<T extends Object> extends StatelessWidget {
     }
 
     return SegmentedButton<T>(
-      segments: children.entries.map((e) => ButtonSegment(
-        value: e.key,
-        label: e.value as Widget,
-      )).toList(),
+      segments: children.entries.map((e) => ButtonSegment(value: e.key, label: e.value as Widget)).toList(),
       selected: {selectedValue},
       onSelectionChanged: (selection) {
         onValueChanged?.call(selection.first);
@@ -449,18 +426,10 @@ class AdaptiveEmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 72, color: color),
             const SizedBox(height: 24),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-            ),
+            Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600), textAlign: TextAlign.center),
             if (description != null) ...[
               const SizedBox(height: 12),
-              Text(
-                description!,
-                style: TextStyle(fontSize: 14, color: color),
-                textAlign: TextAlign.center,
-              ),
+              Text(description!, style: TextStyle(fontSize: 14, color: color), textAlign: TextAlign.center),
             ],
             if (action != null) ...[
               const SizedBox(height: 32),
@@ -485,10 +454,7 @@ class AdaptiveLoading extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const CircularProgressIndicator(),
-          if (message != null) ...[
-            const SizedBox(height: 16),
-            Text(message!),
-          ],
+          if (message != null) ...[const SizedBox(height: 16), Text(message!)],
         ],
       ),
     );

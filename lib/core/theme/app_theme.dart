@@ -1,107 +1,265 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+import 'design_system.dart';
+
+class AppColors {
+  static const success = DnsDesignTokens.success;
+  static const warning = DnsDesignTokens.warning;
+  static const error = DnsDesignTokens.error;
+  static const info = DnsDesignTokens.info;
+
+  static Color getDnsTypeColor(String type) => DnsDesignTokens.getDnsTypeColor(type);
+  static Color getStatusColor(String status) => DnsDesignTokens.getStatusColor(status);
+}
+
+class AppSpacing {
+  static const double xs = DnsSpacing.xs;
+  static const double sm = DnsSpacing.sm;
+  static const double md = DnsSpacing.md;
+  static const double lg = DnsSpacing.lg;
+  static const double xl = DnsSpacing.xl;
+  static const double xxl = DnsSpacing.xxl;
+}
+
+class AppRadius {
+  static const double sm = DnsRadius.sm;
+  static const double md = DnsRadius.md;
+  static const double lg = DnsRadius.lg;
+  static const double xl = DnsRadius.xl;
+  static const double full = DnsRadius.full;
+}
 
 class AppTheme {
-  static const _primarySeed = Color(0xFF2563EB);
-
   static ThemeData get md3Light {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: _primarySeed,
+      seedColor: DnsDesignTokens.primarySeed,
       brightness: Brightness.light,
     );
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       fontFamily: 'Roboto',
-      scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+      scaffoldBackgroundColor: colorScheme.surface,
       appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 2,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
+        surfaceTintColor: colorScheme.surfaceTint,
+        titleTextStyle: TextStyle(
+          fontSize: 18, fontWeight: FontWeight.w600,
+          color: colorScheme.onSurface, fontFamily: 'Roboto',
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFFE2E8F0))),
+        color: colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          side: BorderSide(color: colorScheme.outlineVariant),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF1F5F9),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colorScheme.primary, width: 2)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        fillColor: colorScheme.surfaceContainerHighest,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide(color: colorScheme.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide(color: colorScheme.error),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: DnsElevation.level3,
+        highlightElevation: DnsElevation.level4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.lg)),
       ),
-      listTileTheme: const ListTileThemeData(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
       ),
-      dividerTheme: const DividerThemeData(
+      dividerTheme: DividerThemeData(
         space: 1,
         thickness: 1,
-        color: Color(0xFFE2E8F0),
+        color: colorScheme.outlineVariant,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.xl)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(DnsRadius.xl)),
+        ),
+        showDragHandle: true,
+        dragHandleColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        elevation: 0,
+        height: 64,
+        indicatorColor: colorScheme.secondaryContainer,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colorScheme.onSurface);
+          }
+          return TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: colorScheme.onSurfaceVariant);
+        }),
       ),
     );
   }
 
   static ThemeData get md3Dark {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: _primarySeed,
+      seedColor: DnsDesignTokens.primarySeedDark,
       brightness: Brightness.dark,
     );
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
       fontFamily: 'Roboto',
-      scaffoldBackgroundColor: const Color(0xFF0F172A),
+      scaffoldBackgroundColor: colorScheme.surface,
       appBarTheme: AppBarTheme(
         centerTitle: true,
         elevation: 0,
-        scrolledUnderElevation: 1,
+        scrolledUnderElevation: 2,
         backgroundColor: colorScheme.surface,
         foregroundColor: colorScheme.onSurface,
+        surfaceTintColor: colorScheme.surfaceTint,
+        titleTextStyle: TextStyle(
+          fontSize: 18, fontWeight: FontWeight.w600,
+          color: colorScheme.onSurface, fontFamily: 'Roboto',
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: Color(0xFF334155))),
+        color: colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          side: BorderSide(color: colorScheme.outlineVariant),
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFF334155),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF334155))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: colorScheme.primary, width: 2)),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        fillColor: colorScheme.surfaceContainerHighest,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide(color: colorScheme.outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide(color: colorScheme.error),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
         ),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: DnsElevation.level3,
+        highlightElevation: DnsElevation.level4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.lg)),
       ),
-      listTileTheme: const ListTileThemeData(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      listTileTheme: ListTileThemeData(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
       ),
-      dividerTheme: const DividerThemeData(
+      dividerTheme: DividerThemeData(
         space: 1,
         thickness: 1,
-        color: Color(0xFF334155),
+        color: colorScheme.outlineVariant,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.xl)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(DnsRadius.xl)),
+        ),
+        showDragHandle: true,
+        dragHandleColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        elevation: 0,
+        height: 64,
+        indicatorColor: colorScheme.secondaryContainer,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colorScheme.onSurface);
+          }
+          return TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: colorScheme.onSurfaceVariant);
+        }),
       ),
     );
   }
@@ -125,59 +283,4 @@ class AppTheme {
       primaryColor: Color(0xFFF1F5F9),
     ),
   );
-}
-
-class AppColors {
-  static const success = Color(0xFF10B981);
-  static const warning = Color(0xFFF59E0B);
-  static const error = Color(0xFFEF4444);
-  static const info = Color(0xFF3B82F6);
-
-  static const dnsTypeA = Color(0xFF3B82F6);
-  static const dnsTypeAAAA = Color(0xFF8B5CF6);
-  static const dnsTypeCNAME = Color(0xFF10B981);
-  static const dnsTypeMX = Color(0xFFF59E0B);
-  static const dnsTypeTXT = Color(0xFF14B8A6);
-  static const dnsTypeNS = Color(0xFF6366F1);
-  static const dnsTypeSRV = Color(0xFFEC4899);
-
-  static Color getTypeColor(String type) {
-    switch (type.toUpperCase()) {
-      case 'A': return dnsTypeA;
-      case 'AAAA': return dnsTypeAAAA;
-      case 'CNAME': return dnsTypeCNAME;
-      case 'MX': return dnsTypeMX;
-      case 'TXT': return dnsTypeTXT;
-      case 'NS': return dnsTypeNS;
-      case 'SRV': return dnsTypeSRV;
-      default: return Colors.grey;
-    }
-  }
-
-  static Color getStatusColor(String status) {
-    switch (status) {
-      case '活跃': case 'active': return success;
-      case '待处理': case 'pending': return warning;
-      case '已过期': case 'expired': return error;
-      case '已暂停': case 'suspended': return Colors.grey;
-      case '已删除': case 'deleted': return error.withValues(alpha: 0.6);
-      default: return Colors.grey;
-    }
-  }
-}
-
-class AppSpacing {
-  static const xs = 4.0;
-  static const sm = 8.0;
-  static const md = 16.0;
-  static const lg = 24.0;
-  static const xl = 32.0;
-  static const xxl = 48.0;
-}
-
-class AppRadius {
-  static const sm = 8.0;
-  static const md = 12.0;
-  static const lg = 16.0;
-  static const xl = 24.0;
 }
