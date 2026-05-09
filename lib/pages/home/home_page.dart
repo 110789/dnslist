@@ -452,14 +452,14 @@ class _HomePageState extends State<HomePage> {
             Navigator.pop(ctx);
           },
           onLongPress: () {
-            _showCredentialActionsSheet(ctx, credential, credentialState);
+            _showCredentialBottomSheet(ctx, credential, credentialState);
           },
         );
       },
     );
   }
 
-  void _showCredentialActionsSheet(
+  void _showCredentialBottomSheet(
     BuildContext context,
     CredentialModel credential,
     CredentialState credentialState,
@@ -470,9 +470,27 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12),
+              decoration: BoxDecoration(
+                color: Theme.of(ctx).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(DnsSpacing.md),
+              child: Text(
+                credential.providerName,
+                style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const DnsDivider(),
             ListTile(
-              leading: const Icon(Icons.edit),
+              leading: Icon(Icons.edit, color: Theme.of(ctx).colorScheme.primary),
               title: const Text('编辑凭证'),
               onTap: () {
                 Navigator.pop(ctx);
@@ -480,14 +498,14 @@ class _HomePageState extends State<HomePage> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
-              title: Text('删除凭证', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              leading: Icon(Icons.delete, color: Theme.of(ctx).colorScheme.error),
+              title: Text('删除凭证', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
               onTap: () {
                 Navigator.pop(ctx);
                 _showDeleteCredentialDialog(context, credential, credentialState);
               },
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: DnsSpacing.md),
           ],
         ),
       ),
@@ -549,7 +567,7 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _CredentialItem extends StatelessWidget {
+class _CredentialItem extends StatefulWidget {
   final int index;
   final CredentialModel credential;
   final bool isSelected;
@@ -566,78 +584,163 @@ class _CredentialItem extends StatelessWidget {
   });
 
   @override
+  State<_CredentialItem> createState() => _CredentialItemState();
+}
+
+class _CredentialItemState extends State<_CredentialItem> {
+  bool _isPressed = false;
+
+  @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Material(
-      color: isSelected
-          ? colorScheme.primaryContainer.withValues(alpha: 0.3)
-          : Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: DnsSpacing.md,
-            vertical: DnsSpacing.sm + 4,
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: DnsSpacing.md,
+        vertical: DnsSpacing.xs,
+      ),
+      child: Material(
+        color: widget.isSelected
+            ? colorScheme.primaryContainer.withValues(alpha: 0.4)
+            : colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(DnsRadius.md),
+        elevation: widget.isSelected ? 0 : 0,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(DnsRadius.md),
+            border: Border.all(
+              color: widget.isSelected
+                  ? colorScheme.primary.withValues(alpha: 0.5)
+                  : colorScheme.outlineVariant.withValues(alpha: 0.6),
+              width: widget.isSelected ? 1.5 : 1,
+            ),
           ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected
-                      ? colorScheme.primary.withValues(alpha: 0.15)
-                      : colorScheme.surfaceContainerHighest,
-                  border: isSelected
-                      ? Border.all(color: colorScheme.primary, width: 2)
-                      : null,
-                ),
-                child: Icon(
-                  isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                  size: 22,
-                ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(DnsRadius.md),
+            child: Row(
+              children: [
+                Expanded(child: _buildItemBody(context, colorScheme)),
+                _buildDragHandle(context, colorScheme),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildItemBody(BuildContext context, ColorScheme colorScheme) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        color: _isPressed
+            ? colorScheme.onSurface.withValues(alpha: 0.04)
+            : Colors.transparent,
+        padding: const EdgeInsets.symmetric(
+          horizontal: DnsSpacing.md,
+          vertical: DnsSpacing.sm + 2,
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.isSelected
+                    ? colorScheme.primary.withValues(alpha: 0.15)
+                    : colorScheme.surfaceContainerHighest,
+                border: widget.isSelected
+                    ? Border.all(color: colorScheme.primary, width: 2)
+                    : Border.all(color: colorScheme.outlineVariant, width: 1),
               ),
-              const SizedBox(width: DnsSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+              child: Icon(
+                widget.isSelected ? Icons.check_circle : Icons.circle_outlined,
+                color: widget.isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: DnsSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.credential.providerName,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (widget.credential.remark != null && widget.credential.remark!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
                     Text(
-                      credential.providerName,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      widget.credential.remark!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (credential.remark != null && credential.remark!.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        credential.remark!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
                   ],
-                ),
+                ],
               ),
-              ReorderableDragStartListener(
-                index: index,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Icon(
-                    Icons.drag_handle,
-                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
-                  ),
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
               ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDragHandle(BuildContext context, ColorScheme colorScheme) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      child: ReorderableDragStartListener(
+        index: widget.index,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          width: 44,
+          height: double.infinity,
+          color: _isPressed
+              ? colorScheme.onSurface.withValues(alpha: 0.04)
+              : Colors.transparent,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.drag_indicator,
+                  size: 20,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                ),
+                const SizedBox(height: 2),
+                Icon(
+                  Icons.drag_indicator,
+                  size: 20,
+                  color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+                ),
+              ],
+            ),
           ),
         ),
       ),
