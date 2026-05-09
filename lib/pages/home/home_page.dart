@@ -746,10 +746,8 @@ class _DragAwareCredentialCard extends StatelessWidget {
               padding: const EdgeInsets.all(DnsSpacing.md),
               child: Row(
                 children: [
-                  _buildLeadingIndicator(colorScheme),
-                  const SizedBox(width: DnsSpacing.sm),
                   _buildProviderIcon(colorScheme),
-                  const SizedBox(width: DnsSpacing.sm),
+                  const SizedBox(width: DnsSpacing.md),
                   Expanded(child: _buildInfo(colorScheme)),
                   _buildDragHandle(colorScheme),
                 ],
