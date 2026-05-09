@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../services/credential_state.dart';
 import '../../services/domain_state.dart';
 import '../../drivers/driver_factory.dart';
+import '../../utils/toast_util.dart';
 
 class DnsRecordsPage extends StatefulWidget {
   final String domainId;
@@ -28,20 +29,6 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId);
       }
     });
-  }
-
-  void _showResultSnackBar(BuildContext context, bool success, String? message, String? statusCode) {
-    final content = statusCode != null 
-        ? '${message ?? (success ? '操作成功' : '操作失败')}\n状态码: $statusCode'
-        : (message ?? (success ? '操作成功' : '操作失败'));
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(content),
-        backgroundColor: success ? Colors.green : Colors.red,
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   void _showAddRecordDialog(BuildContext context, String providerId) {
@@ -114,7 +101,11 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   recordData,
                 );
                 if (mounted) {
-                  _showResultSnackBar(context, result['success'], result['error'], result['errorCode']);
+                  if (result['success']) {
+                    ToastUtil.showSuccess(context, '添加记录成功');
+                  } else {
+                    ToastUtil.showError(context, result['error'] ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
+                  }
                 }
               },
               child: const Text('添加'),
@@ -193,7 +184,11 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   recordData,
                 );
                 if (mounted) {
-                  _showResultSnackBar(context, result['success'], result['error'], result['errorCode']);
+                  if (result['success']) {
+                    ToastUtil.showSuccess(context, '更新记录成功');
+                  } else {
+                    ToastUtil.showError(context, result['error'] ?? '更新失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
+                  }
                 }
               },
               child: const Text('保存'),
@@ -231,7 +226,11 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         record['id'].toString(),
       );
       if (mounted) {
-        _showResultSnackBar(context, result['success'], result['error'], result['errorCode']);
+        if (result['success']) {
+          ToastUtil.showSuccess(context, '删除记录成功');
+        } else {
+          ToastUtil.showError(context, result['error'] ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
+        }
       }
     }
   }

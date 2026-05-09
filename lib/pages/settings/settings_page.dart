@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/credential_state.dart';
-import '../../utils/status_code_dialog.dart';
+import '../../utils/toast_util.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -52,14 +52,10 @@ class SettingsPage extends StatelessWidget {
             child: const Text('取消'),
           ),
           TextButton(
-            onPressed: () async {
+            onPressed: () {
               context.read<CredentialState>().removeCredential(id);
               Navigator.pop(ctx);
-              await StatusCodeDialog.showResult(
-                context: context,
-                success: true,
-                message: '删除凭证成功',
-              );
+              ToastUtil.showSuccess(context, '删除凭证成功');
             },
             child: const Text('删除', style: TextStyle(color: Colors.red)),
           ),

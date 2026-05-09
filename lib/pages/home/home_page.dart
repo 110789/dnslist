@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../services/credential_state.dart';
 import '../../services/domain_state.dart';
 import '../../drivers/driver_factory.dart';
+import '../../utils/toast_util.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -109,34 +110,20 @@ class _HomePageState extends State<HomePage> {
 
               final result = await domainState.addDomain(providerId, domainData);
               if (!result['success'] && context.mounted) {
-                _showResultSnackBar(context, false, result['error'], result['errorCode']);
+                ToastUtil.showError(context, result['error'] ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
               } else {
-                domainState.loadDomains(
+                await domainState.loadDomains(
                   providerId,
                   context.read<CredentialState>().selectedCredential!.credentials,
                 );
                 if (context.mounted) {
-                  _showResultSnackBar(context, true, '添加成功', result['statusCode']);
+                  ToastUtil.showSuccess(context, '添加成功');
                 }
               }
             },
             child: const Text('添加'),
           ),
         ],
-      ),
-    );
-  }
-
-  void _showResultSnackBar(BuildContext context, bool success, String? message, String? statusCode) {
-    final content = statusCode != null 
-        ? '${message ?? (success ? '操作成功' : '操作失败')}\n状态码: $statusCode'
-        : (message ?? (success ? '操作成功' : '操作失败'));
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(content),
-        backgroundColor: success ? Colors.green : Colors.red,
-        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -243,7 +230,11 @@ class _HomePageState extends State<HomePage> {
                 if (confirm == true && selected != null) {
                   final result = await state.deleteDomain(selected.providerId, domainId);
                   if (context.mounted) {
-                    _showResultSnackBar(context, result['success'], result['error'] ?? '删除成功', result['statusCode']);
+                    if (result['success']) {
+                      ToastUtil.showSuccess(context, '删除成功');
+                    } else {
+                      ToastUtil.showError(context, result['error'] ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
+                    }
                   }
                 }
               } else if (value == 'renew') {
@@ -254,9 +245,9 @@ class _HomePageState extends State<HomePage> {
                       final msg = result['remaining_days'] != null 
                           ? '续期成功，剩余 ${result['remaining_days']} 天'
                           : '续期成功';
-                      _showResultSnackBar(context, true, msg, result['statusCode']);
+                      ToastUtil.showSuccess(context, msg);
                     } else {
-                      _showResultSnackBar(context, false, result['error'], result['errorCode']);
+                      ToastUtil.showError(context, result['error'] ?? '续期失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null);
                     }
                   }
                 }

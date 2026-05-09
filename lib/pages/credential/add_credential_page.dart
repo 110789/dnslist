@@ -5,7 +5,7 @@ import '../../services/credential_state.dart';
 import '../../services/credential_storage.dart';
 import '../../services/credential_validation.dart';
 import '../../drivers/driver_factory.dart';
-import '../../utils/status_code_dialog.dart';
+import '../../utils/toast_util.dart';
 
 class AddCredentialPage extends StatefulWidget {
   const AddCredentialPage({super.key});
@@ -189,15 +189,8 @@ class _AddCredentialPageState extends State<AddCredentialPage> {
 
     await context.read<CredentialState>().addCredential(credential);
     if (mounted) {
-      await StatusCodeDialog.showResult(
-        context: context,
-        success: true,
-        message: '添加凭证成功',
-        statusCode: result['statusCode'],
-      );
-      if (mounted) {
-        context.pop();
-      }
+      ToastUtil.showSuccess(context, '添加凭证成功');
+      context.pop();
     }
   }
 }
