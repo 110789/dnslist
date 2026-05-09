@@ -417,14 +417,6 @@ class _HomePageState extends State<HomePage> {
             title: const Text('添加凭证'),
             onTap: () => _showAddCredentialDialog(context),
           ),
-          ListTile(
-            leading: const Icon(Icons.settings),
-            title: const Text('设置'),
-            onTap: () {
-              Navigator.pop(context);
-              GoRouter.of(context).push('/settings');
-            },
-          ),
         ],
       ),
     );
@@ -487,27 +479,7 @@ class _HomePageState extends State<HomePage> {
   ) {
     return Container(
       color: isSelected ? Colors.blue.withValues(alpha: 0.1) : null,
-      child: ListTile(
-        leading: Icon(
-          isSelected ? Icons.check_circle : Icons.circle_outlined,
-          color: isSelected ? Colors.green : null,
-        ),
-        title: Text(credential.providerName),
-        subtitle: Text(
-          credential.remark != null && credential.remark!.isNotEmpty
-              ? credential.remark!
-              : credential.providerId,
-          style: const TextStyle(fontSize: 12),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: ReorderableDragStartListener(
-          index: index,
-          child: const Padding(
-            padding: EdgeInsets.all(8.0),
-            child: Icon(Icons.drag_handle, color: Colors.grey),
-          ),
-        ),
+      child: InkWell(
         onTap: () {
           credentialState.selectCredential(credential.id);
           domainState.clear();
@@ -517,6 +489,34 @@ class _HomePageState extends State<HomePage> {
         onLongPress: () {
           _showCredentialActionsSheet(context, credential, credentialState);
         },
+        child: Row(
+          children: [
+            Expanded(
+              child: ListTile(
+                leading: Icon(
+                  isSelected ? Icons.check_circle : Icons.circle_outlined,
+                  color: isSelected ? Colors.green : null,
+                ),
+                title: Text(credential.providerName),
+                subtitle: Text(
+                  credential.remark != null && credential.remark!.isNotEmpty
+                      ? credential.remark!
+                      : credential.providerId,
+                  style: const TextStyle(fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            ReorderableDragStartListener(
+              index: index,
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(Icons.drag_handle, color: Colors.grey),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

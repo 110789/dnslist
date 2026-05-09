@@ -1,11 +1,9 @@
 import 'package:go_router/go_router.dart';
 import '../../pages/home/home_page.dart';
-import '../../pages/settings/settings_page.dart';
 import '../../pages/domains/dns_records_page.dart';
 
 class RouteNames {
   static const String home = 'home';
-  static const String settings = 'settings';
   static const String dnsRecords = 'dnsRecords';
 
   RouteNames._();
@@ -13,7 +11,6 @@ class RouteNames {
 
 class RoutePaths {
   static const String home = '/';
-  static const String settings = '/settings';
   static const String dnsRecords = '/domains/:domainId/records';
 
   RoutePaths._();
@@ -26,10 +23,6 @@ class AppRouter {
       GoRoute(
         path: RoutePaths.home,
         builder: (context, state) => const HomePage(),
-      ),
-      GoRoute(
-        path: RoutePaths.settings,
-        builder: (context, state) => const SettingsPage(),
       ),
       GoRoute(
         path: '/domains/:domainId/records',
