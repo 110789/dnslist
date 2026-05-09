@@ -228,13 +228,21 @@ class CloudflareDriver implements DriverInterface {
   }
 
   @override
-  Future<void> deleteDomain(String domainId) async {
-    if (_client == null) return;
+  Future<Map<String, dynamic>> deleteDomain(String domainId) async {
+    if (_client == null) {
+      return {'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+    }
 
     try {
-      await _client!.delete('/zones/$domainId');
+      final response = await _client!.delete('/zones/$domainId');
+      
+      if (response.data['success'] == true) {
+        return {'success': true, 'statusCode': 'OK'};
+      }
+      
+      return _parseError(response.data);
     } catch (e) {
-      // ignore
+      return {'error': e.toString(), 'errorCode': 'NETWORK_ERROR', 'success': false};
     }
   }
 

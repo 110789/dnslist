@@ -179,11 +179,20 @@ class DomainState extends ChangeNotifier {
         return result;
       }
 
-      await driver.deleteDomain(domainId);
-      _domains.removeWhere((d) => d['id'].toString() == domainId.toString());
+      final result = await driver.deleteDomain(domainId);
+      
+      if (result['success'] == true) {
+        _domains.removeWhere((d) => d['id'].toString() == domainId.toString());
+        _isLoading = false;
+        notifyListeners();
+        return result;
+      }
+      
+      _error = result['error'] as String? ?? '删除失败';
+      _errorCode = result['errorCode'] as String? ?? 'UNKNOWN';
       _isLoading = false;
       notifyListeners();
-      return {'success': true, 'statusCode': 'OK'};
+      return result;
     } catch (e) {
       _error = e.toString();
       _errorCode = 'EXCEPTION';

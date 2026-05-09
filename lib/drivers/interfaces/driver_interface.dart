@@ -35,7 +35,7 @@ abstract class DriverInterface {
 
   Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData);
 
-  Future<void> deleteDomain(String domainId);
+  Future<Map<String, dynamic>> deleteDomain(String domainId);
 
   Future<Map<String, dynamic>> renewDomain(String domainId);
 
