@@ -231,16 +231,16 @@ class DnsSectionHeader extends StatelessWidget {
 class DnsTypeBadge extends StatelessWidget {
   final String type;
   final bool compact;
-  static const double _size = 52.0;
+  static const double _size = 60.0;
 
   const DnsTypeBadge({super.key, required this.type, this.compact = false});
 
   double get _fontSize {
     final len = type.length;
-    if (len <= 2) return 18.0;
-    if (len == 3) return 15.0;
-    if (len == 4) return 13.0;
-    return 11.0;
+    if (len <= 2) return 20.0;
+    if (len == 3) return 17.0;
+    if (len == 4) return 14.0;
+    return 12.0;
   }
 
   @override
@@ -251,20 +251,23 @@ class DnsTypeBadge extends StatelessWidget {
       width: _size,
       height: _size,
       child: Center(
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            decoration: BoxDecoration(
-              color: colorScheme.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              type,
-              style: TextStyle(
-                fontSize: _fontSize,
-                fontWeight: FontWeight.w700,
-                color: colorScheme.onPrimary,
+        child: Container(
+          width: _size,
+          height: _size,
+          decoration: BoxDecoration(
+            color: colorScheme.primary,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                type,
+                style: TextStyle(
+                  fontSize: _fontSize,
+                  fontWeight: FontWeight.w700,
+                  color: colorScheme.onPrimary,
+                ),
               ),
             ),
           ),
