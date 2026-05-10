@@ -266,7 +266,6 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
       
-      await loadDnsRecords(providerId, domainId);
       return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
     } catch (e) {
       _error = e.toString();
@@ -304,7 +303,6 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
       
-      await loadDnsRecords(providerId, domainId);
       return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
     } catch (e) {
       _error = e.toString();
@@ -333,7 +331,6 @@ class DomainState extends ChangeNotifier {
       }
 
       await driver.deleteDnsRecord(domainId, recordId);
-      await loadDnsRecords(providerId, domainId);
       _isLoading = false;
       notifyListeners();
       return {'success': true, 'statusCode': 'OK'};
