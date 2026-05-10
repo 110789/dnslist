@@ -179,7 +179,6 @@ class DomainState extends ChangeNotifier {
       final result = await driver.deleteDomain(domainId);
 
       if (result['success'] == true) {
-        _domains.removeWhere((d) => d['id'].toString() == domainId.toString());
         notifyListeners();
         return result;
       }

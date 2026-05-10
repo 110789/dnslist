@@ -205,6 +205,7 @@ class _HomePageState extends State<HomePage> {
       if (result['success']) {
         final msg = result['remaining_days'] != null ? '续期成功，剩余 ${result['remaining_days']} 天' : '续期成功';
         ToastUtil.showSuccess(context, msg);
+        await state.refreshDomains(selected.providerId, selected.credentials);
       } else {
         final driver = DriverFactory.get(selected.providerId);
         final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
@@ -268,7 +269,7 @@ class _HomePageState extends State<HomePage> {
                 final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
                 ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
               } else {
-                await domainState.loadDomains(providerId, context.read<CredentialState>().selectedCredential!.credentials);
+                await domainState.refreshDomains(providerId, context.read<CredentialState>().selectedCredential!.credentials);
                 if (context.mounted) ToastUtil.showSuccess(context, '添加成功');
               }
             },
