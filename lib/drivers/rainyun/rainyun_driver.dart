@@ -6,10 +6,10 @@ import '../../utils/network/api_client.dart';
 import '../../core/config/app_config.dart';
 import '../../core/theme/design_system.dart';
 
-class YuyunDriver implements DriverInterface {
-  static const String _providerId = 'yuyun';
+class RainyunDriver implements DriverInterface {
+  static const String _providerId = 'rainyun';
   static const String _providerName = '雨云';
-  static const String _providerIcon = 'assets/icons/yuyun.svg';
+  static const String _providerIcon = 'assets/icons/rainyun.svg';
 
   static const Map<String, String> _errorCodeMap = {
     'auth_invalid_credentials': 'API 密钥无效，请检查密钥是否正确',
@@ -143,7 +143,7 @@ class YuyunDriver implements DriverInterface {
 
     try {
       final dio = Dio(BaseOptions(
-        baseUrl: AppConfig.yuyunBaseUrl,
+        baseUrl: AppConfig.rainyunBaseUrl,
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         headers: {
@@ -169,7 +169,7 @@ class YuyunDriver implements DriverInterface {
         final success = data['success'];
         if (success == true || success == 'true') {
           _client = ApiClient(
-            baseUrl: AppConfig.yuyunBaseUrl,
+            baseUrl: AppConfig.rainyunBaseUrl,
             headers: {
               'X-Api-Key': apiKey,
               'Content-Type': 'application/json',
@@ -636,7 +636,7 @@ class YuyunDriver implements DriverInterface {
             ),
           ),
           const SizedBox(width: 8),
-          _YuyunTtlTag(ttl: ttl),
+          _RainyunTtlTag(ttl: ttl),
           if (line != 'DEFAULT') ...[
             const SizedBox(width: 4),
             _LineTag(line: line),
@@ -657,9 +657,9 @@ class YuyunDriver implements DriverInterface {
   }
 }
 
-class _YuyunTtlTag extends StatelessWidget {
+class _RainyunTtlTag extends StatelessWidget {
   final int ttl;
-  const _YuyunTtlTag({required this.ttl});
+  const _RainyunTtlTag({required this.ttl});
 
   String get _label {
     if (ttl <= 0) return 'TTL: $ttl';

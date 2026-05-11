@@ -6,7 +6,7 @@ class AppConfig {
   static const String dnsheBaseUrl = 'https://api005.dnshe.com/index.php';
   static const String dnspodBaseUrl = 'https://dnspod.tencentcloudapi.com';
   static const String cloudnsBaseUrl = 'https://api.cloudns.net';
-  static const String yuyunBaseUrl = 'https://api.v2.rainyun.com';
+  static const String rainyunBaseUrl = 'https://api.v2.rainyun.com';
 
   static const int defaultPageSize = 20;
   static const int connectionTimeout = 30000;
