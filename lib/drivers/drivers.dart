@@ -6,3 +6,4 @@ export 'cloudflare/cloudflare_driver.dart';
 export 'dnshe/dnshe_driver.dart';
 export 'dnspod/dnspod_driver.dart';
 export 'cloudns/cloudns_driver.dart';
+export 'yuyun/yuyun_driver.dart';

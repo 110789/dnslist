@@ -3,6 +3,7 @@ import 'cloudflare/cloudflare_driver.dart';
 import 'dnshe/dnshe_driver.dart';
 import 'dnspod/dnspod_driver.dart';
 import 'cloudns/cloudns_driver.dart';
+import 'yuyun/yuyun_driver.dart';
 
 class DriverRegistry {
   static bool _registered = false;
@@ -13,6 +14,7 @@ class DriverRegistry {
     DriverFactory.register(DnsheDriver());
     DriverFactory.register(DnspodDriver());
     DriverFactory.register(ClouDNSDriver());
+    DriverFactory.register(YuyunDriver());
     _registered = true;
   }
 
