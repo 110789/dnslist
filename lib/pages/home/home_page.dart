@@ -132,30 +132,15 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    final showCenterLoading = state.showCenterLoading;
+    final isLoading = state.loadingState == LoadingState.loading;
+    if (isLoading && state.domains.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
+    final showCenterLoading = state.showCenterLoading;
     if (showCenterLoading) {
       return Stack(
         children: [
-          if (state.domains.isNotEmpty)
-            ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
-              itemCount: state.domains.length,
-              separatorBuilder: (_, __) => const DnsDivider(),
-              itemBuilder: (listContext, index) {
-                final domain = state.domains[index];
-                return _DomainListItem(
-                  key: ValueKey(domain['id']?.toString() ?? index),
-                  domain: domain,
-                  supportsDelete: false,
-                  supportsRenew: false,
-                  supportsShowNameServers: false,
-                  onTap: () {},
-                  onDelete: () {},
-                  onRenew: () {},
-                );
-              },
-            ),
           Positioned.fill(
             child: Container(
               color: Colors.black.withValues(alpha: 0.1),
