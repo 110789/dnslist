@@ -239,14 +239,14 @@ class _HomePageState extends State<HomePage> {
                           selected.credentials,
                         );
                         if (dialogContext.mounted) {
+                          final driver = DriverFactory.get(selected.providerId);
+                          final errCode = result['errorCode']?.toString();
+                          final errorMsg = errCode != null ? driver?.mapErrorCode(errCode) : result['error'];
                           if (result['success'] == true) {
                             Navigator.pop(dialogContext);
                             ToastUtil.showSuccess(context, '域名已删除');
                           } else {
-                            setDialogState(() => isDeleting = false);
-                            final driver = DriverFactory.get(selected.providerId);
-                            final errCode = result['errorCode']?.toString();
-                            final errorMsg = errCode != null ? driver?.mapErrorCode(errCode) : result['error'];
+                            Navigator.pop(dialogContext);
                             ToastUtil.showError(context, errorMsg ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
                           }
                         }
@@ -409,13 +409,13 @@ class _HomePageState extends State<HomePage> {
                           context.read<CredentialState>().selectedCredential!.credentials,
                         );
                         if (dialogContext.mounted) {
+                          final errCode = result['errorCode']?.toString();
+                          final errorMsg = errCode != null ? driver.mapErrorCode(errCode) : result['error'];
                           if (result['success'] == true) {
                             Navigator.pop(dialogContext);
                             ToastUtil.showSuccess(context, '域名添加成功');
                           } else {
-                            setDialogState(() => isSubmitting = false);
-                            final errCode = result['errorCode']?.toString();
-                            final errorMsg = errCode != null ? driver.mapErrorCode(errCode) : result['error'];
+                            Navigator.pop(dialogContext);
                             ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
                           }
                         }

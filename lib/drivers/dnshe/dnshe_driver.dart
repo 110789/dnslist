@@ -139,11 +139,70 @@ class DnsheDriver implements DriverInterface {
     final data = responseData is Map ? responseData : {};
     final errorCode = data['error_code']?.toString() ?? data['errorCode']?.toString() ?? 'UNKNOWN';
     final message = data['message']?.toString() ?? data['error']?.toString() ?? '';
+    final details = data['details'] is Map ? data['details'] : {};
     final mappedMessage = _errorCodeMap[errorCode];
+    String finalMessage;
     if (mappedMessage != null) {
-      return {'error': mappedMessage, 'errorCode': errorCode, 'success': false, 'rawMessage': message};
+      finalMessage = _enhanceErrorMessage(mappedMessage, details, errorCode);
+    } else {
+      finalMessage = message.isNotEmpty ? message : '操作失败，请稍后重试';
     }
-    return {'error': message.isNotEmpty ? message : '操作失败，请稍后重试', 'errorCode': errorCode, 'success': false, 'rawMessage': message};
+    return {
+      'error': finalMessage,
+      'errorCode': errorCode,
+      'success': false,
+      'rawMessage': message,
+      'details': details,
+    };
+  }
+
+  String _enhanceErrorMessage(String baseMessage, Map<String, dynamic> details, String errorCode) {
+    if (details.isEmpty) return baseMessage;
+    switch (errorCode) {
+      case 'not_in_renew_window':
+        final remaining = details['remaining_seconds'] ?? details['remaining_days'];
+        final renewalDate = details['next_renewal_date'] ?? details['renewal_date'];
+        if (remaining != null) {
+          if (remaining is int && remaining > 86400) {
+            final days = (remaining / 86400).floor();
+            return '续期窗口尚未开放，还需等待约 $days 天';
+          } else if (remaining is int && remaining > 0) {
+            final hours = (remaining / 3600).floor();
+            return '续期窗口尚未开放，还需等待约 $hours 小时';
+          }
+        }
+        if (renewalDate != null) {
+          return '续期窗口尚未开放，将在 $renewalDate 开放';
+        }
+        return baseMessage;
+      case 'no_renew_config':
+        return '自动续期未配置，请在 DNSHE 控制台设置自动续期';
+      case 'quota_exceeded':
+        final limit = details['limit'];
+        final used = details['used'];
+        if (limit != null && used != null) return '配额已超出（已用 $used / 限制 $limit）';
+        return baseMessage;
+      case 'rate_limit_exceeded':
+        final resetAt = details['reset_at'];
+        final remaining = details['remaining'];
+        if (resetAt != null) return '请求过于频繁，请在 $resetAt 后重试';
+        if (remaining != null && remaining == 0) return '请求频率超限，请稍后重试';
+        return baseMessage;
+      case 'auth_ip_not_allowed':
+        final allowedIps = details['allowed_ips'];
+        if (allowedIps != null) return '当前 IP 未授权，请添加本机 IP 到白名单';
+        return baseMessage;
+      case 'subdomain_not_found':
+        return '子域名不存在，可能已被删除';
+      case 'dns_record_not_found':
+        return 'DNS 记录不存在，可能已被删除';
+      case 'invalid_subdomain_format':
+        final hint = details['hint'];
+        if (hint != null) return '子域名格式不正确：$hint';
+        return baseMessage;
+      default:
+        return baseMessage;
+    }
   }
 
   @override
