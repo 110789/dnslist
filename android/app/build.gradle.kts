@@ -25,6 +25,9 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
+        ndk {
+            abiFilters.clear()
+        }
     }
 
     signingConfigs {
@@ -53,15 +56,6 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-        }
-    }
-
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("arm64-v8a", "x86_64")
-            isUniversalApk = false
         }
     }
 }

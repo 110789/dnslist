@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'dart:developer' as developer;
+import 'dart:ui';
 
 import 'core/router/app_router.dart';
 import 'core/state/theme_provider.dart';
@@ -11,17 +13,72 @@ import 'services/credential_state.dart';
 import 'services/domain_state.dart';
 import 'utils/storage/local_storage.dart';
 
+void _globalErrorHandler(FlutterErrorDetails details) {
+  developer.log(
+    'Flutter Error: ${details.exceptionAsString()}',
+    name: 'GlobalErrorHandler',
+    error: details.exception,
+  );
+  developer.log(
+    'StackTrace: ${details.stack}',
+    name: 'GlobalErrorHandler',
+  );
+}
+
+void _asyncErrorHandler(Object error, StackTrace stackTrace) {
+  developer.log(
+    'Async Error: $error\nStackTrace: $stackTrace',
+    name: 'AsyncErrorHandler',
+    error: error,
+  );
+}
+
+Future<void> _safeInit(String name, Future<void> Function() initFn) async {
+  try {
+    await initFn();
+    developer.log('$name initialized successfully', name: 'AppInit');
+  } catch (e, stack) {
+    developer.log(
+      '$name initialization failed: $e\nStackTrace: $stack',
+      name: 'AppInit',
+      error: e,
+    );
+  }
+}
+
+Future<void> _safeDriverInit() async {
+  try {
+    await DriverRegistry.initialize();
+    developer.log('Driver registry initialized', name: 'AppInit');
+  } catch (e, stack) {
+    developer.log(
+      'Driver registry initialization failed: $e\nStackTrace: $stack',
+      name: 'AppInit',
+      error: e,
+    );
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  await LocalStorage.instance.init();
-  await DriverRegistry.initialize();
-  
+
+  FlutterError.onError = _globalErrorHandler;
+  PlatformDispatcher.instance.onError = (error, stackTrace) {
+    _asyncErrorHandler(error, stackTrace);
+    return true;
+  };
+
+  await _safeInit('LocalStorage', () async {
+    await LocalStorage.instance.init();
+  });
+
+  await _safeDriverInit();
+
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-  
+
   runApp(const MyApp());
 }
 

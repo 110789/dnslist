@@ -4,17 +4,43 @@ import 'dnshe/dnshe_driver.dart';
 import 'dnspod/dnspod_driver.dart';
 import 'cloudns/cloudns_driver.dart';
 import 'rainyun/rainyun_driver.dart';
+import 'dart:developer' as developer;
 
 class DriverRegistry {
   static bool _registered = false;
 
   static void registerAll() {
     if (_registered) return;
-    DriverFactory.register(CloudflareDriver());
-    DriverFactory.register(DnsheDriver());
-    DriverFactory.register(DnspodDriver());
-    DriverFactory.register(ClouDNSDriver());
-    DriverFactory.register(RainyunDriver());
+    try {
+      DriverFactory.register(CloudflareDriver());
+      developer.log('CloudflareDriver registered', name: 'DriverRegistry');
+    } catch (e) {
+      developer.log('CloudflareDriver registration failed: $e', name: 'DriverRegistry', error: e);
+    }
+    try {
+      DriverFactory.register(DnsheDriver());
+      developer.log('DnsheDriver registered', name: 'DriverRegistry');
+    } catch (e) {
+      developer.log('DnsheDriver registration failed: $e', name: 'DriverRegistry', error: e);
+    }
+    try {
+      DriverFactory.register(DnspodDriver());
+      developer.log('DnspodDriver registered', name: 'DriverRegistry');
+    } catch (e) {
+      developer.log('DnspodDriver registration failed: $e', name: 'DriverRegistry', error: e);
+    }
+    try {
+      DriverFactory.register(ClouDNSDriver());
+      developer.log('ClouDNSDriver registered', name: 'DriverRegistry');
+    } catch (e) {
+      developer.log('ClouDNSDriver registration failed: $e', name: 'DriverRegistry', error: e);
+    }
+    try {
+      DriverFactory.register(RainyunDriver());
+      developer.log('RainyunDriver registered', name: 'DriverRegistry');
+    } catch (e) {
+      developer.log('RainyunDriver registration failed: $e', name: 'DriverRegistry', error: e);
+    }
     _registered = true;
   }
 
