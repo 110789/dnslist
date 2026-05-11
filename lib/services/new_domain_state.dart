@@ -157,13 +157,11 @@ class NewDomainState extends ChangeNotifier {
     required RefreshTriggerType triggerType,
   }) async {
     if (triggerType == RefreshTriggerType.manual) {
-      _domains = [];
       _setLoadingState(LoadingState.refreshing);
-      notifyListeners();
     } else {
       _setLoadingState(LoadingState.loading);
-      notifyListeners();
     }
+    notifyListeners();
 
     final result = await _refreshCore.refreshDomainList(
       fetchData: () => _fetchDomainList(
@@ -184,13 +182,11 @@ class NewDomainState extends ChangeNotifier {
     required RefreshTriggerType triggerType,
   }) async {
     if (triggerType == RefreshTriggerType.manual) {
-      _dnsRecords[domainId] = [];
       _setLoadingState(LoadingState.refreshing);
-      notifyListeners();
     } else {
       _setLoadingState(LoadingState.loading);
-      notifyListeners();
     }
+    notifyListeners();
 
     final result = await _refreshCore.refreshDnsRecordList(
       fetchData: () => _fetchDnsRecordList(
