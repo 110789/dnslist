@@ -333,6 +333,11 @@ class DomainState extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearDomains() {
+    _domains = [];
+    notifyListeners();
+  }
+
   void clearError() {
     _error = null;
     _errorCode = null;

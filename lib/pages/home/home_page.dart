@@ -46,6 +46,7 @@ class _HomePageState extends State<HomePage> {
     final domainState = context.read<DomainState>();
     final selected = credentialState.selectedCredential;
     if (selected != null) {
+      domainState.clearDomains();
       await domainState.refreshDomainList(
         providerId: selected.providerId,
         credentials: selected.credentials,
