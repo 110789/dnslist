@@ -9,6 +9,11 @@ enum LoadingState {
   operating,
 }
 
+enum RefreshAnimationType {
+  pullDown,
+  centerLoading,
+}
+
 class NewDomainState extends ChangeNotifier {
   List<Map<String, dynamic>> _domains = [];
   Map<String, List<Map<String, dynamic>>> _dnsRecords = {};
@@ -16,7 +21,7 @@ class NewDomainState extends ChangeNotifier {
   String? _error;
   String? _errorCode;
   String? _selectedDomainId;
-  bool _isManualRefreshing = false;
+  bool _isRefreshing = false;
 
   final DomainRefreshCore _refreshCore = DomainRefreshCore();
 
@@ -30,7 +35,7 @@ class NewDomainState extends ChangeNotifier {
   bool get isRefreshing => _loadingState == LoadingState.refreshing;
   bool get isOperating => _loadingState == LoadingState.operating;
   bool get isIdle => _loadingState == LoadingState.idle;
-  bool get isManualRefreshing => _isManualRefreshing;
+  bool get isManualRefreshing => _isRefreshing;
 
   bool get showCenterLoading =>
       _loadingState == LoadingState.loading ||
@@ -65,63 +70,29 @@ class NewDomainState extends ChangeNotifier {
     _errorCode = null;
   }
 
-  void _prepareManualRefresh({required bool isDomain}) {
-    _loadingState = LoadingState.refreshing;
-    _isManualRefreshing = true;
-    notifyListeners();
-    Future.microtask(() {
-      if (isDomain) {
-        _domains = [];
-      } else if (_selectedDomainId != null) {
-        _dnsRecords[_selectedDomainId!] = [];
-      }
-      notifyListeners();
-    });
-  }
-
-  void _preparePassiveRefresh() {
-    _loadingState = LoadingState.loading;
+  void _clearListData({required bool isDomain}) {
+    if (isDomain) {
+      _domains = [];
+    } else if (_selectedDomainId != null) {
+      _dnsRecords[_selectedDomainId!] = [];
+    }
     notifyListeners();
   }
 
-  void _completeRefresh() {
-    _isManualRefreshing = false;
+  void _startRefreshAnimation(RefreshAnimationType animationType) {
+    if (animationType == RefreshAnimationType.pullDown) {
+      _loadingState = LoadingState.refreshing;
+      _isRefreshing = true;
+    } else {
+      _loadingState = LoadingState.loading;
+    }
+    notifyListeners();
+  }
+
+  void _stopRefreshAnimation() {
+    _isRefreshing = false;
     _loadingState = LoadingState.idle;
     notifyListeners();
-  }
-
-  Future<RefreshResult> _executeDomainRefresh({
-    required String providerId,
-    required Map<String, String> credentials,
-    required RefreshTriggerType triggerType,
-  }) async {
-    final result = await _refreshCore.refreshDomainList(
-      fetchData: () => _fetchDomainList(
-        providerId: providerId,
-        credentials: credentials,
-      ),
-      triggerType: triggerType,
-    );
-    _completeRefresh();
-    return result;
-  }
-
-  Future<RefreshResult> _executeDnsRecordRefresh({
-    required String providerId,
-    required String domainId,
-    required Map<String, String> credentials,
-    required RefreshTriggerType triggerType,
-  }) async {
-    final result = await _refreshCore.refreshDnsRecordList(
-      fetchData: () => _fetchDnsRecordList(
-        providerId: providerId,
-        domainId: domainId,
-        credentials: credentials,
-      ),
-      triggerType: triggerType,
-    );
-    _completeRefresh();
-    return result;
   }
 
   Future<RefreshResult> _fetchDomainList({
@@ -209,19 +180,44 @@ class NewDomainState extends ChangeNotifier {
     }
   }
 
+  Future<RefreshResult> _executeRefresh({
+    required RefreshCallback fetchData,
+    required RefreshTriggerType triggerType,
+  }) async {
+    final result = await _refreshCore.refreshDomainList(
+      fetchData: fetchData,
+      triggerType: triggerType,
+    );
+    _stopRefreshAnimation();
+    return result;
+  }
+
+  Future<RefreshResult> _executeDnsRefresh({
+    required RefreshCallback fetchData,
+    required RefreshTriggerType triggerType,
+  }) async {
+    final result = await _refreshCore.refreshDnsRecordList(
+      fetchData: fetchData,
+      triggerType: triggerType,
+    );
+    _stopRefreshAnimation();
+    return result;
+  }
+
   Future<RefreshResult> refreshDomainList({
     required String providerId,
     required Map<String, String> credentials,
     required RefreshTriggerType triggerType,
+    RefreshAnimationType animationType = RefreshAnimationType.pullDown,
   }) async {
-    if (triggerType == RefreshTriggerType.manual) {
-      _prepareManualRefresh(isDomain: true);
-    } else {
-      _preparePassiveRefresh();
-    }
-    return _executeDomainRefresh(
-      providerId: providerId,
-      credentials: credentials,
+    _clearListData(isDomain: true);
+    _startRefreshAnimation(animationType);
+
+    return _executeRefresh(
+      fetchData: () => _fetchDomainList(
+        providerId: providerId,
+        credentials: credentials,
+      ),
       triggerType: triggerType,
     );
   }
@@ -231,16 +227,17 @@ class NewDomainState extends ChangeNotifier {
     required String domainId,
     required Map<String, String> credentials,
     required RefreshTriggerType triggerType,
+    RefreshAnimationType animationType = RefreshAnimationType.pullDown,
   }) async {
-    if (triggerType == RefreshTriggerType.manual) {
-      _prepareManualRefresh(isDomain: false);
-    } else {
-      _preparePassiveRefresh();
-    }
-    return _executeDnsRecordRefresh(
-      providerId: providerId,
-      domainId: domainId,
-      credentials: credentials,
+    _clearListData(isDomain: false);
+    _startRefreshAnimation(animationType);
+
+    return _executeDnsRefresh(
+      fetchData: () => _fetchDnsRecordList(
+        providerId: providerId,
+        domainId: domainId,
+        credentials: credentials,
+      ),
       triggerType: triggerType,
     );
   }
@@ -258,12 +255,14 @@ class NewDomainState extends ChangeNotifier {
         domainId: domainId,
         credentials: credentials,
         triggerType: refreshType,
+        animationType: RefreshAnimationType.centerLoading,
       );
     } else {
       refreshResult = await refreshDomainList(
         providerId: providerId,
         credentials: credentials,
         triggerType: refreshType,
+        animationType: RefreshAnimationType.centerLoading,
       );
     }
 
@@ -276,6 +275,15 @@ class NewDomainState extends ChangeNotifier {
         'errorCode': refreshResult.errorCode,
       };
     }
+  }
+
+  Map<String, dynamic> _errorResult(String error, String errorCode, int? statusCode) {
+    return {
+      'success': false,
+      'error': error,
+      'errorCode': errorCode,
+      'statusCode': statusCode ?? 0,
+    };
   }
 
   Future<Map<String, dynamic>> addDomain(
@@ -496,15 +504,6 @@ class NewDomainState extends ChangeNotifier {
       _setLoadingState(LoadingState.idle);
       return _errorResult(e.toString(), 'EXCEPTION', null);
     }
-  }
-
-  Map<String, dynamic> _errorResult(String error, String errorCode, int? statusCode) {
-    return {
-      'success': false,
-      'error': error,
-      'errorCode': errorCode,
-      'statusCode': statusCode ?? 0,
-    };
   }
 
   void clear() {
