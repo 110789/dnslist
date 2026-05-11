@@ -19,23 +19,44 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
+  bool _hasInitialLoad = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeAndRefresh();
+      _loadDomains(forceRefresh: true);
     });
   }
 
-  Future<void> _initializeAndRefresh() async {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_hasInitialLoad) {
+      _loadDomains(forceRefresh: true);
+    }
+    _hasInitialLoad = true;
+  }
+
+  Future<void> _loadDomains({bool forceRefresh = false}) async {
     final credentialState = context.read<CredentialState>();
     final domainState = context.read<DomainState>();
     await credentialState.loadCredentials();
     if (mounted) {
       final selected = credentialState.selectedCredential;
       if (selected != null) {
-        await domainState.loadDomains(selected.providerId, selected.credentials);
+        await domainState.loadDomains(selected.providerId, selected.credentials, isRefresh: forceRefresh);
       }
+    }
+  }
+
+  Future<void> _triggerRefreshAnimation() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (mounted) {
+      _refreshKey.currentState?.show();
+      await Future.delayed(const Duration(milliseconds: 300));
+      await _loadDomains(forceRefresh: true);
     }
   }
 
@@ -58,11 +79,7 @@ class _HomePageState extends State<HomePage> {
             ? [
         IconButton(
           icon: const Icon(Icons.refresh),
-          onPressed: () {
-            if (selected != null) {
-              domainState.loadDomains(selected.providerId, selected.credentials);
-            }
-          },
+          onPressed: () => _loadDomains(forceRefresh: true),
         ),
       ]
             : null,
@@ -131,6 +148,7 @@ class _HomePageState extends State<HomePage> {
     return Stack(
       children: [
         RefreshIndicator(
+          key: _refreshKey,
           onRefresh: () async {
             if (selected != null) {
               await state.refreshDomains(selected.providerId, selected.credentials);
@@ -197,6 +215,7 @@ class _HomePageState extends State<HomePage> {
       if (context.mounted) {
         if (result['success']) {
           ToastUtil.showSuccess(context, '域名已删除');
+          _triggerRefreshAnimation();
         } else {
           final driver = DriverFactory.get(selected.providerId);
           final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
@@ -220,6 +239,7 @@ class _HomePageState extends State<HomePage> {
       if (result['success']) {
         final msg = result['remaining_days'] != null ? '续期成功，剩余 ${result['remaining_days']} 天' : '续期成功';
         ToastUtil.showSuccess(context, msg);
+        _triggerRefreshAnimation();
       } else {
         final driver = DriverFactory.get(selected.providerId);
         final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
@@ -287,7 +307,10 @@ class _HomePageState extends State<HomePage> {
                     final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
                     ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
                   } else {
-                    if (context.mounted) ToastUtil.showSuccess(context, '添加成功');
+                    if (context.mounted) {
+                      ToastUtil.showSuccess(context, '添加成功');
+                      _triggerRefreshAnimation();
+                    }
                   }
                 },
                 child: isAdding ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('添加'),

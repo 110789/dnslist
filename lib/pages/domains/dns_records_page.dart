@@ -22,16 +22,32 @@ class DnsRecordsPage extends StatefulWidget {
 }
 
 class _DnsRecordsPageState extends State<DnsRecordsPage> {
+  final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
+  bool _hasInitialLoad = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadRecords());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadRecords(forceRefresh: true));
   }
 
-  void _loadRecords() {
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_hasInitialLoad) {
+      _loadRecords(forceRefresh: true);
+    }
+    _hasInitialLoad = true;
+  }
+
+  void _loadRecords({bool forceRefresh = false}) {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential != null) {
-      context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId);
+      if (forceRefresh) {
+        context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId, isRefresh: true);
+      } else {
+        context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId);
+      }
     }
   }
 
@@ -39,6 +55,15 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential != null) {
       await context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId, isRefresh: true);
+    }
+  }
+
+  Future<void> _triggerRefreshAnimation() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (mounted) {
+      _refreshKey.currentState?.show();
+      await Future.delayed(const Duration(milliseconds: 300));
+      await _refreshRecords();
     }
   }
 
@@ -155,6 +180,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   if (mounted) {
                     if (result['success']) {
                       ToastUtil.showSuccess(context, '记录添加成功');
+                      _triggerRefreshAnimation();
                     } else {
                       ToastUtil.showError(
                         context,
@@ -268,6 +294,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   if (mounted) {
                     if (result['success']) {
                       ToastUtil.showSuccess(context, '记录已更新');
+                      _triggerRefreshAnimation();
                     } else {
                       ToastUtil.showError(
                         context,
@@ -308,6 +335,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       if (mounted) {
         if (result['success']) {
           ToastUtil.showSuccess(context, '记录已删除');
+          _triggerRefreshAnimation();
         } else {
           ToastUtil.showError(
             context,
@@ -402,6 +430,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     return Stack(
       children: [
         RefreshIndicator(
+          key: _refreshKey,
           onRefresh: _refreshRecords,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
