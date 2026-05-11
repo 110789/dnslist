@@ -130,14 +130,19 @@ class ClouDNSDriver implements DriverInterface {
         'auth-password': _authPassword,
         ...params,
       };
-      final response = await _client!.get('/$action', queryParameters: queryParams);
+      final dio = Dio(BaseOptions(
+        baseUrl: AppConfig.cloudnsBaseUrl,
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+      ));
+      final response = await dio.get('/$action', queryParameters: queryParams);
       if (response.data == null) {
         return {'error': '服务器无响应', 'errorCode': 'UNKNOWN', 'success': false};
       }
       var respData = response.data;
       if (respData is String) {
         try {
-          respData = _parseJsonString(respData);
+          respData = jsonDecode(respData);
         } catch (_) {
           return {'error': '响应解析失败', 'errorCode': 'PARSE_ERROR', 'success': false};
         }
@@ -191,27 +196,46 @@ class ClouDNSDriver implements DriverInterface {
     if (authId == null || authId.isEmpty || authPassword == null || authPassword.isEmpty) {
       return false;
     }
+    final authIdInt = int.tryParse(authId);
+    if (authIdInt == null) return false;
     try {
-      final authIdInt = int.tryParse(authId);
-      if (authIdInt == null) return false;
-      _authId = authIdInt;
-      _authPassword = authPassword;
-      _client = ApiClient(
+      final dio = Dio(BaseOptions(
         baseUrl: AppConfig.cloudnsBaseUrl,
-        headers: {'Content-Type': 'application/json'},
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+      ));
+      final response = await dio.get(
+        '/login/login.json',
+        queryParameters: {
+          'auth-id': authIdInt,
+          'auth-password': authPassword,
+        },
       );
-      final result = await _callApi('login/login.json', {});
-      if (result['success'] == true) {
-        return true;
+      if (response.data == null) {
+        return false;
       }
-      _authId = null;
-      _authPassword = null;
-      _client = null;
+      var data = response.data;
+      if (data is String) {
+        try {
+          data = jsonDecode(data);
+        } catch (_) {
+          return false;
+        }
+      }
+      if (data is Map) {
+        final status = data['status']?.toString();
+        if (status == 'Success') {
+          _authId = authIdInt;
+          _authPassword = authPassword;
+          _client = ApiClient(
+            baseUrl: AppConfig.cloudnsBaseUrl,
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          );
+          return true;
+        }
+      }
       return false;
     } catch (e) {
-      _authId = null;
-      _authPassword = null;
-      _client = null;
       return false;
     }
   }
