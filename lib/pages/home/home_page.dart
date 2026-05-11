@@ -164,6 +164,7 @@ class _HomePageState extends State<HomePage> {
       key: _refreshKey,
       onRefresh: _pullToRefresh,
       child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
         itemCount: state.domains.length,
         separatorBuilder: (_, __) => const DnsDivider(),

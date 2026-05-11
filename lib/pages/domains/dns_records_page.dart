@@ -496,6 +496,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       key: _refreshKey,
       onRefresh: _pullToRefresh,
       child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
         itemCount: records.length,
         separatorBuilder: (_, __) => const DnsDivider(),
