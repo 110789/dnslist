@@ -166,7 +166,28 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    if (state.domains.isEmpty) return _buildEmptyDomainState(context);
+    if (state.domains.isEmpty) {
+      return Stack(
+        children: [
+          RefreshIndicator(
+            key: _refreshKey,
+            onRefresh: _pullToRefresh,
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
+              itemCount: 0,
+              separatorBuilder: (_, __) => const DnsDivider(),
+              itemBuilder: (_, __) => const SizedBox.shrink(),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: _buildEmptyDomainState(context),
+            ),
+          ),
+        ],
+      );
+    }
 
     final selected = credentialState.selectedCredential;
     final driver = selected != null ? DriverFactory.get(selected.providerId) : null;
