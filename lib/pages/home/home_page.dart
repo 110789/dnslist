@@ -68,43 +68,35 @@ class _HomePageState extends State<HomePage> {
         scrolledUnderElevation: 2,
         actions: hasCredentials
             ? [
-        IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: () async {
-            final domainState = context.read<DomainState>();
-            final selected = credentialState.selectedCredential;
-            if (selected != null) {
-              await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials, isAuto: true);
-            }
-          },
-        ),
-      ]
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () async {
+                    final domainState = context.read<DomainState>();
+                    final selected = credentialState.selectedCredential;
+                    if (selected != null) {
+                      await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials, isAuto: true);
+                    }
+                  },
+                ),
+              ]
             : null,
       ),
       drawer: _buildDrawer(context, credentialState, domainState),
       body: _buildBody(context, domainState, credentialState, hasCredentials),
-      floatingActionButton: hasCredentials
-          ? _buildFab(context, selected!.providerId)
-          : null,
+      floatingActionButton: hasCredentials ? _buildFab(context, selected!.providerId) : null,
     );
   }
 
   Widget? _buildFab(BuildContext context, String providerId) {
     final driver = DriverFactory.get(providerId);
     if (driver == null || !driver.supportsAddDomain) return null;
-
     return FloatingActionButton(
       onPressed: () => _showAddDomainDialog(context, providerId),
       child: const Icon(Icons.add),
     );
   }
 
-  Widget _buildBody(
-    BuildContext context,
-    DomainState state,
-    CredentialState credentialState,
-    bool hasCredentials,
-  ) {
+  Widget _buildBody(BuildContext context, DomainState state, CredentialState credentialState, bool hasCredentials) {
     if (!hasCredentials) return _buildEmptyCredentialState(context);
 
     if (state.isLoading && state.domains.isEmpty) return const DnsLoading();
@@ -148,9 +140,7 @@ class _HomePageState extends State<HomePage> {
           Positioned.fill(
             child: Container(
               color: Colors.black.withValues(alpha: 0.1),
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: const Center(child: CircularProgressIndicator()),
             ),
           ),
         ],
@@ -184,9 +174,7 @@ class _HomePageState extends State<HomePage> {
               final domainId = domain['id']?.toString() ?? '';
               final domainName = domain['name']?.toString() ?? '';
               if (domainId.isNotEmpty) {
-                GoRouter.of(context).push(
-                  '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
-                );
+                GoRouter.of(context).push('/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}');
               }
             },
             onDelete: state.isOperating ? () {} : () => _handleDeleteDomain(context, state, selected, domain),
@@ -200,35 +188,43 @@ class _HomePageState extends State<HomePage> {
   void _handleDeleteDomain(BuildContext context, DomainState state, dynamic selected, Map<String, dynamic> domain) {
     final domainName = domain['name']?.toString() ?? '';
     final domainId = domain['id']?.toString() ?? '';
+    bool isDeleting = false;
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          final isDeleting = state.isOperating;
           return AlertDialog(
             title: const Text('删除域名'),
             content: Text('确定要删除 "$domainName" 吗？此操作无法撤销。'),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  foregroundColor: Theme.of(context).colorScheme.onError,
+                  backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                  foregroundColor: Theme.of(dialogContext).colorScheme.onError,
                 ),
-                onPressed: isDeleting ? null : () async {
-                  if (selected == null) return;
-                  final result = await state.deleteDomain(selected.providerId, domainId, selected.credentials);
-                  if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                    if (result['success']) {
-                      if (context.mounted) ToastUtil.showSuccess(context, '域名已删除');
-                    } else {
-                      final driver = DriverFactory.get(selected.providerId);
-                      final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
-                      if (context.mounted) ToastUtil.showError(context, errorMsg ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
-                    }
-                  }
-                },
+                onPressed: isDeleting
+                    ? null
+                    : () async {
+                        if (selected == null) return;
+                        setDialogState(() => isDeleting = true);
+                        final result = await state.deleteDomain(selected.providerId, domainId, selected.credentials);
+                        if (dialogContext.mounted) {
+                          if (result['success']) {
+                            Navigator.pop(dialogContext);
+                            ToastUtil.showSuccess(context, '域名已删除');
+                          } else {
+                            setDialogState(() => isDeleting = false);
+                            final driver = DriverFactory.get(selected.providerId);
+                            final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
+                            ToastUtil.showError(context, errorMsg ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+                          }
+                        }
+                      },
                 child: isDeleting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text('删除'),
@@ -240,25 +236,51 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _handleRenewDomain(
-    BuildContext context,
-    DomainState state,
-    dynamic selected,
-    Map<String, dynamic> domain,
-  ) async {
+  void _handleRenewDomain(BuildContext context, DomainState state, dynamic selected, Map<String, dynamic> domain) {
     if (selected == null) return;
+    final domainName = domain['name']?.toString() ?? '';
     final domainId = domain['id']?.toString() ?? '';
-    final result = await state.renewDomain(selected.providerId, domainId, selected.credentials);
-    if (context.mounted) {
-      if (result['success']) {
-        final msg = result['remaining_days'] != null ? '续期成功，剩余 ${result['remaining_days']} 天' : '续期成功';
-        ToastUtil.showSuccess(context, msg);
-      } else {
-        final driver = DriverFactory.get(selected.providerId);
-        final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
-        ToastUtil.showError(context, errorMsg ?? '续期失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
-      }
-    }
+    bool isRenewing = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          return AlertDialog(
+            title: const Text('续期域名'),
+            content: Text('确定要续期 "$domainName" 吗？'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: isRenewing
+                    ? null
+                    : () async {
+                        setDialogState(() => isRenewing = true);
+                        final result = await state.renewDomain(selected.providerId, domainId, selected.credentials);
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                          if (result['success']) {
+                            final msg = result['remaining_days'] != null ? '续期成功，剩余 ${result['remaining_days']} 天' : '续期成功';
+                            ToastUtil.showSuccess(context, msg);
+                          } else {
+                            final driver = DriverFactory.get(selected.providerId);
+                            final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode']?.toString() ?? '') : result['error'];
+                            ToastUtil.showError(context, errorMsg ?? '续期失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+                          }
+                        }
+                      },
+                child: isRenewing
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('续期'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   void _showAddDomainDialog(BuildContext context, String providerId) {
@@ -270,66 +292,93 @@ class _HomePageState extends State<HomePage> {
     for (final field in fields) {
       controllers[field.key] = TextEditingController();
     }
+    bool isSubmitting = false;
+    bool hasError = false;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
+          final bool canSubmit = !isSubmitting && !hasError;
+
           return AlertDialog(
             title: Text(driver.getAddDomainTitle()),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: fields.map((field) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        controller: controllers[field.key],
-                        decoration: InputDecoration(labelText: field.label, hintText: field.hintText),
-                      ),
-                      if (field.description != null) ...[
-                        const SizedBox(height: 4),
-                        Text(field.description!, style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(color: Theme.of(dialogContext).colorScheme.onSurfaceVariant)),
+                children: [
+                  ...fields.map((field) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: controllers[field.key],
+                          decoration: InputDecoration(labelText: field.label, hintText: field.hintText),
+                          onChanged: (_) {
+                            if (hasError) setDialogState(() => hasError = false);
+                          },
+                        ),
+                        if (field.description != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            field.description!,
+                            style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(color: Theme.of(dialogContext).colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
                       ],
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                }).toList(),
+                    );
+                  }),
+                  if (hasError)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text('请填写所有必填项', style: TextStyle(color: Theme.of(dialogContext).colorScheme.error, fontSize: 12)),
+                    ),
+                ],
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
-              StatefulBuilder(
-                builder: (dialogContext, setBtnState) {
-                  final isSubmitting = domainState.isOperating;
-                  return FilledButton(
-                    onPressed: isSubmitting ? null : () async {
-                      final inputData = <String, dynamic>{};
-                      for (final field in fields) {
-                        inputData[field.key] = controllers[field.key]?.text ?? '';
-                        if (field.required && (inputData[field.key] as String).isEmpty) {
-                          ToastUtil.showError(context, '请填写${field.label}');
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: canSubmit
+                    ? () async {
+                        final inputData = <String, dynamic>{};
+                        bool hasEmpty = false;
+                        for (final field in fields) {
+                          final value = controllers[field.key]?.text ?? '';
+                          inputData[field.key] = value;
+                          if (field.required && value.isEmpty) hasEmpty = true;
+                        }
+                        if (hasEmpty) {
+                          setDialogState(() => hasError = true);
                           return;
                         }
-                      }
-                      final domainData = driver.prepareDomainData(inputData);
-                      final result = await domainState.addDomain(providerId, domainData, context.read<CredentialState>().selectedCredential!.credentials);
-                      if (result['success']) {
-                        if (context.mounted) Navigator.pop(dialogContext);
-                      } else {
-                        if (context.mounted) {
-                          final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
-                          ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+
+                        setDialogState(() {
+                          isSubmitting = true;
+                          hasError = false;
+                        });
+                        final domainData = driver.prepareDomainData(inputData);
+                        final result = await domainState.addDomain(providerId, domainData, context.read<CredentialState>().selectedCredential!.credentials);
+                        if (dialogContext.mounted) {
+                          if (result['success']) {
+                            Navigator.pop(dialogContext);
+                            ToastUtil.showSuccess(context, '域名添加成功');
+                          } else {
+                            setDialogState(() => isSubmitting = false);
+                            final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
+                            ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+                          }
                         }
                       }
-                    },
-                    child: domainState.isOperating
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('添加'),
-                  );
-                },
+                    : null,
+                child: isSubmitting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('添加'),
               ),
             ],
           );
@@ -352,7 +401,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildEmptyDomainState(BuildContext context) {
-    return DnsEmptyState(
+    return const DnsEmptyState(
       icon: Icons.dns,
       title: '暂无域名',
       description: '暂无域名，请使用右下角按钮添加域名',
@@ -401,7 +450,11 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 16),
             Text('暂无凭证', style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
             const SizedBox(height: 6),
-            Text('点击下方按钮添加', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant), textAlign: TextAlign.center),
+            Text(
+              '点击下方按钮添加',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
       ),
@@ -421,7 +474,16 @@ class _HomePageState extends State<HomePage> {
             final animValue = Curves.easeInOut.transform(animation.value);
             final scale = 1.0 + (animValue * 0.04);
             final shadowAlpha = animValue * 0.2;
-            return Transform.scale(scale: scale, child: Material(color: Colors.transparent, borderRadius: BorderRadius.circular(DnsRadius.lg), elevation: 8, shadowColor: Theme.of(ctx).colorScheme.shadow.withValues(alpha: shadowAlpha), child: child));
+            return Transform.scale(
+              scale: scale,
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(DnsRadius.lg),
+                elevation: 8,
+                shadowColor: Theme.of(ctx).colorScheme.shadow.withValues(alpha: shadowAlpha),
+                child: child,
+              ),
+            );
           },
           child: child,
         );
@@ -451,13 +513,31 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.fromLTRB(DnsSpacing.md, DnsSpacing.sm, DnsSpacing.md, DnsSpacing.sm),
               child: Text(credential.providerName, style: Theme.of(ctx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
             ),
-            ListTile(leading: Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary), title: const Text('选择此凭证'), onTap: () {
-              Navigator.pop(ctx);
-              credentialState.selectCredential(credential.id);
-              domainState.refreshDomainList(providerId: credential.providerId, credentials: credential.credentials, isAuto: true);
-            }),
-            ListTile(leading: Icon(Icons.edit, color: Theme.of(ctx).colorScheme.primary), title: const Text('编辑凭证'), onTap: () { Navigator.pop(ctx); _showEditCredentialDialog(context, credential); }),
-            ListTile(leading: Icon(Icons.delete, color: Theme.of(ctx).colorScheme.error), title: Text('删除凭证', style: TextStyle(color: Theme.of(ctx).colorScheme.error)), onTap: () { Navigator.pop(ctx); _showDeleteCredentialDialog(context, credential, credentialState); }),
+            ListTile(
+              leading: Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary),
+              title: const Text('选择此凭证'),
+              onTap: () {
+                Navigator.pop(ctx);
+                credentialState.selectCredential(credential.id);
+                domainState.refreshDomainList(providerId: credential.providerId, credentials: credential.credentials, isAuto: true);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.edit, color: Theme.of(ctx).colorScheme.primary),
+              title: const Text('编辑凭证'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showEditCredentialDialog(context, credential);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete, color: Theme.of(ctx).colorScheme.error),
+              title: Text('删除凭证', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showDeleteCredentialDialog(context, credential, credentialState);
+              },
+            ),
             const SizedBox(height: DnsSpacing.md),
           ],
         ),
@@ -535,7 +615,8 @@ class _DrawerHeader extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 44, height: 44,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(color: colorScheme.primaryContainer, borderRadius: BorderRadius.circular(DnsRadius.md)),
             child: Icon(Icons.dns, size: 24, color: colorScheme.onPrimaryContainer),
           ),
@@ -546,7 +627,10 @@ class _DrawerHeader extends StatelessWidget {
               children: [
                 Text('DNS管理工具', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600, color: colorScheme.onSurface)),
                 const SizedBox(height: 2),
-                Text(credentialCount > 0 ? '$credentialCount 个凭证' : '未添加凭证', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant)),
+                Text(
+                  credentialCount > 0 ? '$credentialCount 个凭证' : '未添加凭证',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                ),
               ],
             ),
           ),
@@ -558,7 +642,6 @@ class _DrawerHeader extends StatelessWidget {
 
 class _DrawerSettingsEntry extends StatelessWidget {
   final VoidCallback onTap;
-
   const _DrawerSettingsEntry({required this.onTap});
 
   @override
@@ -747,7 +830,9 @@ class _CredentialDialogState extends State<_CredentialDialog> {
 
   @override
   void dispose() {
-    for (final c in _controllers.values) c.dispose();
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
     _remarkController.dispose();
     super.dispose();
   }
@@ -767,14 +852,28 @@ class _CredentialDialogState extends State<_CredentialDialog> {
           children: [
             if (!isEditing) ...[
               Container(
-                decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(DnsRadius.md), border: Border.all(color: colorScheme.outlineVariant)),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(DnsRadius.md),
+                  border: Border.all(color: colorScheme.outlineVariant),
+                ),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: DropdownButtonFormField<String>(
                   value: _selectedProviderId,
-                  decoration: InputDecoration(labelText: '选择服务商', border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, fillColor: Colors.transparent, filled: false),
+                  decoration: InputDecoration(
+                    labelText: '选择服务商',
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    fillColor: Colors.transparent,
+                    filled: false,
+                  ),
                   isExpanded: true,
                   items: drivers.map((d) => DropdownMenuItem(value: d.providerId, child: Text(d.providerName))).toList(),
-                  onChanged: (value) => setState(() { _selectedProviderId = value; _controllers.clear(); }),
+                  onChanged: (value) => setState(() {
+                    _selectedProviderId = value;
+                    _controllers.clear();
+                  }),
                 ),
               ),
               const SizedBox(height: 12),
@@ -783,13 +882,19 @@ class _CredentialDialogState extends State<_CredentialDialog> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(color: colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(DnsRadius.md)),
-                child: Row(children: [Icon(Icons.cloud, size: 20, color: colorScheme.primary), const SizedBox(width: 8), Text(widget.credential!.providerName)]),
+                child: Row(children: [
+                  Icon(Icons.cloud, size: 20, color: colorScheme.primary),
+                  const SizedBox(width: 8),
+                  Text(widget.credential!.providerName)
+                ]),
               ),
               const SizedBox(height: 12),
             ],
             TextField(controller: _remarkController, decoration: const InputDecoration(labelText: '备注（可选）', hintText: '用于区分不同凭证')),
             const SizedBox(height: 12),
-            if (_selectedProviderId != null) ...[Container(padding: const EdgeInsets.symmetric(vertical: 8), child: _buildCredentialFields())],
+            if (_selectedProviderId != null) ...[
+              Container(padding: const EdgeInsets.symmetric(vertical: 8), child: _buildCredentialFields())
+            ],
           ],
         ),
       ),
@@ -797,7 +902,9 @@ class _CredentialDialogState extends State<_CredentialDialog> {
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
         FilledButton(
           onPressed: _selectedProviderId != null && !_isValidating ? _saveCredential : null,
-          child: _isValidating ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('保存'),
+          child: _isValidating
+              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Text('保存'),
         ),
       ],
     );
@@ -807,13 +914,20 @@ class _CredentialDialogState extends State<_CredentialDialog> {
     final driver = DriverFactory.get(_selectedProviderId!);
     if (driver == null) return const SizedBox.shrink();
     final fields = driver.getCredentialFields();
-    return Column(mainAxisSize: MainAxisSize.min, children: fields.entries.map((entry) {
-      _controllers[entry.key] = _controllers[entry.key] ?? TextEditingController();
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: TextField(controller: _controllers[entry.key], decoration: InputDecoration(labelText: entry.value), obscureText: entry.key.toLowerCase().contains('secret')),
-      );
-    }).toList());
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: fields.entries.map((entry) {
+        _controllers[entry.key] = _controllers[entry.key] ?? TextEditingController();
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: TextField(
+            controller: _controllers[entry.key],
+            decoration: InputDecoration(labelText: entry.value),
+            obscureText: entry.key.toLowerCase().contains('secret'),
+          ),
+        );
+      }).toList(),
+    );
   }
 
   Future<void> _saveCredential() async {
@@ -841,10 +955,22 @@ class _CredentialDialogState extends State<_CredentialDialog> {
     }
     final remark = _remarkController.text.trim();
     if (widget.credential != null) {
-      final updated = widget.credential!.copyWith(providerId: _selectedProviderId!.toLowerCase(), providerName: driver.providerName, remark: remark.isEmpty ? null : remark, credentials: credentials);
+      final updated = widget.credential!.copyWith(
+        providerId: _selectedProviderId!.toLowerCase(),
+        providerName: driver.providerName,
+        remark: remark.isEmpty ? null : remark,
+        credentials: credentials,
+      );
       await widget.onSave(updated);
     } else {
-      final credential = CredentialModel(id: DateTime.now().millisecondsSinceEpoch.toString(), providerId: _selectedProviderId!.toLowerCase(), providerName: driver.providerName, remark: remark.isEmpty ? null : remark, credentials: credentials, createdAt: DateTime.now());
+      final credential = CredentialModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        providerId: _selectedProviderId!.toLowerCase(),
+        providerName: driver.providerName,
+        remark: remark.isEmpty ? null : remark,
+        credentials: credentials,
+        createdAt: DateTime.now(),
+      );
       await widget.onSave(credential);
     }
   }

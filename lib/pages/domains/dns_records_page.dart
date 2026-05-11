@@ -79,12 +79,15 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     final priorityController = TextEditingController(text: '10');
     String selectedType = 'A';
     int ttl = 3600;
+    bool isSubmitting = false;
+    bool hasError = false;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final isOperating = domainState.isOperating;
+        builder: (dialogContext, setDialogState) {
+          final bool canSubmit = !isSubmitting && !hasError;
+
           return AlertDialog(
             title: const Text('添加DNS记录'),
             content: SingleChildScrollView(
@@ -108,6 +111,9 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                       hintText: selectedType == 'MX' || selectedType == 'SRV'
                           ? '例如: mail' : '例如: www 或 @',
                     ),
+                    onChanged: (_) {
+                      if (hasError) setDialogState(() => hasError = false);
+                    },
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -117,6 +123,9 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                       hintText: _getContentHint(selectedType),
                     ),
                     keyboardType: _getContentKeyboardType(selectedType),
+                    onChanged: (_) {
+                      if (hasError) setDialogState(() => hasError = false);
+                    },
                   ),
                   if (selectedType == 'MX' || selectedType == 'SRV') ...[
                     const SizedBox(height: 16),
@@ -142,10 +151,15 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   const SizedBox(height: 8),
                   Text(
                     'TTL: 3600建议用于频繁变更的记录',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  if (hasError)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text('请填写记录值', style: TextStyle(color: Theme.of(dialogContext).colorScheme.error, fontSize: 12)),
+                    ),
                 ],
               ),
             ),
@@ -154,51 +168,49 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('取消'),
               ),
-              StatefulBuilder(
-                builder: (context, setBtnState) {
-                  final isSubmitting = domainState.isOperating;
-                  return FilledButton(
-                    onPressed: isSubmitting ? null : () async {
-                      if (contentController.text.isEmpty) {
-                        ToastUtil.showError(context, '请填写记录值');
-                        return;
-                      }
+              FilledButton(
+                onPressed: canSubmit ? () async {
+                  if (contentController.text.isEmpty) {
+                    setDialogState(() => hasError = true);
+                    return;
+                  }
 
-                      final recordData = <String, dynamic>{
-                        'type': selectedType,
-                        'name': nameController.text,
-                        'content': contentController.text,
-                        'ttl': ttl,
-                      };
+                  setDialogState(() { isSubmitting = true; hasError = false; });
 
-                      if (selectedType == 'MX' || selectedType == 'SRV') {
-                        recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
-                      }
+                  final recordData = <String, dynamic>{
+                    'type': selectedType,
+                    'name': nameController.text,
+                    'content': contentController.text,
+                    'ttl': ttl,
+                  };
 
-                      final result = await domainState.createDnsRecord(
-                        providerId,
-                        widget.domainId,
-                        recordData,
-                        context.read<CredentialState>().selectedCredential!.credentials,
-                      );
-                      if (result['success']) {
-                        if (mounted) Navigator.pop(ctx);
-                        if (context.mounted) ToastUtil.showSuccess(context, '记录添加成功');
-                      } else {
-                        if (mounted) {
-                          ToastUtil.showError(
-                            context,
-                            result['error'] ?? '添加失败',
-                            errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
-                          );
-                        }
-                      }
-                    },
-                    child: domainState.isOperating
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('添加'),
+                  if (selectedType == 'MX' || selectedType == 'SRV') {
+                    recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
+                  }
+
+                  final result = await domainState.createDnsRecord(
+                    providerId,
+                    widget.domainId,
+                    recordData,
+                    context.read<CredentialState>().selectedCredential!.credentials,
                   );
-                },
+                  if (dialogContext.mounted) {
+                    if (result['success']) {
+                      Navigator.pop(dialogContext);
+                      ToastUtil.showSuccess(context, '记录添加成功');
+                    } else {
+                      setDialogState(() => isSubmitting = false);
+                      ToastUtil.showError(
+                        context,
+                        result['error'] ?? '添加失败',
+                        errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+                      );
+                    }
+                  }
+                } : null,
+                child: isSubmitting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('添加'),
               ),
             ],
           );
@@ -214,12 +226,12 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     final priorityController = TextEditingController(text: (record['priority'] ?? 10).toString());
     String selectedType = record['type'] ?? 'A';
     int ttl = record['ttl'] ?? 3600;
+    bool isSubmitting = false;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final isOperating = domainState.isOperating;
+        builder: (dialogContext, setDialogState) {
           return AlertDialog(
             title: const Text('编辑DNS记录'),
             content: SingleChildScrollView(
@@ -276,47 +288,45 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('取消'),
               ),
-              StatefulBuilder(
-                builder: (context, setBtnState) {
-                  final isSubmitting = domainState.isOperating;
-                  return FilledButton(
-                    onPressed: isSubmitting ? null : () async {
-                      final recordData = <String, dynamic>{
-                        'type': selectedType,
-                        'name': nameController.text,
-                        'content': contentController.text,
-                        'ttl': ttl,
-                      };
+              FilledButton(
+                onPressed: isSubmitting ? null : () async {
+                  setDialogState(() => isSubmitting = true);
 
-                      if (selectedType == 'MX' || selectedType == 'SRV') {
-                        recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
-                      }
+                  final recordData = <String, dynamic>{
+                    'type': selectedType,
+                    'name': nameController.text,
+                    'content': contentController.text,
+                    'ttl': ttl,
+                  };
 
-                      final result = await domainState.updateDnsRecord(
-                        providerId,
-                        widget.domainId,
-                        record['id'].toString(),
-                        recordData,
-                        context.read<CredentialState>().selectedCredential!.credentials,
-                      );
-                      if (result['success']) {
-                        if (mounted) Navigator.pop(ctx);
-                        if (context.mounted) ToastUtil.showSuccess(context, '记录已更新');
-                      } else {
-                        if (context.mounted) {
-                          ToastUtil.showError(
-                            context,
-                            result['error'] ?? '更新失败',
-                            errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
-                          );
-                        }
-                      }
-                    },
-                    child: domainState.isOperating
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('保存'),
+                  if (selectedType == 'MX' || selectedType == 'SRV') {
+                    recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
+                  }
+
+                  final result = await domainState.updateDnsRecord(
+                    providerId,
+                    widget.domainId,
+                    record['id'].toString(),
+                    recordData,
+                    context.read<CredentialState>().selectedCredential!.credentials,
                   );
+                  if (dialogContext.mounted) {
+                    if (result['success']) {
+                      Navigator.pop(dialogContext);
+                      ToastUtil.showSuccess(context, '记录已更新');
+                    } else {
+                      setDialogState(() => isSubmitting = false);
+                      ToastUtil.showError(
+                        context,
+                        result['error'] ?? '更新失败',
+                        errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+                      );
+                    }
+                  }
                 },
+                child: isSubmitting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('保存'),
               ),
             ],
           );
@@ -327,11 +337,12 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
 
   void _deleteRecord(BuildContext context, String providerId, Map<String, dynamic> record) {
     final name = record['name']?.toString() ?? '';
+    bool isDeleting = false;
+
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          final isDeleting = context.read<DomainState>().isOperating;
           return AlertDialog(
             title: const Text('删除记录'),
             content: Text('确定要删除 "$name" 吗？此操作无法撤销。'),
@@ -346,6 +357,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   foregroundColor: Theme.of(dialogContext).colorScheme.onError,
                 ),
                 onPressed: isDeleting ? null : () async {
+                  setDialogState(() => isDeleting = true);
                   final domainState = context.read<DomainState>();
                   final result = await domainState.deleteDnsRecord(
                     providerId,
@@ -354,17 +366,16 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     context.read<CredentialState>().selectedCredential!.credentials,
                   );
                   if (dialogContext.mounted) {
-                    Navigator.pop(dialogContext);
-                    if (context.mounted) {
-                      if (result['success']) {
-                        ToastUtil.showSuccess(context, '记录已删除');
-                      } else {
-                        ToastUtil.showError(
-                          context,
-                          result['error'] ?? '删除失败',
-                          errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
-                        );
-                      }
+                    if (result['success']) {
+                      Navigator.pop(dialogContext);
+                      ToastUtil.showSuccess(context, '记录已删除');
+                    } else {
+                      setDialogState(() => isDeleting = false);
+                      ToastUtil.showError(
+                        context,
+                        result['error'] ?? '删除失败',
+                        errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+                      );
                     }
                   }
                 },
