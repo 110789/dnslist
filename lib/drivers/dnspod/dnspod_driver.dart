@@ -124,8 +124,11 @@ class DnspodDriver implements DriverInterface {
       if (error != null) {
         final code = error['Code']?.toString() ?? 'UNKNOWN';
         final rawMessage = error['Message']?.toString() ?? '';
-        final mappedMessage = _errorCodeMap[code] ?? _getGenericErrorMessage(code);
-        return {'error': mappedMessage, 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
+        final mappedMessage = _errorCodeMap[code];
+        if (mappedMessage != null) {
+          return {'error': mappedMessage, 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
+        }
+        return {'error': rawMessage.isNotEmpty ? rawMessage : '操作失败，请稍后重试', 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
       }
     }
     return {'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};

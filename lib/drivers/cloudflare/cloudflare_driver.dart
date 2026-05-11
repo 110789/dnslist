@@ -115,8 +115,11 @@ class CloudflareDriver implements DriverInterface {
       final error = errors[0] as Map?;
       final code = error?['code']?.toString() ?? 'UNKNOWN';
       final rawMessage = error?['message']?.toString() ?? '';
-      final mappedMessage = _errorCodeMap[code] ?? _getGenericErrorMessage(code);
-      return {'error': mappedMessage, 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
+      final mappedMessage = _errorCodeMap[code];
+      if (mappedMessage != null) {
+        return {'error': mappedMessage, 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
+      }
+      return {'error': rawMessage.isNotEmpty ? rawMessage : '操作失败，请稍后重试', 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
     }
     final messages = data['messages'] as List?;
     if (messages != null && messages.isNotEmpty) {

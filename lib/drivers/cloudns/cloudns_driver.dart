@@ -113,9 +113,12 @@ class ClouDNSDriver implements DriverInterface {
     final data = responseData is Map ? responseData : {};
     final status = data['status']?.toString();
     if (status == 'Failed') {
-      final message = data['statusDescription']?.toString() ?? '操作失败';
-      final mappedMessage = _errorCodeMap[message] ?? _getGenericErrorMessage(message);
-      return {'error': mappedMessage, 'errorCode': message, 'success': false, 'rawMessage': message};
+      final message = data['statusDescription']?.toString() ?? '';
+      final mappedMessage = _errorCodeMap[message];
+      if (mappedMessage != null) {
+        return {'error': mappedMessage, 'errorCode': message, 'success': false, 'rawMessage': message};
+      }
+      return {'error': message.isNotEmpty ? message : '操作失败，请稍后重试', 'errorCode': message, 'success': false, 'rawMessage': message};
     }
     return {'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
   }

@@ -137,14 +137,11 @@ class DnsheDriver implements DriverInterface {
     final data = responseData is Map ? responseData : {};
     final errorCode = data['error_code']?.toString() ?? data['errorCode']?.toString() ?? 'UNKNOWN';
     final message = data['message']?.toString() ?? data['error']?.toString() ?? '';
-    final mappedMessage = _errorCodeMap[errorCode] ?? _getGenericErrorMessage(errorCode);
-    return {
-      'error': mappedMessage,
-      'errorCode': errorCode,
-      'success': false,
-      'rawMessage': message,
-      'details': data['details'] ?? {},
-    };
+    final mappedMessage = _errorCodeMap[errorCode];
+    if (mappedMessage != null) {
+      return {'error': mappedMessage, 'errorCode': errorCode, 'success': false, 'rawMessage': message};
+    }
+    return {'error': message.isNotEmpty ? message : '操作失败，请稍后重试', 'errorCode': errorCode, 'success': false, 'rawMessage': message};
   }
 
   @override
