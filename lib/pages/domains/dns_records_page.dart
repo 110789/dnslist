@@ -23,21 +23,20 @@ class DnsRecordsPage extends StatefulWidget {
 
 class _DnsRecordsPageState extends State<DnsRecordsPage> {
   final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
-  bool _hasInitialLoad = false;
+  bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadRecords(forceRefresh: true));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _hasInitialized = true;
+      _loadRecords(forceRefresh: false);
+    });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_hasInitialLoad) {
-      _loadRecords(forceRefresh: true);
-    }
-    _hasInitialLoad = true;
   }
 
   void _loadRecords({bool forceRefresh = false}) {
@@ -51,19 +50,10 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     }
   }
 
-  Future<void> _refreshRecords() async {
+  Future<void> _triggerRefresh() async {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential != null) {
       await context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId, isRefresh: true);
-    }
-  }
-
-  Future<void> _triggerRefreshAnimation() async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (mounted) {
-      _refreshKey.currentState?.show();
-      await Future.delayed(const Duration(milliseconds: 300));
-      await _refreshRecords();
     }
   }
 
@@ -180,7 +170,6 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   if (mounted) {
                     if (result['success']) {
                       ToastUtil.showSuccess(context, '记录添加成功');
-                      _triggerRefreshAnimation();
                     } else {
                       ToastUtil.showError(
                         context,
@@ -294,7 +283,6 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   if (mounted) {
                     if (result['success']) {
                       ToastUtil.showSuccess(context, '记录已更新');
-                      _triggerRefreshAnimation();
                     } else {
                       ToastUtil.showError(
                         context,
@@ -335,7 +323,6 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       if (mounted) {
         if (result['success']) {
           ToastUtil.showSuccess(context, '记录已删除');
-          _triggerRefreshAnimation();
         } else {
           ToastUtil.showError(
             context,
@@ -394,7 +381,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _refreshRecords,
+            onPressed: _triggerRefresh,
           ),
         ],
       ),
@@ -411,16 +398,14 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   Widget _buildBody(DomainState state, List<Map<String, dynamic>> records, String providerId) {
     if (state.isLoading && records.isEmpty) return const DnsLoading();
 
-    if (state.error != null && records.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ToastUtil.showError(
-          context,
-          state.error!,
-          errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null,
+    if (state.error != null) {
+      final hasError = state.error != null;
+      if (hasError && records.isEmpty) {
+        return DnsErrorState(
+          message: state.error!,
+          onRetry: _triggerRefresh,
         );
-        state.clear();
-      });
-      return const DnsLoading();
+      }
     }
 
     if (records.isEmpty) return _buildEmptyState();
@@ -431,7 +416,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       children: [
         RefreshIndicator(
           key: _refreshKey,
-          onRefresh: _refreshRecords,
+          onRefresh: _triggerRefresh,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
             itemCount: records.length,

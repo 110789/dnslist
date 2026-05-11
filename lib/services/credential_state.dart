@@ -104,4 +104,6 @@ class CredentialState extends ChangeNotifier {
   bool get hasCredentials => _credentials.isNotEmpty;
 
   bool get hasSelected => _selectedCredentialId != null;
+
+  String? get selectedProviderId => selectedCredential?.providerId;
 }

@@ -20,23 +20,30 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
-  bool _hasInitialLoad = false;
+  bool _hasInitialized = false;
+  String? _lastCredentialId;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadDomains(forceRefresh: true);
+      _hasInitialized = true;
+      _loadDomains(forceRefresh: false);
     });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_hasInitialLoad) {
+    if (!_hasInitialized) return;
+    
+    final credentialState = context.read<CredentialState>();
+    final selected = credentialState.selectedCredential;
+    
+    if (selected != null && selected.id != _lastCredentialId) {
+      _lastCredentialId = selected.id;
       _loadDomains(forceRefresh: true);
     }
-    _hasInitialLoad = true;
   }
 
   Future<void> _loadDomains({bool forceRefresh = false}) async {
@@ -51,12 +58,12 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _triggerRefreshAnimation() async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (mounted) {
-      _refreshKey.currentState?.show();
-      await Future.delayed(const Duration(milliseconds: 300));
-      await _loadDomains(forceRefresh: true);
+  Future<void> _triggerRefresh() async {
+    final credentialState = context.read<CredentialState>();
+    final domainState = context.read<DomainState>();
+    final selected = credentialState.selectedCredential;
+    if (selected != null) {
+      await domainState.refreshDomains(selected.providerId, selected.credentials);
     }
   }
 
@@ -211,11 +218,10 @@ class _HomePageState extends State<HomePage> {
     );
 
     if (confirm == true && selected != null) {
-      final result = await state.deleteDomain(selected.providerId, domainId);
+      final result = await state.deleteDomain(selected.providerId, domainId, selected.credentials);
       if (context.mounted) {
         if (result['success']) {
           ToastUtil.showSuccess(context, '域名已删除');
-          _triggerRefreshAnimation();
         } else {
           final driver = DriverFactory.get(selected.providerId);
           final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
@@ -232,14 +238,12 @@ class _HomePageState extends State<HomePage> {
     Map<String, dynamic> domain,
   ) async {
     if (selected == null) return;
-    state.setIsOperating(true);
     final domainId = domain['id']?.toString() ?? '';
     final result = await state.renewDomain(selected.providerId, domainId, selected.credentials);
     if (context.mounted) {
       if (result['success']) {
         final msg = result['remaining_days'] != null ? '续期成功，剩余 ${result['remaining_days']} 天' : '续期成功';
         ToastUtil.showSuccess(context, msg);
-        _triggerRefreshAnimation();
       } else {
         final driver = DriverFactory.get(selected.providerId);
         final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
@@ -260,38 +264,38 @@ class _HomePageState extends State<HomePage> {
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(driver.getAddDomainTitle()),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: fields.map((field) {
-              return Column(
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final isAdding = domainState.isOperating;
+          return AlertDialog(
+            title: Text(driver.getAddDomainTitle()),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: controllers[field.key],
-                    decoration: InputDecoration(labelText: field.label, hintText: field.hintText),
-                  ),
-                  if (field.description != null) ...[
-                    const SizedBox(height: 4),
-                    Text(field.description!, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  ],
-                  const SizedBox(height: 16),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
-          StatefulBuilder(
-            builder: (context, setState) {
-              final isAdding = domainState.isOperating;
-              return FilledButton(
+                children: fields.map((field) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: controllers[field.key],
+                        decoration: InputDecoration(labelText: field.label, hintText: field.hintText),
+                      ),
+                      if (field.description != null) ...[
+                        const SizedBox(height: 4),
+                        Text(field.description!, style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(color: Theme.of(dialogContext).colorScheme.onSurfaceVariant)),
+                      ],
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
+              FilledButton(
                 onPressed: isAdding ? null : () async {
-                  Navigator.pop(ctx);
+                  Navigator.pop(dialogContext);
                   final inputData = <String, dynamic>{};
                   for (final field in fields) {
                     inputData[field.key] = controllers[field.key]?.text ?? '';
@@ -300,7 +304,6 @@ class _HomePageState extends State<HomePage> {
                       return;
                     }
                   }
-                  domainState.setIsOperating(true);
                   final domainData = driver.prepareDomainData(inputData);
                   final result = await domainState.addDomain(providerId, domainData, context.read<CredentialState>().selectedCredential!.credentials);
                   if (!result['success'] && context.mounted) {
@@ -309,15 +312,14 @@ class _HomePageState extends State<HomePage> {
                   } else {
                     if (context.mounted) {
                       ToastUtil.showSuccess(context, '添加成功');
-                      _triggerRefreshAnimation();
                     }
                   }
                 },
                 child: isAdding ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('添加'),
-              );
-            },
-          ),
-        ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
