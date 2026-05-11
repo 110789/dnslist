@@ -31,7 +31,7 @@ class _HomePageState extends State<HomePage> {
       if (mounted) {
         final selected = credentialState.selectedCredential;
         if (selected != null) {
-          await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials);
+          await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials, isAuto: true);
         }
       }
     });
@@ -47,7 +47,7 @@ class _HomePageState extends State<HomePage> {
     final domainState = context.read<DomainState>();
     final selected = credentialState.selectedCredential;
     if (selected != null) {
-      await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials, isManual: true);
+      await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials, isAuto: false);
     }
   }
 
@@ -74,7 +74,7 @@ class _HomePageState extends State<HomePage> {
             final domainState = context.read<DomainState>();
             final selected = credentialState.selectedCredential;
             if (selected != null) {
-              await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials);
+              await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials, isAuto: true);
             }
           },
         ),
@@ -109,27 +109,16 @@ class _HomePageState extends State<HomePage> {
 
     if (state.isLoading && state.domains.isEmpty) return const DnsLoading();
 
-    if (state.error != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          ToastUtil.showError(
-            context,
-            state.error!,
-            errorCode: state.errorCode != null ? double.tryParse(state.errorCode!) : null,
-          );
-        }
-      });
-      if (state.domains.isEmpty) {
-        return DnsErrorState(
-          message: state.error!,
-          onRetry: () {
-            final selected = credentialState.selectedCredential;
-            if (selected != null) {
-              state.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials);
-            }
-          },
-        );
-      }
+    if (state.error != null && state.domains.isEmpty) {
+      return DnsErrorState(
+        message: state.error!,
+        onRetry: () {
+          final selected = credentialState.selectedCredential;
+          if (selected != null) {
+            state.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials, isAuto: true);
+          }
+        },
+      );
     }
 
     final showCenterLoading = state.showCenterLoading;
@@ -465,7 +454,7 @@ class _HomePageState extends State<HomePage> {
             ListTile(leading: Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary), title: const Text('选择此凭证'), onTap: () {
               Navigator.pop(ctx);
               credentialState.selectCredential(credential.id);
-              domainState.refreshDomainList(providerId: credential.providerId, credentials: credential.credentials);
+              domainState.refreshDomainList(providerId: credential.providerId, credentials: credential.credentials, isAuto: true);
             }),
             ListTile(leading: Icon(Icons.edit, color: Theme.of(ctx).colorScheme.primary), title: const Text('编辑凭证'), onTap: () { Navigator.pop(ctx); _showEditCredentialDialog(context, credential); }),
             ListTile(leading: Icon(Icons.delete, color: Theme.of(ctx).colorScheme.error), title: Text('删除凭证', style: TextStyle(color: Theme.of(ctx).colorScheme.error)), onTap: () { Navigator.pop(ctx); _showDeleteCredentialDialog(context, credential, credentialState); }),
@@ -487,7 +476,7 @@ class _HomePageState extends State<HomePage> {
           if (context.mounted) {
             final newSelected = credentialState.selectedCredential;
             if (newSelected != null) {
-              context.read<DomainState>().refreshDomainList(providerId: newSelected.providerId, credentials: newSelected.credentials);
+              context.read<DomainState>().refreshDomainList(providerId: newSelected.providerId, credentials: newSelected.credentials, isAuto: true);
             }
             ToastUtil.showSuccess(context, '添加凭证成功');
             Navigator.pop(ctx);
@@ -509,7 +498,7 @@ class _HomePageState extends State<HomePage> {
           await credentialState.updateCredential(updatedCredential);
           if (context.mounted) {
             if (selected != null && selected.id == updatedCredential.id) {
-              context.read<DomainState>().refreshDomainList(providerId: updatedCredential.providerId, credentials: updatedCredential.credentials);
+              context.read<DomainState>().refreshDomainList(providerId: updatedCredential.providerId, credentials: updatedCredential.credentials, isAuto: true);
             }
             ToastUtil.showSuccess(context, '更新凭证成功');
             Navigator.pop(ctx);

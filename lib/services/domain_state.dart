@@ -23,8 +23,8 @@ class DomainState extends ChangeNotifier {
   String? _errorCode;
   String? _selectedDomainId;
 
-  bool _refreshLock = false;
-  bool _isFirstLoad = true;
+  bool _domainRefreshLock = false;
+  bool _dnsRefreshLock = false;
 
   DomainState();
 
@@ -63,30 +63,21 @@ class DomainState extends ChangeNotifier {
     _errorCode = null;
   }
 
-  void _updateCurrentCredential(String providerId, Map<String, String> credentials) {
-    _currentProviderId = providerId;
-    _currentCredentials = credentials;
-  }
-
-  String? _currentProviderId;
-  Map<String, String>? _currentCredentials;
-
   Future<Map<String, dynamic>> refreshDomainList({
     required String providerId,
     required Map<String, String> credentials,
-    bool isManual = false,
+    bool isAuto = true,
   }) async {
-    if (_refreshLock) return {'success': false, 'error': '刷新中', 'errorCode': 'REFRESH_LOCKED'};
-    _refreshLock = true;
-    _updateCurrentCredential(providerId, credentials);
+    if (_domainRefreshLock) return {'success': false, 'error': '刷新中', 'errorCode': 'REFRESH_LOCKED'};
+    _domainRefreshLock = true;
 
     _clearError();
-    
-    if (isManual) {
-      _setLoadingState(LoadingState.refreshing);
-    } else {
+
+    if (isAuto) {
       _domains = [];
       _setLoadingState(LoadingState.loading);
+    } else {
+      _setLoadingState(LoadingState.refreshing);
     }
 
     try {
@@ -118,7 +109,6 @@ class DomainState extends ChangeNotifier {
 
       _domains = List<Map<String, dynamic>>.from(result['domains'] ?? []);
       DriverManager().setCredential(providerId, credentials);
-      _isFirstLoad = false;
       _setLoadingState(LoadingState.idle);
       return {'success': true, 'statusCode': result['statusCode'] ?? 'OK'};
     } catch (e) {
@@ -126,7 +116,7 @@ class DomainState extends ChangeNotifier {
       _setLoadingState(LoadingState.idle);
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     } finally {
-      _refreshLock = false;
+      _domainRefreshLock = false;
     }
   }
 
@@ -134,18 +124,18 @@ class DomainState extends ChangeNotifier {
     required String providerId,
     required String domainId,
     required Map<String, String> credentials,
-    bool isManual = false,
+    bool isAuto = true,
   }) async {
-    if (_refreshLock) return {'success': false, 'error': '刷新中', 'errorCode': 'REFRESH_LOCKED'};
-    _refreshLock = true;
+    if (_dnsRefreshLock) return {'success': false, 'error': '刷新中', 'errorCode': 'REFRESH_LOCKED'};
+    _dnsRefreshLock = true;
 
     _clearError();
 
-    if (isManual) {
-      _setLoadingState(LoadingState.refreshing);
-    } else {
+    if (isAuto) {
       _dnsRecords[domainId] = [];
       _setLoadingState(LoadingState.loading);
+    } else {
+      _setLoadingState(LoadingState.refreshing);
     }
 
     try {
@@ -169,7 +159,6 @@ class DomainState extends ChangeNotifier {
 
       _dnsRecords[domainId] = List<Map<String, dynamic>>.from(result['records'] ?? []);
       _selectedDomainId = domainId;
-      _isFirstLoad = false;
       _setLoadingState(LoadingState.idle);
       return {'success': true, 'statusCode': result['statusCode'] ?? 'OK'};
     } catch (e) {
@@ -177,7 +166,7 @@ class DomainState extends ChangeNotifier {
       _setLoadingState(LoadingState.idle);
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     } finally {
-      _refreshLock = false;
+      _dnsRefreshLock = false;
     }
   }
 
@@ -198,7 +187,7 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
 
-      await refreshDomainList(providerId: providerId, credentials: credentials);
+      await refreshDomainList(providerId: providerId, credentials: credentials, isAuto: true);
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
     } catch (e) {
       _setLoadingState(LoadingState.idle);
@@ -219,7 +208,7 @@ class DomainState extends ChangeNotifier {
       final result = await driver.deleteDomain(domainId);
 
       if (result['success'] == true) {
-        await refreshDomainList(providerId: providerId, credentials: credentials);
+        await refreshDomainList(providerId: providerId, credentials: credentials, isAuto: true);
         return {'success': true, 'statusCode': 'OK'};
       }
 
@@ -248,7 +237,7 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
 
-      await refreshDomainList(providerId: providerId, credentials: credentials);
+      await refreshDomainList(providerId: providerId, credentials: credentials, isAuto: true);
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
     } catch (e) {
       _setLoadingState(LoadingState.idle);
@@ -273,7 +262,7 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
 
-      await refreshDnsRecordList(providerId: providerId, domainId: domainId, credentials: credentials);
+      await refreshDnsRecordList(providerId: providerId, domainId: domainId, credentials: credentials, isAuto: true);
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
     } catch (e) {
       _setLoadingState(LoadingState.idle);
@@ -298,7 +287,7 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
 
-      await refreshDnsRecordList(providerId: providerId, domainId: domainId, credentials: credentials);
+      await refreshDnsRecordList(providerId: providerId, domainId: domainId, credentials: credentials, isAuto: true);
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
     } catch (e) {
       _setLoadingState(LoadingState.idle);
@@ -319,7 +308,7 @@ class DomainState extends ChangeNotifier {
       final result = await driver.deleteDnsRecord(domainId, recordId);
 
       if (result['success'] == true) {
-        await refreshDnsRecordList(providerId: providerId, domainId: domainId, credentials: credentials);
+        await refreshDnsRecordList(providerId: providerId, domainId: domainId, credentials: credentials, isAuto: true);
         return {'success': true, 'statusCode': 'OK'};
       }
 

@@ -34,6 +34,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
           providerId: credential.providerId,
           domainId: widget.domainId,
           credentials: credential.credentials,
+          isAuto: true,
         );
       }
     });
@@ -51,6 +52,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         providerId: credential.providerId,
         domainId: widget.domainId,
         credentials: credential.credentials,
+        isAuto: true,
       );
     }
   }
@@ -62,7 +64,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         providerId: credential.providerId,
         domainId: widget.domainId,
         credentials: credential.credentials,
-        isManual: true,
+        isAuto: false,
       );
     }
   }
