@@ -708,8 +708,22 @@ class _HomePageState extends State<HomePage> {
       isDestructive: true,
     );
     if (confirm == true && context.mounted) {
+      final wasSelected = credentialState.selectedCredentialId == credential.id;
       await credentialState.removeCredential(credential.id);
-      if (context.mounted) ToastUtil.showSuccess(context, '删除凭证成功');
+      if (context.mounted) {
+        ToastUtil.showSuccess(context, '删除凭证成功');
+        if (wasSelected) {
+          final newSelected = credentialState.selectedCredential;
+          if (newSelected != null) {
+            context.read<NewDomainState>().refreshDomainList(
+              providerId: newSelected.providerId,
+              credentials: newSelected.credentials,
+              triggerType: RefreshTriggerType.passive,
+              animationType: RefreshAnimationType.centerLoading,
+            );
+          }
+        }
+      }
     }
   }
 }
