@@ -125,7 +125,7 @@ class _HomePageState extends State<HomePage> {
           onRetry: () {
             final selected = credentialState.selectedCredential;
             if (selected != null) {
-              state.refreshDomains(selected.providerId, selected.credentials);
+              state.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials);
             }
           },
         );
