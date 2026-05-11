@@ -126,38 +126,53 @@ class _HomePageState extends State<HomePage> {
     final supportsRenew = driver?.supportsRenewDomain ?? false;
     final supportsShowNameServers = driver?.supportsShowNameServers ?? false;
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        if (selected != null) {
-          await state.refreshDomains(selected.providerId, selected.credentials);
-        }
-      },
-      child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
-        itemCount: state.domains.length,
-        separatorBuilder: (_, __) => const DnsDivider(),
-        itemBuilder: (listContext, index) {
-          final domain = state.domains[index];
-          return _DomainListItem(
-            key: ValueKey(domain['id']?.toString() ?? index),
-            domain: domain,
-            supportsDelete: supportsDelete,
-            supportsRenew: supportsRenew,
-            supportsShowNameServers: supportsShowNameServers,
-            onTap: () {
-              final domainId = domain['id']?.toString() ?? '';
-              final domainName = domain['name']?.toString() ?? '';
-              if (domainId.isNotEmpty) {
-                GoRouter.of(context).push(
-                  '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
-                );
-              }
+    final isOperatingOrRefreshing = state.isOperating || state.isRefreshing;
+
+    return Stack(
+      children: [
+        RefreshIndicator(
+          onRefresh: () async {
+            if (selected != null) {
+              await state.refreshDomains(selected.providerId, selected.credentials);
+            }
+          },
+          child: ListView.separated(
+            padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
+            itemCount: state.domains.length,
+            separatorBuilder: (_, __) => const DnsDivider(),
+            itemBuilder: (listContext, index) {
+              final domain = state.domains[index];
+              return _DomainListItem(
+                key: ValueKey(domain['id']?.toString() ?? index),
+                domain: domain,
+                supportsDelete: supportsDelete,
+                supportsRenew: supportsRenew,
+                supportsShowNameServers: supportsShowNameServers,
+                onTap: () {
+                  final domainId = domain['id']?.toString() ?? '';
+                  final domainName = domain['name']?.toString() ?? '';
+                  if (domainId.isNotEmpty) {
+                    GoRouter.of(context).push(
+                      '/domains/$domainId/records?name=${Uri.encodeComponent(domainName)}',
+                    );
+                  }
+                },
+                onDelete: state.isOperating ? () {} : () => _handleDeleteDomain(context, state, selected, domain),
+                onRenew: state.isOperating ? () {} : () => _handleRenewDomain(context, state, selected, domain),
+              );
             },
-            onDelete: () => _handleDeleteDomain(context, state, selected, domain),
-            onRenew: () => _handleRenewDomain(context, state, selected, domain),
-          );
-        },
-      ),
+          ),
+        ),
+        if (isOperatingOrRefreshing)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.1),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -181,7 +196,7 @@ class _HomePageState extends State<HomePage> {
       final result = await state.deleteDomain(selected.providerId, domainId);
       if (context.mounted) {
         if (result['success']) {
-          if (context.mounted) ToastUtil.showSuccess(context, '域名已删除');
+          ToastUtil.showSuccess(context, '域名已删除');
         } else {
           final driver = DriverFactory.get(selected.providerId);
           final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
@@ -198,6 +213,7 @@ class _HomePageState extends State<HomePage> {
     Map<String, dynamic> domain,
   ) async {
     if (selected == null) return;
+    state.setIsOperating(true);
     final domainId = domain['id']?.toString() ?? '';
     final result = await state.renewDomain(selected.providerId, domainId, selected.credentials);
     if (context.mounted) {
@@ -250,27 +266,33 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('取消')),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final inputData = <String, dynamic>{};
-              for (final field in fields) {
-                inputData[field.key] = controllers[field.key]?.text ?? '';
-                if (field.required && (inputData[field.key] as String).isEmpty) {
-                  ToastUtil.showError(context, '请填写${field.label}');
-                  return;
-                }
-              }
-              final domainData = driver.prepareDomainData(inputData);
-              final result = await domainState.addDomain(providerId, domainData, context.read<CredentialState>().selectedCredential!.credentials);
-              if (!result['success'] && context.mounted) {
-                final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
-                ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
-              } else {
-                if (context.mounted) ToastUtil.showSuccess(context, '添加成功');
-              }
+          StatefulBuilder(
+            builder: (context, setState) {
+              final isAdding = domainState.isOperating;
+              return FilledButton(
+                onPressed: isAdding ? null : () async {
+                  Navigator.pop(ctx);
+                  final inputData = <String, dynamic>{};
+                  for (final field in fields) {
+                    inputData[field.key] = controllers[field.key]?.text ?? '';
+                    if (field.required && (inputData[field.key] as String).isEmpty) {
+                      ToastUtil.showError(context, '请填写${field.label}');
+                      return;
+                    }
+                  }
+                  domainState.setIsOperating(true);
+                  final domainData = driver.prepareDomainData(inputData);
+                  final result = await domainState.addDomain(providerId, domainData, context.read<CredentialState>().selectedCredential!.credentials);
+                  if (!result['success'] && context.mounted) {
+                    final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
+                    ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+                  } else {
+                    if (context.mounted) ToastUtil.showSuccess(context, '添加成功');
+                  }
+                },
+                child: isAdding ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('添加'),
+              );
             },
-            child: const Text('添加'),
           ),
         ],
       ),
