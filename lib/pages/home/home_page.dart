@@ -20,14 +20,20 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
-  bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _hasInitialized = true;
-      await _autoLoadDomains();
+      final credentialState = context.read<CredentialState>();
+      final domainState = context.read<DomainState>();
+      await credentialState.loadCredentials();
+      if (mounted) {
+        final selected = credentialState.selectedCredential;
+        if (selected != null) {
+          await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials);
+        }
+      }
     });
   }
 
@@ -36,36 +42,12 @@ class _HomePageState extends State<HomePage> {
     super.didChangeDependencies();
   }
 
-  Future<void> _autoLoadDomains() async {
-    final credentialState = context.read<CredentialState>();
-    final domainState = context.read<DomainState>();
-    await credentialState.loadCredentials();
-    if (mounted) {
-      final selected = credentialState.selectedCredential;
-      if (selected != null) {
-        await domainState.loadDomains(selected.providerId, selected.credentials, isInitial: true);
-      }
-    }
-  }
-
-  Future<void> _loadDomains() async {
-    final credentialState = context.read<CredentialState>();
-    final domainState = context.read<DomainState>();
-    await credentialState.loadCredentials();
-    if (mounted) {
-      final selected = credentialState.selectedCredential;
-      if (selected != null) {
-        await domainState.loadDomains(selected.providerId, selected.credentials);
-      }
-    }
-  }
-
   Future<void> _pullToRefresh() async {
     final credentialState = context.read<CredentialState>();
     final domainState = context.read<DomainState>();
     final selected = credentialState.selectedCredential;
     if (selected != null) {
-      await domainState.refreshDomains(selected.providerId, selected.credentials);
+      await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials, isManual: true);
     }
   }
 
@@ -88,7 +70,13 @@ class _HomePageState extends State<HomePage> {
             ? [
         IconButton(
           icon: const Icon(Icons.refresh),
-          onPressed: () => _autoLoadDomains(),
+          onPressed: () async {
+            final domainState = context.read<DomainState>();
+            final selected = credentialState.selectedCredential;
+            if (selected != null) {
+              await domainState.refreshDomainList(providerId: selected.providerId, credentials: selected.credentials);
+            }
+          },
         ),
       ]
             : null,
@@ -438,7 +426,7 @@ class _HomePageState extends State<HomePage> {
             ListTile(leading: Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary), title: const Text('选择此凭证'), onTap: () {
               Navigator.pop(ctx);
               credentialState.selectCredential(credential.id);
-              domainState.loadDomains(credential.providerId, credential.credentials);
+              domainState.refreshDomainList(providerId: credential.providerId, credentials: credential.credentials);
             }),
             ListTile(leading: Icon(Icons.edit, color: Theme.of(ctx).colorScheme.primary), title: const Text('编辑凭证'), onTap: () { Navigator.pop(ctx); _showEditCredentialDialog(context, credential); }),
             ListTile(leading: Icon(Icons.delete, color: Theme.of(ctx).colorScheme.error), title: Text('删除凭证', style: TextStyle(color: Theme.of(ctx).colorScheme.error)), onTap: () { Navigator.pop(ctx); _showDeleteCredentialDialog(context, credential, credentialState); }),
@@ -460,7 +448,7 @@ class _HomePageState extends State<HomePage> {
           if (context.mounted) {
             final newSelected = credentialState.selectedCredential;
             if (newSelected != null) {
-              context.read<DomainState>().loadDomains(newSelected.providerId, newSelected.credentials);
+              context.read<DomainState>().refreshDomainList(providerId: newSelected.providerId, credentials: newSelected.credentials);
             }
             ToastUtil.showSuccess(context, '添加凭证成功');
             Navigator.pop(ctx);
@@ -482,7 +470,7 @@ class _HomePageState extends State<HomePage> {
           await credentialState.updateCredential(updatedCredential);
           if (context.mounted) {
             if (selected != null && selected.id == updatedCredential.id) {
-              context.read<DomainState>().loadDomains(updatedCredential.providerId, updatedCredential.credentials);
+              context.read<DomainState>().refreshDomainList(providerId: updatedCredential.providerId, credentials: updatedCredential.credentials);
             }
             ToastUtil.showSuccess(context, '更新凭证成功');
             Navigator.pop(ctx);

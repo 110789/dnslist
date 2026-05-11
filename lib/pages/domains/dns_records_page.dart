@@ -23,14 +23,19 @@ class DnsRecordsPage extends StatefulWidget {
 
 class _DnsRecordsPageState extends State<DnsRecordsPage> {
   final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
-  bool _hasInitialized = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _hasInitialized = true;
-      await _autoLoadRecords();
+      final credential = context.read<CredentialState>().selectedCredential;
+      if (credential != null && mounted) {
+        await context.read<DomainState>().refreshDnsRecordList(
+          providerId: credential.providerId,
+          domainId: widget.domainId,
+          credentials: credential.credentials,
+        );
+      }
     });
   }
 
@@ -41,15 +46,24 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
 
   Future<void> _autoLoadRecords() async {
     final credential = context.read<CredentialState>().selectedCredential;
-    if (credential != null) {
-      await context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId, isInitial: true);
+    if (credential != null && mounted) {
+      await context.read<DomainState>().refreshDnsRecordList(
+        providerId: credential.providerId,
+        domainId: widget.domainId,
+        credentials: credential.credentials,
+      );
     }
   }
 
   Future<void> _pullToRefresh() async {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential != null) {
-      await context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId, isRefresh: true);
+      await context.read<DomainState>().refreshDnsRecordList(
+        providerId: credential.providerId,
+        domainId: widget.domainId,
+        credentials: credential.credentials,
+        isManual: true,
+      );
     }
   }
 
@@ -162,6 +176,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     providerId,
                     widget.domainId,
                     recordData,
+                    context.read<CredentialState>().selectedCredential!.credentials,
                   );
                   if (mounted) {
                     if (result['success']) {
@@ -275,6 +290,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     widget.domainId,
                     record['id'].toString(),
                     recordData,
+                    context.read<CredentialState>().selectedCredential!.credentials,
                   );
                   if (mounted) {
                     if (result['success']) {
@@ -315,6 +331,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         providerId,
         widget.domainId,
         record['id'].toString(),
+        context.read<CredentialState>().selectedCredential!.credentials,
       );
       if (mounted) {
         if (result['success']) {
