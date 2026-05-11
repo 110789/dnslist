@@ -42,6 +42,8 @@ class NewDomainState extends ChangeNotifier {
 
   bool get isDomainRefreshing => _refreshCore.isDomainRefreshing;
   bool get isDnsRecordRefreshing => _refreshCore.isDnsRecordRefreshing;
+  bool get isDomainLocked => _refreshCore.isDomainLocked;
+  bool get isDnsRecordLocked => _refreshCore.isDnsRecordLocked;
 
   List<Map<String, dynamic>> get currentDnsRecords {
     if (_selectedDomainId == null) return [];
@@ -61,6 +63,65 @@ class NewDomainState extends ChangeNotifier {
   void _clearError() {
     _error = null;
     _errorCode = null;
+  }
+
+  void _prepareManualRefresh({required bool isDomain}) {
+    _loadingState = LoadingState.refreshing;
+    _isManualRefreshing = true;
+    notifyListeners();
+    Future.microtask(() {
+      if (isDomain) {
+        _domains = [];
+      } else if (_selectedDomainId != null) {
+        _dnsRecords[_selectedDomainId!] = [];
+      }
+      notifyListeners();
+    });
+  }
+
+  void _preparePassiveRefresh() {
+    _loadingState = LoadingState.loading;
+    notifyListeners();
+  }
+
+  void _completeRefresh() {
+    _isManualRefreshing = false;
+    _loadingState = LoadingState.idle;
+    notifyListeners();
+  }
+
+  Future<RefreshResult> _executeDomainRefresh({
+    required String providerId,
+    required Map<String, String> credentials,
+    required RefreshTriggerType triggerType,
+  }) async {
+    final result = await _refreshCore.refreshDomainList(
+      fetchData: () => _fetchDomainList(
+        providerId: providerId,
+        credentials: credentials,
+      ),
+      triggerType: triggerType,
+    );
+    _completeRefresh();
+    return result;
+  }
+
+  Future<RefreshResult> _executeDnsRecordRefresh({
+    required String providerId,
+    required String domainId,
+    required Map<String, String> credentials,
+    required RefreshTriggerType triggerType,
+  }) async {
+    final result = await _refreshCore.refreshDnsRecordList(
+      fetchData: () => _fetchDnsRecordList(
+        providerId: providerId,
+        domainId: domainId,
+        credentials: credentials,
+      ),
+      triggerType: triggerType,
+    );
+    _completeRefresh();
+    return result;
   }
 
   Future<RefreshResult> _fetchDomainList({
@@ -154,30 +215,15 @@ class NewDomainState extends ChangeNotifier {
     required RefreshTriggerType triggerType,
   }) async {
     if (triggerType == RefreshTriggerType.manual) {
-      _loadingState = LoadingState.refreshing;
-      _isManualRefreshing = true;
-      notifyListeners();
-      Future.microtask(() {
-        _domains = [];
-        notifyListeners();
-      });
+      _prepareManualRefresh(isDomain: true);
     } else {
-      _loadingState = LoadingState.loading;
-      notifyListeners();
+      _preparePassiveRefresh();
     }
-
-    final result = await _refreshCore.refreshDomainList(
-      fetchData: () => _fetchDomainList(
-        providerId: providerId,
-        credentials: credentials,
-      ),
+    return _executeDomainRefresh(
+      providerId: providerId,
+      credentials: credentials,
       triggerType: triggerType,
     );
-
-    _isManualRefreshing = false;
-    _loadingState = LoadingState.idle;
-    notifyListeners();
-    return result;
   }
 
   Future<RefreshResult> refreshDnsRecordList({
@@ -187,31 +233,49 @@ class NewDomainState extends ChangeNotifier {
     required RefreshTriggerType triggerType,
   }) async {
     if (triggerType == RefreshTriggerType.manual) {
-      _loadingState = LoadingState.refreshing;
-      _isManualRefreshing = true;
-      notifyListeners();
-      Future.microtask(() {
-        _dnsRecords[domainId] = [];
-        notifyListeners();
-      });
+      _prepareManualRefresh(isDomain: false);
     } else {
-      _loadingState = LoadingState.loading;
-      notifyListeners();
+      _preparePassiveRefresh();
     }
+    return _executeDnsRecordRefresh(
+      providerId: providerId,
+      domainId: domainId,
+      credentials: credentials,
+      triggerType: triggerType,
+    );
+  }
 
-    final result = await _refreshCore.refreshDnsRecordList(
-      fetchData: () => _fetchDnsRecordList(
+  Future<Map<String, dynamic>> _refreshAfterOperation({
+    required RefreshTriggerType refreshType,
+    required String providerId,
+    String? domainId,
+    required Map<String, String> credentials,
+  }) async {
+    RefreshResult refreshResult;
+    if (domainId != null) {
+      refreshResult = await refreshDnsRecordList(
         providerId: providerId,
         domainId: domainId,
         credentials: credentials,
-      ),
-      triggerType: triggerType,
-    );
+        triggerType: refreshType,
+      );
+    } else {
+      refreshResult = await refreshDomainList(
+        providerId: providerId,
+        credentials: credentials,
+        triggerType: refreshType,
+      );
+    }
 
-    _isManualRefreshing = false;
-    _loadingState = LoadingState.idle;
-    notifyListeners();
-    return result;
+    if (refreshResult.success) {
+      return {'success': true, 'statusCode': 'OK'};
+    } else {
+      return {
+        'success': false,
+        'error': refreshResult.error,
+        'errorCode': refreshResult.errorCode,
+      };
+    }
   }
 
   Future<Map<String, dynamic>> addDomain(
@@ -225,44 +289,28 @@ class NewDomainState extends ChangeNotifier {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': 'Provider not found',
-          'errorCode': 'PROVIDER_NOT_FOUND',
-          'statusCode': 404
-        };
+        return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.createDomain(domainData);
 
       if (result['error'] != null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': result['error'],
-          'errorCode': result['errorCode'] ?? 'UNKNOWN',
-          'statusCode': result['statusCode']
-        };
+        return _errorResult(
+          result['error'],
+          result['errorCode'] ?? 'UNKNOWN',
+          result['statusCode'],
+        );
       }
 
-      final refreshResult = await refreshDomainList(
+      return await _refreshAfterOperation(
+        refreshType: RefreshTriggerType.passive,
         providerId: providerId,
         credentials: credentials,
-        triggerType: RefreshTriggerType.passive,
       );
-
-      if (refreshResult.success) {
-        return {'success': true, 'statusCode': 'OK', 'data': result['data']};
-      } else {
-        return {
-          'success': false,
-          'error': refreshResult.error,
-          'errorCode': refreshResult.errorCode,
-        };
-      }
     } catch (e) {
       _setLoadingState(LoadingState.idle);
-      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+      return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
 
@@ -277,39 +325,24 @@ class NewDomainState extends ChangeNotifier {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': 'Provider not found',
-          'errorCode': 'PROVIDER_NOT_FOUND',
-          'statusCode': 404
-        };
+        return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.deleteDomain(domainId);
 
       if (result['success'] == true) {
-        final refreshResult = await refreshDomainList(
+        return await _refreshAfterOperation(
+          refreshType: RefreshTriggerType.passive,
           providerId: providerId,
           credentials: credentials,
-          triggerType: RefreshTriggerType.passive,
         );
-
-        if (refreshResult.success) {
-          return {'success': true, 'statusCode': 'OK'};
-        } else {
-          return {
-            'success': false,
-            'error': refreshResult.error,
-            'errorCode': refreshResult.errorCode,
-          };
-        }
       }
 
       _setLoadingState(LoadingState.idle);
       return result;
     } catch (e) {
       _setLoadingState(LoadingState.idle);
-      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+      return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
 
@@ -324,44 +357,33 @@ class NewDomainState extends ChangeNotifier {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': 'Provider not found',
-          'errorCode': 'PROVIDER_NOT_FOUND',
-          'statusCode': 404
-        };
+        return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.renewDomain(domainId);
 
       if (result['error'] != null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': result['error'],
-          'errorCode': result['errorCode'] ?? 'UNKNOWN',
-          'statusCode': result['statusCode']
-        };
+        return _errorResult(
+          result['error'],
+          result['errorCode'] ?? 'UNKNOWN',
+          result['statusCode'],
+        );
       }
 
-      final refreshResult = await refreshDomainList(
+      final refreshResult = await _refreshAfterOperation(
+        refreshType: RefreshTriggerType.passive,
         providerId: providerId,
         credentials: credentials,
-        triggerType: RefreshTriggerType.passive,
       );
 
-      if (refreshResult.success) {
+      if (refreshResult['success'] == true) {
         return {'success': true, 'statusCode': 'OK', 'data': result['data']};
-      } else {
-        return {
-          'success': false,
-          'error': refreshResult.error,
-          'errorCode': refreshResult.errorCode,
-        };
       }
+      return refreshResult;
     } catch (e) {
       _setLoadingState(LoadingState.idle);
-      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+      return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
 
@@ -377,45 +399,29 @@ class NewDomainState extends ChangeNotifier {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': 'Provider not found',
-          'errorCode': 'PROVIDER_NOT_FOUND',
-          'statusCode': 404
-        };
+        return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.createDnsRecord(domainId, recordData);
 
       if (result['error'] != null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': result['error'],
-          'errorCode': result['errorCode'] ?? 'UNKNOWN',
-          'statusCode': result['statusCode']
-        };
+        return _errorResult(
+          result['error'],
+          result['errorCode'] ?? 'UNKNOWN',
+          result['statusCode'],
+        );
       }
 
-      final refreshResult = await refreshDnsRecordList(
+      return await _refreshAfterOperation(
+        refreshType: RefreshTriggerType.passive,
         providerId: providerId,
         domainId: domainId,
         credentials: credentials,
-        triggerType: RefreshTriggerType.passive,
       );
-
-      if (refreshResult.success) {
-        return {'success': true, 'statusCode': 'OK', 'data': result['data']};
-      } else {
-        return {
-          'success': false,
-          'error': refreshResult.error,
-          'errorCode': refreshResult.errorCode,
-        };
-      }
     } catch (e) {
       _setLoadingState(LoadingState.idle);
-      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+      return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
 
@@ -432,45 +438,29 @@ class NewDomainState extends ChangeNotifier {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': 'Provider not found',
-          'errorCode': 'PROVIDER_NOT_FOUND',
-          'statusCode': 404
-        };
+        return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.updateDnsRecord(domainId, recordId, recordData);
 
       if (result['error'] != null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': result['error'],
-          'errorCode': result['errorCode'] ?? 'UNKNOWN',
-          'statusCode': result['statusCode']
-        };
+        return _errorResult(
+          result['error'],
+          result['errorCode'] ?? 'UNKNOWN',
+          result['statusCode'],
+        );
       }
 
-      final refreshResult = await refreshDnsRecordList(
+      return await _refreshAfterOperation(
+        refreshType: RefreshTriggerType.passive,
         providerId: providerId,
         domainId: domainId,
         credentials: credentials,
-        triggerType: RefreshTriggerType.passive,
       );
-
-      if (refreshResult.success) {
-        return {'success': true, 'statusCode': 'OK', 'data': result['data']};
-      } else {
-        return {
-          'success': false,
-          'error': refreshResult.error,
-          'errorCode': refreshResult.errorCode,
-        };
-      }
     } catch (e) {
       _setLoadingState(LoadingState.idle);
-      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+      return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
 
@@ -486,41 +476,35 @@ class NewDomainState extends ChangeNotifier {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
         _setLoadingState(LoadingState.idle);
-        return {
-          'success': false,
-          'error': 'Provider not found',
-          'errorCode': 'PROVIDER_NOT_FOUND',
-          'statusCode': 404
-        };
+        return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.deleteDnsRecord(domainId, recordId);
 
       if (result['success'] == true) {
-        final refreshResult = await refreshDnsRecordList(
+        return await _refreshAfterOperation(
+          refreshType: RefreshTriggerType.passive,
           providerId: providerId,
           domainId: domainId,
           credentials: credentials,
-          triggerType: RefreshTriggerType.passive,
         );
-
-        if (refreshResult.success) {
-          return {'success': true, 'statusCode': 'OK'};
-        } else {
-          return {
-            'success': false,
-            'error': refreshResult.error,
-            'errorCode': refreshResult.errorCode,
-          };
-        }
       }
 
       _setLoadingState(LoadingState.idle);
       return result;
     } catch (e) {
       _setLoadingState(LoadingState.idle);
-      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+      return _errorResult(e.toString(), 'EXCEPTION', null);
     }
+  }
+
+  Map<String, dynamic> _errorResult(String error, String errorCode, int? statusCode) {
+    return {
+      'success': false,
+      'error': error,
+      'errorCode': errorCode,
+      'statusCode': statusCode ?? 0,
+    };
   }
 
   void clear() {

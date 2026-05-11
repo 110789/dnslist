@@ -43,16 +43,45 @@ class RefreshResult {
 
 typedef RefreshCallback = Future<RefreshResult> Function();
 
+class RefreshLock {
+  bool _isLocked = false;
+  DateTime? _lastExecuteTime;
+
+  bool get isLocked => _isLocked;
+  DateTime? get lastExecuteTime => _lastExecuteTime;
+
+  bool tryLock() {
+    if (_isLocked) return false;
+    _isLocked = true;
+    _lastExecuteTime = DateTime.now();
+    return true;
+  }
+
+  void unlock() {
+    _isLocked = false;
+  }
+
+  bool canExecute({Duration? minInterval}) {
+    if (_isLocked) return false;
+    if (minInterval != null && _lastExecuteTime != null) {
+      final elapsed = DateTime.now().difference(_lastExecuteTime!);
+      if (elapsed < minInterval) return false;
+    }
+    return true;
+  }
+}
+
 class RefreshCore extends ChangeNotifier {
   RefreshState _state = RefreshState.idle;
   RefreshTriggerType? _triggerType;
-  DateTime? _lastRefreshTime;
-  Timer? _debounceTimer;
+  final RefreshLock _lock = RefreshLock();
 
   static const Duration _debounceDuration = Duration(milliseconds: 500);
+  static const Duration _minExecuteInterval = Duration(milliseconds: 300);
 
   RefreshState get state => _state;
   bool get isRefreshing => _state == RefreshState.refreshing || _state == RefreshState.loading;
+  bool get isLocked => _lock.isLocked;
   RefreshTriggerType? get triggerType => _triggerType;
 
   Future<RefreshResult> execute({
@@ -60,15 +89,15 @@ class RefreshCore extends ChangeNotifier {
     required RefreshTriggerType triggerType,
     bool clearList = false,
   }) async {
-    if (_debounceTimer?.isActive ?? false) {
+    if (!_lock.canExecute(minInterval: _minExecuteInterval)) {
       return RefreshResult.fail(
-        error: '刷新过于频繁',
-        errorCode: 'DEBOUNCE',
+        error: '刷新进行中，请勿重复操作',
+        errorCode: 'REFRESH_LOCKED',
       );
     }
 
+    _lock.tryLock();
     _triggerType = triggerType;
-    _lastRefreshTime = DateTime.now();
 
     if (triggerType == RefreshTriggerType.manual) {
       _state = RefreshState.refreshing;
@@ -77,22 +106,14 @@ class RefreshCore extends ChangeNotifier {
     }
     notifyListeners();
 
-    _debounceTimer?.cancel();
-    _debounceTimer = Timer(_debounceDuration, () {});
-
     try {
       final result = await fetchData();
-
-      if (result.success) {
-        _state = RefreshState.idle;
-        notifyListeners();
-        return result;
-      } else {
-        _state = RefreshState.idle;
-        notifyListeners();
-        return result;
-      }
+      _lock.unlock();
+      _state = RefreshState.idle;
+      notifyListeners();
+      return result;
     } catch (e) {
+      _lock.unlock();
       _state = RefreshState.idle;
       notifyListeners();
       return RefreshResult.fail(
@@ -102,7 +123,8 @@ class RefreshCore extends ChangeNotifier {
     }
   }
 
-  void resetState() {
+  void forceReset() {
+    _lock.unlock();
     _state = RefreshState.idle;
     _triggerType = null;
     notifyListeners();
@@ -110,7 +132,7 @@ class RefreshCore extends ChangeNotifier {
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
+    _lock.unlock();
     super.dispose();
   }
 }
@@ -124,6 +146,9 @@ class DomainRefreshCore {
 
   bool get isDomainRefreshing => _domainRefresh.isRefreshing;
   bool get isDnsRecordRefreshing => _dnsRecordRefresh.isRefreshing;
+
+  bool get isDomainLocked => _domainRefresh.isLocked;
+  bool get isDnsRecordLocked => _dnsRecordRefresh.isLocked;
 
   RefreshState get domainState => _domainRefresh.state;
   RefreshState get dnsRecordState => _dnsRecordRefresh.state;
@@ -152,8 +177,8 @@ class DomainRefreshCore {
     );
   }
 
-  void resetDomainState() => _domainRefresh.resetState();
-  void resetDnsRecordState() => _dnsRecordRefresh.resetState();
+  void resetDomainState() => _domainRefresh.forceReset();
+  void resetDnsRecordState() => _dnsRecordRefresh.forceReset();
 
   void dispose() {
     _domainRefresh.dispose();
