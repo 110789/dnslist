@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../services/credential_state.dart';
 import '../../services/credential_storage.dart';
 import '../../services/credential_validation.dart';
-import '../../services/domain_state.dart';
+import '../../services/new_domain_state.dart';
+import '../../core/refresh/refresh_core.dart';
 import '../../drivers/driver_factory.dart';
 import '../../utils/toast_util.dart';
 import '../../core/ui/md3_widgets.dart';
@@ -26,7 +27,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final credentialState = context.read<CredentialState>();
-      final domainState = context.read<DomainState>();
+      final domainState = context.read<NewDomainState>();
       await credentialState.loadCredentials();
       if (mounted) {
         final selected = credentialState.selectedCredential;
@@ -34,7 +35,7 @@ class _HomePageState extends State<HomePage> {
           await domainState.refreshDomainList(
             providerId: selected.providerId,
             credentials: selected.credentials,
-            isAuto: true,
+            triggerType: RefreshTriggerType.passive,
           );
         }
       }
@@ -43,14 +44,13 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _pullToRefresh() async {
     final credentialState = context.read<CredentialState>();
-    final domainState = context.read<DomainState>();
+    final domainState = context.read<NewDomainState>();
     final selected = credentialState.selectedCredential;
     if (selected != null) {
-      domainState.clearDomains();
       await domainState.refreshDomainList(
         providerId: selected.providerId,
         credentials: selected.credentials,
-        isAuto: false,
+        triggerType: RefreshTriggerType.manual,
       );
     }
   }
@@ -58,7 +58,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final credentialState = context.watch<CredentialState>();
-    final domainState = context.watch<DomainState>();
+    final domainState = context.watch<NewDomainState>();
     final selected = credentialState.selectedCredential;
     final hasCredentials = credentialState.hasCredentials;
     final colorScheme = Theme.of(context).colorScheme;
@@ -75,13 +75,13 @@ class _HomePageState extends State<HomePage> {
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: () async {
-                    final domainState = context.read<DomainState>();
+                    final domainState = context.read<NewDomainState>();
                     final selected = credentialState.selectedCredential;
                     if (selected != null) {
                       await domainState.refreshDomainList(
                         providerId: selected.providerId,
                         credentials: selected.credentials,
-                        isAuto: true,
+                        triggerType: RefreshTriggerType.passive,
                       );
                     }
                   },
@@ -107,7 +107,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildBody(
     BuildContext context,
-    DomainState state,
+    NewDomainState state,
     CredentialState credentialState,
     bool hasCredentials,
   ) {
@@ -126,7 +126,7 @@ class _HomePageState extends State<HomePage> {
             state.refreshDomainList(
               providerId: selected.providerId,
               credentials: selected.credentials,
-              isAuto: true,
+              triggerType: RefreshTriggerType.passive,
             );
           }
         },
@@ -192,7 +192,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _handleDeleteDomain(BuildContext context, DomainState state, dynamic selected, Map<String, dynamic> domain) {
+  void _handleDeleteDomain(BuildContext context, NewDomainState state, dynamic selected, Map<String, dynamic> domain) {
     final domainName = domain['name']?.toString() ?? '';
     final domainId = domain['id']?.toString() ?? '';
     bool isDeleting = false;
@@ -248,7 +248,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  void _handleRenewDomain(BuildContext context, DomainState state, dynamic selected, Map<String, dynamic> domain) {
+  void _handleRenewDomain(BuildContext context, NewDomainState state, dynamic selected, Map<String, dynamic> domain) {
     final domainName = domain['name']?.toString() ?? '';
     final domainId = domain['id']?.toString() ?? '';
     bool isRenewing = false;
@@ -304,7 +304,7 @@ class _HomePageState extends State<HomePage> {
   void _showAddDomainDialog(BuildContext context, String providerId) {
     final driver = DriverFactory.get(providerId);
     if (driver == null) return;
-    final domainState = context.read<DomainState>();
+    final domainState = context.read<NewDomainState>();
     final fields = driver.getAddDomainFields();
     final controllers = <String, TextEditingController>{};
     for (final field in fields) {
@@ -439,7 +439,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildDrawer(BuildContext context, CredentialState credentialState, DomainState domainState) {
+  Widget _buildDrawer(BuildContext context, CredentialState credentialState, NewDomainState domainState) {
     final colorScheme = Theme.of(context).colorScheme;
     return Drawer(
       surfaceTintColor: colorScheme.surfaceTint,
@@ -506,7 +506,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildCredentialList(BuildContext context, CredentialState credentialState, DomainState domainState) {
+  Widget _buildCredentialList(BuildContext context, CredentialState credentialState, NewDomainState domainState) {
     return ReorderableListView.builder(
       buildDefaultDragHandles: false,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -551,7 +551,7 @@ class _HomePageState extends State<HomePage> {
     BuildContext ctx,
     CredentialModel credential,
     CredentialState credentialState,
-    DomainState domainState,
+    NewDomainState domainState,
   ) {
     showModalBottomSheet(
       context: ctx,
@@ -575,7 +575,7 @@ class _HomePageState extends State<HomePage> {
                 domainState.refreshDomainList(
                   providerId: credential.providerId,
                   credentials: credential.credentials,
-                  isAuto: true,
+                  triggerType: RefreshTriggerType.passive,
                 );
               },
             ),
@@ -613,10 +613,10 @@ class _HomePageState extends State<HomePage> {
           if (context.mounted) {
             final newSelected = credentialState.selectedCredential;
             if (newSelected != null) {
-              context.read<DomainState>().refreshDomainList(
+              context.read<NewDomainState>().refreshDomainList(
                 providerId: newSelected.providerId,
                 credentials: newSelected.credentials,
-                isAuto: true,
+                triggerType: RefreshTriggerType.passive,
               );
             }
             ToastUtil.showSuccess(context, '添加凭证成功');
@@ -639,10 +639,10 @@ class _HomePageState extends State<HomePage> {
           await credentialState.updateCredential(updatedCredential);
           if (context.mounted) {
             if (selected != null && selected.id == updatedCredential.id) {
-              context.read<DomainState>().refreshDomainList(
+              context.read<NewDomainState>().refreshDomainList(
                 providerId: updatedCredential.providerId,
                 credentials: updatedCredential.credentials,
-                isAuto: true,
+                triggerType: RefreshTriggerType.passive,
               );
             }
             ToastUtil.showSuccess(context, '更新凭证成功');

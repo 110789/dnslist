@@ -12,7 +12,7 @@ import 'core/services/framework_services_impl.dart';
 import 'drivers/driver_registry.dart';
 import 'services/credential_storage.dart';
 import 'services/credential_state.dart';
-import 'services/domain_state.dart';
+import 'services/new_domain_state.dart';
 import 'utils/storage/local_storage.dart';
 
 void _globalErrorHandler(FlutterErrorDetails details) {
@@ -122,7 +122,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final credentialStorage = CredentialStorage(LocalStorage.instance);
     final credentialState = CredentialState(credentialStorage);
-    final domainState = DomainState();
+    final domainState = NewDomainState();
     final themeProvider = ThemeProvider();
 
     credentialState.loadCredentials();

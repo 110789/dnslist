@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/credential_state.dart';
-import '../../services/domain_state.dart';
+import '../../services/new_domain_state.dart';
+import '../../core/refresh/refresh_core.dart';
 import '../../drivers/driver_factory.dart';
 import '../../utils/toast_util.dart';
 import '../../core/ui/md3_widgets.dart';
@@ -30,11 +31,11 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final credential = context.read<CredentialState>().selectedCredential;
       if (credential != null && mounted) {
-        await context.read<DomainState>().refreshDnsRecordList(
+        await context.read<NewDomainState>().refreshDnsRecordList(
           providerId: credential.providerId,
           domainId: widget.domainId,
           credentials: credential.credentials,
-          isAuto: true,
+          triggerType: RefreshTriggerType.passive,
         );
       }
     });
@@ -48,11 +49,11 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   Future<void> _autoLoadRecords() async {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential != null && mounted) {
-      await context.read<DomainState>().refreshDnsRecordList(
+      await context.read<NewDomainState>().refreshDnsRecordList(
         providerId: credential.providerId,
         domainId: widget.domainId,
         credentials: credential.credentials,
-        isAuto: true,
+        triggerType: RefreshTriggerType.passive,
       );
     }
   }
@@ -60,13 +61,12 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   Future<void> _pullToRefresh() async {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential != null) {
-      final domainState = context.read<DomainState>();
-      domainState.clearDnsRecords(widget.domainId);
+      final domainState = context.read<NewDomainState>();
       await domainState.refreshDnsRecordList(
         providerId: credential.providerId,
         domainId: widget.domainId,
         credentials: credential.credentials,
-        isAuto: false,
+        triggerType: RefreshTriggerType.manual,
       );
     }
   }
@@ -74,7 +74,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   void _showAddRecordDialog(BuildContext context, String providerId) {
     final driver = DriverFactory.get(providerId);
     if (driver == null) return;
-    final domainState = context.read<DomainState>();
+    final domainState = context.read<NewDomainState>();
 
     final nameController = TextEditingController();
     final contentController = TextEditingController();
@@ -222,7 +222,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   }
 
   void _showEditRecordDialog(BuildContext context, String providerId, Map<String, dynamic> record) {
-    final domainState = context.read<DomainState>();
+    final domainState = context.read<NewDomainState>();
     final nameController = TextEditingController(text: record['name'] ?? '');
     final contentController = TextEditingController(text: record['content'] ?? '');
     final priorityController = TextEditingController(text: (record['priority'] ?? 10).toString());
@@ -360,7 +360,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 ),
                 onPressed: isDeleting ? null : () async {
                   setDialogState(() => isDeleting = true);
-                  final domainState = context.read<DomainState>();
+                  final domainState = context.read<NewDomainState>();
                   final result = await domainState.deleteDnsRecord(
                     providerId,
                     widget.domainId,
@@ -424,7 +424,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   @override
   Widget build(BuildContext context) {
     final credentialState = context.watch<CredentialState>();
-    final domainState = context.watch<DomainState>();
+    final domainState = context.watch<NewDomainState>();
     final records = domainState.dnsRecords[widget.domainId] ?? [];
     final providerId = credentialState.selectedCredential?.providerId ?? '';
     final colorScheme = Theme.of(context).colorScheme;
@@ -453,7 +453,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     );
   }
 
-  Widget _buildBody(DomainState state, List<Map<String, dynamic>> records, String providerId) {
+  Widget _buildBody(NewDomainState state, List<Map<String, dynamic>> records, String providerId) {
     if (state.isLoading && records.isEmpty) return const DnsLoading();
 
     if (state.error != null) {
