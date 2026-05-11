@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
 import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/services/service_registry.dart';
+import '../../core/config/app_config.dart';
 
 class DnsheDriver implements DriverInterface {
   static const String _providerId = 'dnshe';
@@ -155,7 +155,7 @@ class DnsheDriver implements DriverInterface {
       _apiKey = apiKey;
       _apiSecret = apiSecret;
       _client = ApiClient(
-        baseUrl: ServiceRegistry.instance.getProviderBaseUrl('dnshe'),
+        baseUrl: AppConfig.dnsheBaseUrl,
         headers: {'X-API-Key': apiKey, 'X-API-Secret': apiSecret},
       );
       final response = await _client!.get('', queryParameters: {'m': 'domain_hub', 'endpoint': 'quota'});

@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
 import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/services/service_registry.dart';
+import '../../core/config/app_config.dart';
 import 'dnspod_signer.dart';
 
 class DnspodDriver implements DriverInterface {
@@ -146,7 +146,7 @@ class DnspodDriver implements DriverInterface {
         payload: params,
       );
       final client = Dio(BaseOptions(
-        baseUrl: ServiceRegistry.instance.getProviderBaseUrl('dnspod'),
+        baseUrl: AppConfig.dnspodBaseUrl,
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         contentType: 'application/json; charset=utf-8',

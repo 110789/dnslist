@@ -5,7 +5,7 @@ import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
 import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/services/service_registry.dart';
+import '../../core/config/app_config.dart';
 
 class RainyunDriver implements DriverInterface {
   static const String _providerId = 'rainyun';
@@ -158,7 +158,7 @@ class RainyunDriver implements DriverInterface {
 
   Dio _createDioClient(String apiKey) {
     final dio = Dio(BaseOptions(
-      baseUrl: ServiceRegistry.instance.getProviderBaseUrl('rainyun'),
+      baseUrl: AppConfig.rainyunBaseUrl,
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
@@ -230,7 +230,7 @@ class RainyunDriver implements DriverInterface {
           developer.log('Rainyun: authentication successful', name: 'RainyunDriver');
           _savedApiKey = apiKey;
           _client = ApiClient(
-            baseUrl: ServiceRegistry.instance.getProviderBaseUrl('rainyun'),
+            baseUrl: AppConfig.rainyunBaseUrl,
             headers: {
               'X-Api-Key': apiKey,
               'Content-Type': 'application/json',

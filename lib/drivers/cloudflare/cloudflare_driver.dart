@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
 import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/services/service_registry.dart';
+import '../../core/config/app_config.dart';
 
 class CloudflareDriver implements DriverInterface {
   static const String _providerId = 'cloudflare';
@@ -135,12 +135,11 @@ class CloudflareDriver implements DriverInterface {
     if (_apiToken == null) {
       throw StateError('Driver not initialized. Call validateCredential first.');
     }
-    final registry = ServiceRegistry.instance;
     _client = ApiClient(
-      baseUrl: registry.getProviderBaseUrl(_providerId),
+      baseUrl: AppConfig.cloudflareBaseUrl,
       headers: {'Authorization': 'Bearer $_apiToken', 'Content-Type': 'application/json'},
-      connectTimeout: registry.connectionTimeout,
-      receiveTimeout: registry.receiveTimeout,
+      connectTimeout: AppConfig.connectionTimeout,
+      receiveTimeout: AppConfig.receiveTimeout,
     );
     return _client!;
   }
@@ -151,12 +150,11 @@ class CloudflareDriver implements DriverInterface {
     if (apiToken == null || apiToken.isEmpty) return false;
     try {
       _apiToken = apiToken;
-      final registry = ServiceRegistry.instance;
       _client = ApiClient(
-        baseUrl: registry.getProviderBaseUrl(_providerId),
+        baseUrl: AppConfig.cloudflareBaseUrl,
         headers: {'Authorization': 'Bearer $apiToken', 'Content-Type': 'application/json'},
-        connectTimeout: registry.connectionTimeout,
-        receiveTimeout: registry.receiveTimeout,
+        connectTimeout: AppConfig.connectionTimeout,
+        receiveTimeout: AppConfig.receiveTimeout,
       );
       final response = await _client!.get('/user/tokens/verify');
       if (response.data['success'] == true) return true;

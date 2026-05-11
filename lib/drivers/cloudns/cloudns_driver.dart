@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
 import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/services/service_registry.dart';
+import '../../core/config/app_config.dart';
 
 class ClouDNSDriver implements DriverInterface {
   static const String _providerId = 'cloudns';
@@ -134,7 +134,7 @@ class ClouDNSDriver implements DriverInterface {
         ...params,
       };
       final dio = Dio(BaseOptions(
-        baseUrl: ServiceRegistry.instance.getProviderBaseUrl('cloudns'),
+        baseUrl: AppConfig.cloudnsBaseUrl,
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
       ));
@@ -203,7 +203,7 @@ class ClouDNSDriver implements DriverInterface {
     if (authIdInt == null) return false;
     try {
       final dio = Dio(BaseOptions(
-        baseUrl: ServiceRegistry.instance.getProviderBaseUrl('cloudns'),
+        baseUrl: AppConfig.cloudnsBaseUrl,
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
       ));
@@ -231,7 +231,7 @@ class ClouDNSDriver implements DriverInterface {
           _authId = authIdInt;
           _authPassword = authPassword;
           _client = ApiClient(
-            baseUrl: ServiceRegistry.instance.getProviderBaseUrl('cloudns'),
+            baseUrl: AppConfig.cloudnsBaseUrl,
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           );
           return true;
