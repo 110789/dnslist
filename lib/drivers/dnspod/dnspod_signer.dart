@@ -42,7 +42,7 @@ Map<String, String> buildDnspodHeaders({
   final canonicalHeaders = 'content-type:$contentType\nhost:$host\nx-tc-action:${action.toLowerCase()}\n';
   const signedHeaders = 'content-type;host;x-tc-action';
 
-  final canonicalRequest = '$httpRequestMethod\n$canonicalUri\n$canonicalQueryString\n$canonicalHeaders$signedHeaders\n$hashedRequestPayload';
+  final canonicalRequest = '$httpRequestMethod\n$canonicalUri\n$canonicalQueryString\n$canonicalHeaders\n$signedHeaders\n$hashedRequestPayload';
 
   final credentialScope = '$date/$service/tc3_request';
   final hashedCanonicalRequest = sha256.convert(utf8.encode(canonicalRequest)).toString();
