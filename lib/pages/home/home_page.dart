@@ -36,6 +36,7 @@ class _HomePageState extends State<HomePage> {
             providerId: selected.providerId,
             credentials: selected.credentials,
             triggerType: RefreshTriggerType.passive,
+            animationType: RefreshAnimationType.centerLoading,
           );
         }
       }
@@ -82,6 +83,7 @@ class _HomePageState extends State<HomePage> {
                         providerId: selected.providerId,
                         credentials: selected.credentials,
                         triggerType: RefreshTriggerType.passive,
+                        animationType: RefreshAnimationType.centerLoading,
                       );
                     }
                   },
@@ -141,6 +143,7 @@ class _HomePageState extends State<HomePage> {
               providerId: selected.providerId,
               credentials: selected.credentials,
               triggerType: RefreshTriggerType.passive,
+              animationType: RefreshAnimationType.centerLoading,
             );
           }
         },
@@ -612,6 +615,7 @@ class _HomePageState extends State<HomePage> {
                   providerId: credential.providerId,
                   credentials: credential.credentials,
                   triggerType: RefreshTriggerType.passive,
+                  animationType: RefreshAnimationType.centerLoading,
                 );
               },
             ),
@@ -653,6 +657,7 @@ class _HomePageState extends State<HomePage> {
                 providerId: newSelected.providerId,
                 credentials: newSelected.credentials,
                 triggerType: RefreshTriggerType.passive,
+                animationType: RefreshAnimationType.centerLoading,
               );
             }
             ToastUtil.showSuccess(context, '添加凭证成功');
@@ -679,6 +684,7 @@ class _HomePageState extends State<HomePage> {
                 providerId: updatedCredential.providerId,
                 credentials: updatedCredential.credentials,
                 triggerType: RefreshTriggerType.passive,
+                animationType: RefreshAnimationType.centerLoading,
               );
             }
             ToastUtil.showSuccess(context, '更新凭证成功');

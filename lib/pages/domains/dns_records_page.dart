@@ -36,6 +36,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
           domainId: widget.domainId,
           credentials: credential.credentials,
           triggerType: RefreshTriggerType.passive,
+          animationType: RefreshAnimationType.centerLoading,
         );
       }
     });
@@ -54,6 +55,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         domainId: widget.domainId,
         credentials: credential.credentials,
         triggerType: RefreshTriggerType.passive,
+        animationType: RefreshAnimationType.centerLoading,
       );
     }
   }
