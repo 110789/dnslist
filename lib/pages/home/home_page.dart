@@ -208,34 +208,47 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _handleDeleteDomain(
-    BuildContext context,
-    DomainState state,
-    dynamic selected,
-    Map<String, dynamic> domain,
-  ) async {
+  void _handleDeleteDomain(BuildContext context, DomainState state, dynamic selected, Map<String, dynamic> domain) {
     final domainName = domain['name']?.toString() ?? '';
     final domainId = domain['id']?.toString() ?? '';
-    final confirm = await showDnsConfirmDialog(
-      context,
-      title: '删除域名',
-      message: '确定要删除 "$domainName" 吗？此操作无法撤销。',
-      confirmLabel: '删除',
-      isDestructive: true,
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final isDeleting = state.isOperating;
+          return AlertDialog(
+            title: const Text('删除域名'),
+            content: Text('确定要删除 "$domainName" 吗？此操作无法撤销。'),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
+                onPressed: isDeleting ? null : () async {
+                  if (selected == null) return;
+                  final result = await state.deleteDomain(selected.providerId, domainId, selected.credentials);
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                    if (result['success']) {
+                      if (context.mounted) ToastUtil.showSuccess(context, '域名已删除');
+                    } else {
+                      final driver = DriverFactory.get(selected.providerId);
+                      final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
+                      if (context.mounted) ToastUtil.showError(context, errorMsg ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+                    }
+                  }
+                },
+                child: isDeleting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('删除'),
+              ),
+            ],
+          );
+        },
+      ),
     );
-
-    if (confirm == true && selected != null) {
-      final result = await state.deleteDomain(selected.providerId, domainId, selected.credentials);
-      if (context.mounted) {
-        if (result['success']) {
-          ToastUtil.showSuccess(context, '域名已删除');
-        } else {
-          final driver = DriverFactory.get(selected.providerId);
-          final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
-          ToastUtil.showError(context, errorMsg ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
-        }
-      }
-    }
   }
 
   Future<void> _handleRenewDomain(

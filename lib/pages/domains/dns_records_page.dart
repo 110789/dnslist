@@ -323,36 +323,58 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     );
   }
 
-  Future<void> _deleteRecord(BuildContext context, String providerId, Map<String, dynamic> record) async {
+  void _deleteRecord(BuildContext context, String providerId, Map<String, dynamic> record) {
     final name = record['name']?.toString() ?? '';
-    final confirm = await showDnsConfirmDialog(
-      context,
-      title: '删除记录',
-      message: '确定要删除 "$name" 吗？此操作无法撤销。',
-      confirmLabel: '删除',
-      isDestructive: true,
-    );
-
-    if (confirm == true && mounted) {
-      final domainState = context.read<DomainState>();
-      final result = await domainState.deleteDnsRecord(
-        providerId,
-        widget.domainId,
-        record['id'].toString(),
-        context.read<CredentialState>().selectedCredential!.credentials,
-      );
-      if (mounted) {
-        if (result['success']) {
-          ToastUtil.showSuccess(context, '记录已删除');
-        } else {
-          ToastUtil.showError(
-            context,
-            result['error'] ?? '删除失败',
-            errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final isDeleting = context.read<DomainState>().isOperating;
+          return AlertDialog(
+            title: const Text('删除记录'),
+            content: Text('确定要删除 "$name" 吗？此操作无法撤销。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(dialogContext).colorScheme.error,
+                  foregroundColor: Theme.of(dialogContext).colorScheme.onError,
+                ),
+                onPressed: isDeleting ? null : () async {
+                  final domainState = context.read<DomainState>();
+                  final result = await domainState.deleteDnsRecord(
+                    providerId,
+                    widget.domainId,
+                    record['id'].toString(),
+                    context.read<CredentialState>().selectedCredential!.credentials,
+                  );
+                  if (dialogContext.mounted) {
+                    Navigator.pop(dialogContext);
+                    if (context.mounted) {
+                      if (result['success']) {
+                        ToastUtil.showSuccess(context, '记录已删除');
+                      } else {
+                        ToastUtil.showError(
+                          context,
+                          result['error'] ?? '删除失败',
+                          errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+                        );
+                      }
+                    }
+                  }
+                },
+                child: isDeleting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('删除'),
+              ),
+            ],
           );
-        }
-      }
-    }
+        },
+      ),
+    );
   }
 
   String _getContentLabel(String type) {
@@ -474,7 +496,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
           return DnsDnsRecordTile(
             record: record,
             onEdit: state.isOperating ? null : () => _showEditRecordDialog(context, providerId, record),
-            onDelete: state.isOperating ? null : () => _deleteRecord(context, providerId, record),
+            onDelete: state.isOperating ? () {} : () => _deleteRecord(context, providerId, record),
           );
         },
       ),
