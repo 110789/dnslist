@@ -142,27 +142,52 @@ class DnspodDriver implements DriverInterface {
         action: action,
         payload: params,
       );
-      _client = ApiClient(
+      final client = Dio(BaseOptions(
         baseUrl: AppConfig.dnspodBaseUrl,
-        headers: headers,
-      );
-      final response = await _client!.post('', data: params);
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+        contentType: 'application/json; charset=utf-8',
+        responseType: ResponseType.plain,
+      ));
+      client.options.headers.addAll(headers);
+      final response = await client.post('', data: params);
       if (response.data == null) {
         return {'error': '服务器无响应', 'errorCode': 'UNKNOWN', 'success': false};
       }
-      final respData = response.data as Map;
-      if (respData.containsKey('Response')) {
-        final responseObj = respData['Response'] as Map;
-        if (responseObj.containsKey('Error')) {
-          return _parseError(respData);
-        }
-        return {'success': true, 'data': responseObj, 'statusCode': 'OK'};
+      final respData = response.data;
+      if (respData is! Map) {
+        try {
+          final parsed = respData is String ? _tryParseJson(respData.toString()) : respData;
+          if (parsed is Map) {
+            return _processResponse(parsed);
+          }
+        } catch (_) {}
+        return {'error': '响应数据格式异常', 'errorCode': 'PARSE_ERROR', 'success': false};
       }
-      return {'success': true, 'data': respData, 'statusCode': 'OK'};
+      return _processResponse(respData as Map);
     } on DioException catch (e) {
       return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
     } catch (e) {
       return {'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
+    }
+  }
+
+  Map<String, dynamic> _processResponse(Map respData) {
+    if (respData.containsKey('Response')) {
+      final responseObj = respData['Response'] as Map;
+      if (responseObj.containsKey('Error')) {
+        return _parseError(respData);
+      }
+      return {'success': true, 'data': responseObj, 'statusCode': 'OK'};
+    }
+    return {'success': true, 'data': respData, 'statusCode': 'OK'};
+  }
+
+  dynamic _tryParseJson(String jsonStr) {
+    try {
+      return jsonDecode(jsonStr);
+    } catch (_) {
+      return null;
     }
   }
 
