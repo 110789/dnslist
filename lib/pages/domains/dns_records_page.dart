@@ -152,47 +152,51 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('取消'),
               ),
-              FilledButton(
-                onPressed: isOperating ? null : () async {
-                  Navigator.pop(ctx);
+              StatefulBuilder(
+                builder: (context, setBtnState) {
+                  final isSubmitting = domainState.isOperating;
+                  return FilledButton(
+                    onPressed: isSubmitting ? null : () async {
+                      if (contentController.text.isEmpty) {
+                        ToastUtil.showError(context, '请填写记录值');
+                        return;
+                      }
 
-                  if (contentController.text.isEmpty) {
-                    ToastUtil.showError(context, '请填写记录值');
-                    return;
-                  }
+                      final recordData = <String, dynamic>{
+                        'type': selectedType,
+                        'name': nameController.text,
+                        'content': contentController.text,
+                        'ttl': ttl,
+                      };
 
-                  final recordData = <String, dynamic>{
-                    'type': selectedType,
-                    'name': nameController.text,
-                    'content': contentController.text,
-                    'ttl': ttl,
-                  };
+                      if (selectedType == 'MX' || selectedType == 'SRV') {
+                        recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
+                      }
 
-                  if (selectedType == 'MX' || selectedType == 'SRV') {
-                    recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
-                  }
-
-                  final result = await domainState.createDnsRecord(
-                    providerId,
-                    widget.domainId,
-                    recordData,
-                    context.read<CredentialState>().selectedCredential!.credentials,
-                  );
-                  if (mounted) {
-                    if (result['success']) {
-                      ToastUtil.showSuccess(context, '记录添加成功');
-                    } else {
-                      ToastUtil.showError(
-                        context,
-                        result['error'] ?? '添加失败',
-                        errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+                      final result = await domainState.createDnsRecord(
+                        providerId,
+                        widget.domainId,
+                        recordData,
+                        context.read<CredentialState>().selectedCredential!.credentials,
                       );
-                    }
-                  }
+                      if (result['success']) {
+                        if (mounted) Navigator.pop(ctx);
+                        if (context.mounted) ToastUtil.showSuccess(context, '记录添加成功');
+                      } else {
+                        if (mounted) {
+                          ToastUtil.showError(
+                            context,
+                            result['error'] ?? '添加失败',
+                            errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+                          );
+                        }
+                      }
+                    },
+                    child: domainState.isOperating
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('添加'),
+                  );
                 },
-                child: isOperating
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('添加'),
               ),
             ],
           );
@@ -270,43 +274,47 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('取消'),
               ),
-              FilledButton(
-                onPressed: isOperating ? null : () async {
-                  Navigator.pop(ctx);
+              StatefulBuilder(
+                builder: (context, setBtnState) {
+                  final isSubmitting = domainState.isOperating;
+                  return FilledButton(
+                    onPressed: isSubmitting ? null : () async {
+                      final recordData = <String, dynamic>{
+                        'type': selectedType,
+                        'name': nameController.text,
+                        'content': contentController.text,
+                        'ttl': ttl,
+                      };
 
-                  final recordData = <String, dynamic>{
-                    'type': selectedType,
-                    'name': nameController.text,
-                    'content': contentController.text,
-                    'ttl': ttl,
-                  };
+                      if (selectedType == 'MX' || selectedType == 'SRV') {
+                        recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
+                      }
 
-                  if (selectedType == 'MX' || selectedType == 'SRV') {
-                    recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
-                  }
-
-                  final result = await domainState.updateDnsRecord(
-                    providerId,
-                    widget.domainId,
-                    record['id'].toString(),
-                    recordData,
-                    context.read<CredentialState>().selectedCredential!.credentials,
-                  );
-                  if (mounted) {
-                    if (result['success']) {
-                      ToastUtil.showSuccess(context, '记录已更新');
-                    } else {
-                      ToastUtil.showError(
-                        context,
-                        result['error'] ?? '更新失败',
-                        errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+                      final result = await domainState.updateDnsRecord(
+                        providerId,
+                        widget.domainId,
+                        record['id'].toString(),
+                        recordData,
+                        context.read<CredentialState>().selectedCredential!.credentials,
                       );
-                    }
-                  }
+                      if (result['success']) {
+                        if (mounted) Navigator.pop(ctx);
+                        if (context.mounted) ToastUtil.showSuccess(context, '记录已更新');
+                      } else {
+                        if (context.mounted) {
+                          ToastUtil.showError(
+                            context,
+                            result['error'] ?? '更新失败',
+                            errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
+                          );
+                        }
+                      }
+                    },
+                    child: domainState.isOperating
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('保存'),
+                  );
                 },
-                child: isOperating
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('保存'),
               ),
             ],
           );

@@ -252,7 +252,6 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          final isAdding = domainState.isOperating;
           return AlertDialog(
             title: Text(driver.getAddDomainTitle()),
             content: SingleChildScrollView(
@@ -279,29 +278,35 @@ class _HomePageState extends State<HomePage> {
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('取消')),
-              FilledButton(
-                onPressed: isAdding ? null : () async {
-                  Navigator.pop(dialogContext);
-                  final inputData = <String, dynamic>{};
-                  for (final field in fields) {
-                    inputData[field.key] = controllers[field.key]?.text ?? '';
-                    if (field.required && (inputData[field.key] as String).isEmpty) {
-                      ToastUtil.showError(context, '请填写${field.label}');
-                      return;
-                    }
-                  }
-                  final domainData = driver.prepareDomainData(inputData);
-                  final result = await domainState.addDomain(providerId, domainData, context.read<CredentialState>().selectedCredential!.credentials);
-                  if (!result['success'] && context.mounted) {
-                    final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
-                    ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
-                  } else {
-                    if (context.mounted) {
-                      ToastUtil.showSuccess(context, '添加成功');
-                    }
-                  }
+              StatefulBuilder(
+                builder: (dialogContext, setBtnState) {
+                  final isSubmitting = domainState.isOperating;
+                  return FilledButton(
+                    onPressed: isSubmitting ? null : () async {
+                      final inputData = <String, dynamic>{};
+                      for (final field in fields) {
+                        inputData[field.key] = controllers[field.key]?.text ?? '';
+                        if (field.required && (inputData[field.key] as String).isEmpty) {
+                          ToastUtil.showError(context, '请填写${field.label}');
+                          return;
+                        }
+                      }
+                      final domainData = driver.prepareDomainData(inputData);
+                      final result = await domainState.addDomain(providerId, domainData, context.read<CredentialState>().selectedCredential!.credentials);
+                      if (result['success']) {
+                        if (context.mounted) Navigator.pop(dialogContext);
+                      } else {
+                        if (context.mounted) {
+                          final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
+                          ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+                        }
+                      }
+                    },
+                    child: domainState.isOperating
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('添加'),
+                  );
                 },
-                child: isAdding ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('添加'),
               ),
             ],
           );
