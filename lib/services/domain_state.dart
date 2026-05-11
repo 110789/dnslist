@@ -4,14 +4,9 @@ import '../drivers/driver_manager.dart';
 
 enum LoadingState {
   idle,
-  initial,
+  loading,
   refreshing,
   operating,
-}
-
-enum ListType {
-  domains,
-  dnsRecords,
 }
 
 class DomainState extends ChangeNotifier {
@@ -30,12 +25,12 @@ class DomainState extends ChangeNotifier {
   Map<String, List<Map<String, dynamic>>> get dnsRecords => _dnsRecords;
 
   LoadingState get loadingState => _loadingState;
-  bool get isLoading => _loadingState == LoadingState.initial;
+  bool get isLoading => _loadingState == LoadingState.loading;
   bool get isRefreshing => _loadingState == LoadingState.refreshing;
   bool get isOperating => _loadingState == LoadingState.operating;
   bool get isIdle => _loadingState == LoadingState.idle;
 
-  bool get showCenterLoading => _loadingState == LoadingState.operating;
+  bool get showCenterLoading => _loadingState == LoadingState.loading || _loadingState == LoadingState.operating;
 
   String? get error => _error;
   String? get errorCode => _errorCode;
@@ -61,14 +56,18 @@ class DomainState extends ChangeNotifier {
     _errorCode = null;
   }
 
-  Future<Map<String, dynamic>> loadDomains(String providerId, Map<String, String> credentials, {bool isRefresh = false}) async {
+  Future<Map<String, dynamic>> loadDomains(String providerId, Map<String, String> credentials, {bool isRefresh = false, bool isInitial = false}) async {
     if (isRefresh) {
       if (_refreshLock) return {'success': false, 'error': '刷新中', 'errorCode': 'REFRESH_LOCKED'};
       _refreshLock = true;
       _setLoadingState(LoadingState.refreshing);
+    } else if (isInitial) {
+      if (_refreshLock) return {'success': false, 'error': '刷新中', 'errorCode': 'REFRESH_LOCKED'};
+      _refreshLock = true;
+      _setLoadingState(LoadingState.loading);
     } else {
       _domains = [];
-      _setLoadingState(LoadingState.initial);
+      _setLoadingState(LoadingState.loading);
       _clearError();
     }
 
@@ -108,19 +107,23 @@ class DomainState extends ChangeNotifier {
       _setLoadingState(LoadingState.idle);
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     } finally {
-      if (isRefresh) {
+      if (isRefresh || isInitial) {
         _refreshLock = false;
       }
     }
   }
 
-  Future<Map<String, dynamic>> loadDnsRecords(String providerId, String domainId, {bool isRefresh = false}) async {
+  Future<Map<String, dynamic>> loadDnsRecords(String providerId, String domainId, {bool isRefresh = false, bool isInitial = false}) async {
     if (isRefresh) {
       if (_refreshLock) return {'success': false, 'error': '刷新中', 'errorCode': 'REFRESH_LOCKED'};
       _refreshLock = true;
       _setLoadingState(LoadingState.refreshing);
+    } else if (isInitial) {
+      if (_refreshLock) return {'success': false, 'error': '刷新中', 'errorCode': 'REFRESH_LOCKED'};
+      _refreshLock = true;
+      _setLoadingState(LoadingState.loading);
     } else {
-      _setLoadingState(LoadingState.initial);
+      _setLoadingState(LoadingState.loading);
       _clearError();
     }
 
@@ -152,7 +155,7 @@ class DomainState extends ChangeNotifier {
       _setLoadingState(LoadingState.idle);
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     } finally {
-      if (isRefresh) {
+      if (isRefresh || isInitial) {
         _refreshLock = false;
       }
     }
@@ -180,7 +183,7 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
 
-      await loadDomains(providerId, credentials, isRefresh: true);
+      await loadDomains(providerId, credentials, isInitial: true);
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
     } catch (e) {
       _setLoadingState(LoadingState.idle);
@@ -201,7 +204,7 @@ class DomainState extends ChangeNotifier {
       final result = await driver.deleteDomain(domainId);
 
       if (result['success'] == true) {
-        await loadDomains(providerId, credentials, isRefresh: true);
+        await loadDomains(providerId, credentials, isInitial: true);
         return {'success': true, 'statusCode': 'OK'};
       }
 
@@ -234,7 +237,7 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
 
-      await loadDomains(providerId, credentials, isRefresh: true);
+      await loadDomains(providerId, credentials, isInitial: true);
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
     } catch (e) {
       _setLoadingState(LoadingState.idle);
@@ -259,7 +262,7 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
 
-      await loadDnsRecords(providerId, domainId, isRefresh: true);
+      await loadDnsRecords(providerId, domainId, isInitial: true);
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
     } catch (e) {
       _setLoadingState(LoadingState.idle);
@@ -284,7 +287,7 @@ class DomainState extends ChangeNotifier {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
 
-      await loadDnsRecords(providerId, domainId, isRefresh: true);
+      await loadDnsRecords(providerId, domainId, isInitial: true);
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
     } catch (e) {
       _setLoadingState(LoadingState.idle);
@@ -305,7 +308,7 @@ class DomainState extends ChangeNotifier {
       final result = await driver.deleteDnsRecord(domainId, recordId);
 
       if (result['success'] == true) {
-        await loadDnsRecords(providerId, domainId, isRefresh: true);
+        await loadDnsRecords(providerId, domainId, isInitial: true);
         return {'success': true, 'statusCode': 'OK'};
       }
 

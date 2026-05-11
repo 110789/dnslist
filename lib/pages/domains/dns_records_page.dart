@@ -30,7 +30,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _hasInitialized = true;
-      await _triggerInitialLoad();
+      await _autoLoadRecords();
     });
   }
 
@@ -39,25 +39,14 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     super.didChangeDependencies();
   }
 
-  Future<void> _triggerInitialLoad() async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (mounted) {
-      _refreshKey.currentState?.show();
-    }
-  }
-
-  void _loadRecords({bool forceRefresh = false}) {
+  Future<void> _autoLoadRecords() async {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential != null) {
-      if (forceRefresh) {
-        context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId, isRefresh: true);
-      } else {
-        context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId);
-      }
+      await context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId, isInitial: true);
     }
   }
 
-  Future<void> _triggerRefresh() async {
+  Future<void> _pullToRefresh() async {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential != null) {
       await context.read<DomainState>().loadDnsRecords(credential.providerId, widget.domainId, isRefresh: true);
@@ -388,7 +377,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _triggerRefresh,
+            onPressed: _autoLoadRecords,
           ),
         ],
       ),
@@ -410,7 +399,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       if (hasError && records.isEmpty) {
         return DnsErrorState(
           message: state.error!,
-          onRetry: _triggerRefresh,
+          onRetry: _autoLoadRecords,
         );
       }
     }
@@ -423,7 +412,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       children: [
         RefreshIndicator(
           key: _refreshKey,
-          onRefresh: _triggerRefresh,
+          onRefresh: _pullToRefresh,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
             itemCount: records.length,

@@ -27,7 +27,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _hasInitialized = true;
-      await _triggerInitialLoad();
+      await _autoLoadDomains();
     });
   }
 
@@ -36,26 +36,31 @@ class _HomePageState extends State<HomePage> {
     super.didChangeDependencies();
   }
 
-  Future<void> _triggerInitialLoad() async {
-    await Future.delayed(const Duration(milliseconds: 100));
-    if (mounted) {
-      _refreshKey.currentState?.show();
-    }
-  }
-
-  Future<void> _loadDomains({bool forceRefresh = false}) async {
+  Future<void> _autoLoadDomains() async {
     final credentialState = context.read<CredentialState>();
     final domainState = context.read<DomainState>();
     await credentialState.loadCredentials();
     if (mounted) {
       final selected = credentialState.selectedCredential;
       if (selected != null) {
-        await domainState.loadDomains(selected.providerId, selected.credentials, isRefresh: forceRefresh);
+        await domainState.loadDomains(selected.providerId, selected.credentials, isInitial: true);
       }
     }
   }
 
-  Future<void> _triggerRefresh() async {
+  Future<void> _loadDomains() async {
+    final credentialState = context.read<CredentialState>();
+    final domainState = context.read<DomainState>();
+    await credentialState.loadCredentials();
+    if (mounted) {
+      final selected = credentialState.selectedCredential;
+      if (selected != null) {
+        await domainState.loadDomains(selected.providerId, selected.credentials);
+      }
+    }
+  }
+
+  Future<void> _pullToRefresh() async {
     final credentialState = context.read<CredentialState>();
     final domainState = context.read<DomainState>();
     final selected = credentialState.selectedCredential;
@@ -83,7 +88,7 @@ class _HomePageState extends State<HomePage> {
             ? [
         IconButton(
           icon: const Icon(Icons.refresh),
-          onPressed: () => _loadDomains(forceRefresh: true),
+          onPressed: () => _autoLoadDomains(),
         ),
       ]
             : null,
@@ -153,11 +158,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         RefreshIndicator(
           key: _refreshKey,
-          onRefresh: () async {
-            if (selected != null) {
-              await state.refreshDomains(selected.providerId, selected.credentials);
-            }
-          },
+          onRefresh: _pullToRefresh,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
             itemCount: state.domains.length,
