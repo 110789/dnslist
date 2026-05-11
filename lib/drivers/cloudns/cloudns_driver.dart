@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
@@ -133,16 +134,35 @@ class ClouDNSDriver implements DriverInterface {
       if (response.data == null) {
         return {'error': '服务器无响应', 'errorCode': 'UNKNOWN', 'success': false};
       }
-      final respData = response.data as Map;
-      final status = respData['status']?.toString();
-      if (status == 'Success') {
-        return {'success': true, 'data': respData, 'statusCode': 'OK'};
+      var respData = response.data;
+      if (respData is String) {
+        try {
+          respData = _parseJsonString(respData);
+        } catch (_) {
+          return {'error': '响应解析失败', 'errorCode': 'PARSE_ERROR', 'success': false};
+        }
       }
-      return _parseError(respData);
+      if (respData is! Map) {
+        return {'error': '响应数据格式异常', 'errorCode': 'PARSE_ERROR', 'success': false};
+      }
+      final data = respData as Map;
+      final status = data['status']?.toString();
+      if (status == 'Success') {
+        return {'success': true, 'data': data, 'statusCode': 'OK'};
+      }
+      return _parseError(data);
     } on DioException catch (e) {
       return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
     } catch (e) {
       return {'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
+    }
+  }
+
+  dynamic _parseJsonString(String jsonStr) {
+    try {
+      return jsonDecode(jsonStr);
+    } catch (_) {
+      return null;
     }
   }
 
