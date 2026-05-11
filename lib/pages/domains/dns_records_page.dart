@@ -454,6 +454,20 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   }
 
   Widget _buildBody(NewDomainState state, List<Map<String, dynamic>> records, String providerId) {
+    if (state.isManualRefreshing) {
+      return RefreshIndicator(
+        key: _refreshKey,
+        onRefresh: _pullToRefresh,
+        child: ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
+          itemCount: 0,
+          separatorBuilder: (_, __) => const DnsDivider(),
+          itemBuilder: (_, __) => const SizedBox.shrink(),
+        ),
+      );
+    }
+
     if (state.isLoading && records.isEmpty) return const DnsLoading();
 
     if (state.error != null) {

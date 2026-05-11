@@ -16,6 +16,7 @@ class NewDomainState extends ChangeNotifier {
   String? _error;
   String? _errorCode;
   String? _selectedDomainId;
+  bool _isManualRefreshing = false;
 
   final DomainRefreshCore _refreshCore = DomainRefreshCore();
 
@@ -29,6 +30,7 @@ class NewDomainState extends ChangeNotifier {
   bool get isRefreshing => _loadingState == LoadingState.refreshing;
   bool get isOperating => _loadingState == LoadingState.operating;
   bool get isIdle => _loadingState == LoadingState.idle;
+  bool get isManualRefreshing => _isManualRefreshing;
 
   bool get showCenterLoading =>
       _loadingState == LoadingState.loading ||
@@ -146,25 +148,21 @@ class NewDomainState extends ChangeNotifier {
     }
   }
 
-  void _notifyRefreshComplete(RefreshTriggerType triggerType) {
-    _setLoadingState(LoadingState.idle);
-    notifyListeners();
-  }
-
   Future<RefreshResult> refreshDomainList({
     required String providerId,
     required Map<String, String> credentials,
     required RefreshTriggerType triggerType,
   }) async {
     if (triggerType == RefreshTriggerType.manual) {
-      _setLoadingState(LoadingState.refreshing);
+      _loadingState = LoadingState.refreshing;
+      _isManualRefreshing = true;
       notifyListeners();
       Future.microtask(() {
         _domains = [];
         notifyListeners();
       });
     } else {
-      _setLoadingState(LoadingState.loading);
+      _loadingState = LoadingState.loading;
       notifyListeners();
     }
 
@@ -176,7 +174,9 @@ class NewDomainState extends ChangeNotifier {
       triggerType: triggerType,
     );
 
-    _notifyRefreshComplete(triggerType);
+    _isManualRefreshing = false;
+    _loadingState = LoadingState.idle;
+    notifyListeners();
     return result;
   }
 
@@ -187,14 +187,15 @@ class NewDomainState extends ChangeNotifier {
     required RefreshTriggerType triggerType,
   }) async {
     if (triggerType == RefreshTriggerType.manual) {
-      _setLoadingState(LoadingState.refreshing);
+      _loadingState = LoadingState.refreshing;
+      _isManualRefreshing = true;
       notifyListeners();
       Future.microtask(() {
         _dnsRecords[domainId] = [];
         notifyListeners();
       });
     } else {
-      _setLoadingState(LoadingState.loading);
+      _loadingState = LoadingState.loading;
       notifyListeners();
     }
 
@@ -207,7 +208,9 @@ class NewDomainState extends ChangeNotifier {
       triggerType: triggerType,
     );
 
-    _notifyRefreshComplete(triggerType);
+    _isManualRefreshing = false;
+    _loadingState = LoadingState.idle;
+    notifyListeners();
     return result;
   }
 

@@ -113,6 +113,20 @@ class _HomePageState extends State<HomePage> {
   ) {
     if (!hasCredentials) return _buildEmptyCredentialState(context);
 
+    if (state.isManualRefreshing) {
+      return RefreshIndicator(
+        key: _refreshKey,
+        onRefresh: _pullToRefresh,
+        child: ListView.separated(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
+          itemCount: 0,
+          separatorBuilder: (_, __) => const DnsDivider(),
+          itemBuilder: (_, __) => const SizedBox.shrink(),
+        ),
+      );
+    }
+
     if (state.isLoading && state.domains.isEmpty) {
       return const DnsLoading();
     }
