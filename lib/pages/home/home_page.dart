@@ -634,26 +634,8 @@ class _CredentialCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LongPressDraggable<int>(
-      data: index,
-      delay: const Duration(milliseconds: 300),
-      feedback: Material(
-        elevation: 8,
-        borderRadius: BorderRadius.circular(DnsRadius.lg),
-        child: _CredentialCardContent(
-          credential: credential,
-          isSelected: isSelected,
-          onTap: () {},
-        ),
-      ),
-      childWhenDragging: Opacity(
-        opacity: 0.5,
-        child: _CredentialCardContent(
-          credential: credential,
-          isSelected: isSelected,
-          onTap: () {},
-        ),
-      ),
+    return ReorderableDragStartListener(
+      index: index,
       child: _CredentialCardContent(
         credential: credential,
         isSelected: isSelected,
