@@ -429,30 +429,25 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       }
     }
 
-    if (records.isEmpty) return _buildEmptyState();
-
     final showCenterLoading = state.showCenterLoading;
 
-    return Stack(
-      children: [
-        RefreshIndicator(
-          key: _refreshKey,
-          onRefresh: _pullToRefresh,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
-            itemCount: records.length,
-            separatorBuilder: (_, __) => const DnsDivider(),
-            itemBuilder: (context, index) {
-              final record = records[index];
-              return DnsDnsRecordTile(
-                record: record,
-                onEdit: state.isOperating ? null : () => _showEditRecordDialog(context, providerId, record),
-                onDelete: state.isOperating ? null : () => _deleteRecord(context, providerId, record),
-              );
-            },
-          ),
-        ),
-        if (showCenterLoading)
+    if (showCenterLoading) {
+      return Stack(
+        children: [
+          if (records.isNotEmpty)
+            ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
+              itemCount: records.length,
+              separatorBuilder: (_, __) => const DnsDivider(),
+              itemBuilder: (context, index) {
+                final record = records[index];
+                return DnsDnsRecordTile(
+                  record: record,
+                  onEdit: null,
+                  onDelete: null,
+                );
+              },
+            ),
           Positioned.fill(
             child: Container(
               color: Colors.black.withValues(alpha: 0.1),
@@ -461,7 +456,28 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
               ),
             ),
           ),
-      ],
+        ],
+      );
+    }
+
+    if (records.isEmpty) return _buildEmptyState();
+
+    return RefreshIndicator(
+      key: _refreshKey,
+      onRefresh: _pullToRefresh,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
+        itemCount: records.length,
+        separatorBuilder: (_, __) => const DnsDivider(),
+        itemBuilder: (context, index) {
+          final record = records[index];
+          return DnsDnsRecordTile(
+            record: record,
+            onEdit: state.isOperating ? null : () => _showEditRecordDialog(context, providerId, record),
+            onDelete: state.isOperating ? null : () => _deleteRecord(context, providerId, record),
+          );
+        },
+      ),
     );
   }
 
