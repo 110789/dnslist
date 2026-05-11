@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/credential_state.dart';
 import '../../services/new_domain_state.dart';
-import '../../core/refresh/refresh_core.dart';
+import '../../core/refresh/refresh_helper.dart';
 import '../../drivers/driver_factory.dart';
 import '../../utils/toast_util.dart';
 import '../../core/ui/md3_widgets.dart';
@@ -29,14 +29,10 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final credential = context.read<CredentialState>().selectedCredential;
-      if (credential != null && mounted) {
-        await context.read<NewDomainState>().refreshDnsRecordList(
-          providerId: credential.providerId,
+      if (mounted) {
+        await RefreshHelper.refreshDnsRecordListPassive(
+          context,
           domainId: widget.domainId,
-          credentials: credential.credentials,
-          triggerType: RefreshTriggerType.passive,
-          animationType: RefreshAnimationType.centerLoading,
         );
       }
     });
@@ -48,29 +44,17 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   }
 
   Future<void> _autoLoadRecords() async {
-    final credential = context.read<CredentialState>().selectedCredential;
-    if (credential != null && mounted) {
-      await context.read<NewDomainState>().refreshDnsRecordList(
-        providerId: credential.providerId,
-        domainId: widget.domainId,
-        credentials: credential.credentials,
-        triggerType: RefreshTriggerType.passive,
-        animationType: RefreshAnimationType.centerLoading,
-      );
-    }
+    await RefreshHelper.refreshDnsRecordListPassive(
+      context,
+      domainId: widget.domainId,
+    );
   }
 
   Future<void> _pullToRefresh() async {
-    final credential = context.read<CredentialState>().selectedCredential;
-    if (credential != null) {
-      final domainState = context.read<NewDomainState>();
-      await domainState.refreshDnsRecordList(
-        providerId: credential.providerId,
-        domainId: widget.domainId,
-        credentials: credential.credentials,
-        triggerType: RefreshTriggerType.manual,
-      );
-    }
+    await RefreshHelper.refreshDnsRecordListManual(
+      context,
+      domainId: widget.domainId,
+    );
   }
 
   void _showAddRecordDialog(BuildContext context, String providerId) {

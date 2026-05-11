@@ -6,7 +6,7 @@ import '../../services/credential_state.dart';
 import '../../services/credential_storage.dart';
 import '../../services/credential_validation.dart';
 import '../../services/new_domain_state.dart';
-import '../../core/refresh/refresh_core.dart';
+import '../../core/refresh/refresh_helper.dart';
 import '../../drivers/driver_factory.dart';
 import '../../utils/toast_util.dart';
 import '../../core/ui/md3_widgets.dart';
@@ -27,33 +27,15 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final credentialState = context.read<CredentialState>();
-      final domainState = context.read<NewDomainState>();
       await credentialState.loadCredentials();
       if (mounted) {
-        final selected = credentialState.selectedCredential;
-        if (selected != null) {
-          await domainState.refreshDomainList(
-            providerId: selected.providerId,
-            credentials: selected.credentials,
-            triggerType: RefreshTriggerType.passive,
-            animationType: RefreshAnimationType.centerLoading,
-          );
-        }
+        await RefreshHelper.refreshDomainListPassive(context);
       }
     });
   }
 
   Future<void> _pullToRefresh() async {
-    final credentialState = context.read<CredentialState>();
-    final domainState = context.read<NewDomainState>();
-    final selected = credentialState.selectedCredential;
-    if (selected != null) {
-      await domainState.refreshDomainList(
-        providerId: selected.providerId,
-        credentials: selected.credentials,
-        triggerType: RefreshTriggerType.manual,
-      );
-    }
+    await RefreshHelper.refreshDomainListManual(context);
   }
 
   @override
@@ -76,16 +58,7 @@ class _HomePageState extends State<HomePage> {
                 IconButton(
                   icon: const Icon(Icons.refresh),
                   onPressed: () async {
-                    final domainState = context.read<NewDomainState>();
-                    final selected = credentialState.selectedCredential;
-                    if (selected != null) {
-                      await domainState.refreshDomainList(
-                        providerId: selected.providerId,
-                        credentials: selected.credentials,
-                        triggerType: RefreshTriggerType.passive,
-                        animationType: RefreshAnimationType.centerLoading,
-                      );
-                    }
+                    await RefreshHelper.refreshDomainListPassive(context);
                   },
                 ),
               ]
@@ -139,11 +112,10 @@ class _HomePageState extends State<HomePage> {
         onRetry: () {
           final selected = credentialState.selectedCredential;
           if (selected != null) {
-            state.refreshDomainList(
+            RefreshHelper.refreshDomainListPassiveWithCredential(
+              context,
               providerId: selected.providerId,
               credentials: selected.credentials,
-              triggerType: RefreshTriggerType.passive,
-              animationType: RefreshAnimationType.centerLoading,
             );
           }
         },
@@ -608,14 +580,13 @@ class _HomePageState extends State<HomePage> {
             ListTile(
               leading: Icon(Icons.check_circle, color: Theme.of(sheetCtx).colorScheme.primary),
               title: const Text('选择此凭证'),
-              onTap: () {
+              onTap: () async {
                 Navigator.pop(sheetCtx);
                 credentialState.selectCredential(credential.id);
-                domainState.refreshDomainList(
+                await RefreshHelper.refreshDomainListPassiveWithCredential(
+                  context,
                   providerId: credential.providerId,
                   credentials: credential.credentials,
-                  triggerType: RefreshTriggerType.passive,
-                  animationType: RefreshAnimationType.centerLoading,
                 );
               },
             ),
@@ -653,11 +624,10 @@ class _HomePageState extends State<HomePage> {
           if (context.mounted) {
             final newSelected = credentialState.selectedCredential;
             if (newSelected != null) {
-              context.read<NewDomainState>().refreshDomainList(
+              await RefreshHelper.refreshDomainListPassiveWithCredential(
+                context,
                 providerId: newSelected.providerId,
                 credentials: newSelected.credentials,
-                triggerType: RefreshTriggerType.passive,
-                animationType: RefreshAnimationType.centerLoading,
               );
             }
             ToastUtil.showSuccess(context, '添加凭证成功');
@@ -680,11 +650,10 @@ class _HomePageState extends State<HomePage> {
           await credentialState.updateCredential(updatedCredential);
           if (context.mounted) {
             if (selected != null && selected.id == updatedCredential.id) {
-              context.read<NewDomainState>().refreshDomainList(
+              await RefreshHelper.refreshDomainListPassiveWithCredential(
+                context,
                 providerId: updatedCredential.providerId,
                 credentials: updatedCredential.credentials,
-                triggerType: RefreshTriggerType.passive,
-                animationType: RefreshAnimationType.centerLoading,
               );
             }
             ToastUtil.showSuccess(context, '更新凭证成功');
@@ -715,11 +684,10 @@ class _HomePageState extends State<HomePage> {
         if (wasSelected) {
           final newSelected = credentialState.selectedCredential;
           if (newSelected != null) {
-            context.read<NewDomainState>().refreshDomainList(
+            await RefreshHelper.refreshDomainListPassiveWithCredential(
+              context,
               providerId: newSelected.providerId,
               credentials: newSelected.credentials,
-              triggerType: RefreshTriggerType.passive,
-              animationType: RefreshAnimationType.centerLoading,
             );
           }
         }
