@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
+import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
+import '../../core/services/service_registry.dart';
 
 class CloudflareDriver implements DriverInterface {
   static const String _providerId = 'cloudflare';
   static const String _providerName = 'Cloudflare';
   static const String _providerIcon = 'assets/icons/cloudflare.svg';
+
+  ApiClient? _client;
+  String? _apiToken;
 
   static const Map<String, String> _errorCodeMap = {
     '1000': '认证失败，请检查 API Token 是否正确',
@@ -43,8 +46,6 @@ class CloudflareDriver implements DriverInterface {
     '20000': '分页参数超出范围',
     '20001': '每页数量超出限制',
   };
-
-  ApiClient? _client;
 
   @override
   String get providerId => _providerId;
@@ -129,21 +130,40 @@ class CloudflareDriver implements DriverInterface {
     return {'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
   }
 
+  ApiClient _getClient() {
+    if (_client != null) return _client!;
+    if (_apiToken == null) {
+      throw StateError('Driver not initialized. Call validateCredential first.');
+    }
+    final registry = ServiceRegistry.instance;
+    _client = ApiClient(
+      baseUrl: registry.getProviderBaseUrl(_providerId),
+      headers: {'Authorization': 'Bearer $_apiToken', 'Content-Type': 'application/json'},
+      connectTimeout: registry.connectionTimeout,
+      receiveTimeout: registry.receiveTimeout,
+    );
+    return _client!;
+  }
+
   @override
   Future<bool> validateCredential(Map<String, String> credentials) async {
     final apiToken = credentials['apiToken'];
     if (apiToken == null || apiToken.isEmpty) return false;
     try {
+      _apiToken = apiToken;
+      final registry = ServiceRegistry.instance;
       _client = ApiClient(
-        baseUrl: AppConfig.cloudflareBaseUrl,
+        baseUrl: registry.getProviderBaseUrl(_providerId),
         headers: {'Authorization': 'Bearer $apiToken', 'Content-Type': 'application/json'},
+        connectTimeout: registry.connectionTimeout,
+        receiveTimeout: registry.receiveTimeout,
       );
       final response = await _client!.get('/user/tokens/verify');
       if (response.data['success'] == true) return true;
       _parseError(response.data);
       return false;
     } catch (e) {
-      _client = null;
+      _apiToken = null;
       return false;
     }
   }
@@ -154,7 +174,7 @@ class CloudflareDriver implements DriverInterface {
     int pageSize = 20,
     Map<String, String>? filters,
   }) async {
-    if (_client == null) {
+    if (_apiToken == null) {
       return {'domains': [], 'pagination': {}, 'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
     }
     try {
@@ -165,7 +185,7 @@ class CloudflareDriver implements DriverInterface {
       if (filters != null) {
         queryParams.addAll(filters);
       }
-      final response = await _client!.get('/zones', queryParameters: queryParams);
+      final response = await _getClient().get('/zones', queryParameters: queryParams);
       if (response.data['success'] == true) {
         final result = response.data['result'] as List? ?? [];
         final domains = result.map((zone) {
@@ -232,7 +252,7 @@ class CloudflareDriver implements DriverInterface {
       if (filters != null) {
         queryParams.addAll(filters);
       }
-      final response = await _client!.get('/zones/$domainId/dns_records', queryParameters: queryParams);
+      final response = await _getClient().get('/zones/$domainId/dns_records', queryParameters: queryParams);
       if (response.data['success'] == true) {
         final result = response.data['result'] as List? ?? [];
         final records = result.map((record) {
@@ -281,7 +301,7 @@ class CloudflareDriver implements DriverInterface {
     if (_client == null) return {'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED', 'success': false};
     try {
       final preparedData = _prepareDnsRecordData(recordData);
-      final response = await _client!.post('/zones/$domainId/dns_records', data: preparedData);
+      final response = await _getClient().post('/zones/$domainId/dns_records', data: preparedData);
       if (response.data['success'] == true) {
         return {'success': true, 'statusCode': 'OK', 'data': response.data['result']};
       }
@@ -300,7 +320,7 @@ class CloudflareDriver implements DriverInterface {
     if (_client == null) return {'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED', 'success': false};
     try {
       final preparedData = _prepareDnsRecordData(recordData);
-      final response = await _client!.put('/zones/$domainId/dns_records/$recordId', data: preparedData);
+      final response = await _getClient().put('/zones/$domainId/dns_records/$recordId', data: preparedData);
       if (response.data['success'] == true) {
         return {'success': true, 'statusCode': 'OK', 'data': response.data['result']};
       }
@@ -350,7 +370,7 @@ class CloudflareDriver implements DriverInterface {
       return {'success': false, 'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED'};
     }
     try {
-      final response = await _client!.delete('/zones/$domainId/dns_records/$recordId');
+      final response = await _getClient().delete('/zones/$domainId/dns_records/$recordId');
       if (response.data['success'] == true) {
         return {'success': true, 'statusCode': 'OK'};
       }
@@ -371,7 +391,7 @@ class CloudflareDriver implements DriverInterface {
       if (domainData.containsKey('account') && domainData['account'] != null) {
         preparedData['account'] = domainData['account'];
       }
-      final response = await _client!.post('/zones', data: preparedData);
+      final response = await _getClient().post('/zones', data: preparedData);
       if (response.data['success'] == true) {
         final result = response.data['result'];
         return {
@@ -402,7 +422,7 @@ class CloudflareDriver implements DriverInterface {
       return {'error': '域名标识无效', 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
     }
     try {
-      final response = await _client!.delete('/zones/$domainId');
+      final response = await _getClient().delete('/zones/$domainId');
       if (response.data['success'] == true) {
         return {'success': true, 'statusCode': 'OK', 'message': '域名已删除'};
       }
@@ -507,6 +527,7 @@ class CloudflareDriver implements DriverInterface {
     final content = recordData['content']?.toString() ?? '';
     final ttl = recordData['ttl'] as int? ?? 3600;
     final proxied = recordData['proxied'] == true;
+    final typeColor = DriverColorUtils.getDnsTypeColor(type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -515,7 +536,7 @@ class CloudflareDriver implements DriverInterface {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: DnsDesignTokens.getDnsTypeColor(type),
+              color: typeColor,
               borderRadius: BorderRadius.circular(22),
             ),
             child: Center(
@@ -548,7 +569,7 @@ class CloudflareDriver implements DriverInterface {
           _TtlTag(ttl: ttl),
           if (proxied) ...[
             const SizedBox(width: 4),
-            const Icon(Icons.cloud, size: 16, color: DnsDesignTokens.dnsTypeA),
+            Icon(Icons.cloud, size: 16, color: const Color(0xFF3B82F6)),
           ],
         ],
       ),
@@ -608,7 +629,7 @@ class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status});
   @override
   Widget build(BuildContext context) {
-    final color = DnsDesignTokens.getStatusColor(status);
+    final color = DriverColorUtils.getStatusColor(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(

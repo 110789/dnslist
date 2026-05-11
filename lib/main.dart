@@ -7,6 +7,8 @@ import 'dart:ui';
 import 'core/router/app_router.dart';
 import 'core/state/theme_provider.dart';
 import 'core/theme/app_theme.dart';
+import 'core/services/service_registry.dart';
+import 'core/services/framework_services_impl.dart';
 import 'drivers/driver_registry.dart';
 import 'services/credential_storage.dart';
 import 'services/credential_state.dart';
@@ -59,6 +61,35 @@ Future<void> _safeDriverInit() async {
   }
 }
 
+Future<void> _initServiceRegistry() async {
+  final localStorage = LocalStorage.instance;
+  await localStorage.init();
+
+  final config = FrameworkConfig(
+    appName: 'DNS管理工具',
+    appVersion: '1.0.0',
+    providerBaseUrls: const {
+      'cloudflare': 'https://api.cloudflare.com/client/v4',
+      'dnshe': 'https://api005.dnshe.com/index.php',
+      'dnspod': 'https://dnspod.tencentcloudapi.com',
+      'cloudns': 'https://api.cloudns.net',
+      'rainyun': 'https://api.v2.rainyun.com',
+    },
+    defaultPageSize: 20,
+    connectionTimeout: 30000,
+    receiveTimeout: 30000,
+  );
+
+  ServiceRegistry.instance.initialize(
+    config: config,
+    themeService: ThemeServiceImpl(),
+    networkService: NetworkServiceImpl(),
+    storageService: StorageServiceImpl(localStorage),
+  );
+
+  developer.log('ServiceRegistry initialized', name: 'AppInit');
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -71,6 +102,8 @@ void main() async {
   await _safeInit('LocalStorage', () async {
     await LocalStorage.instance.init();
   });
+
+  await _safeInit('ServiceRegistry', _initServiceRegistry);
 
   await _safeDriverInit();
 

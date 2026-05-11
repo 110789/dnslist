@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
+import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
+import '../../core/services/service_registry.dart';
 
 class ClouDNSDriver implements DriverInterface {
   static const String _providerId = 'cloudns';
@@ -134,7 +134,7 @@ class ClouDNSDriver implements DriverInterface {
         ...params,
       };
       final dio = Dio(BaseOptions(
-        baseUrl: AppConfig.cloudnsBaseUrl,
+        baseUrl: ServiceRegistry.instance.getProviderBaseUrl('cloudns'),
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
       ));
@@ -203,7 +203,7 @@ class ClouDNSDriver implements DriverInterface {
     if (authIdInt == null) return false;
     try {
       final dio = Dio(BaseOptions(
-        baseUrl: AppConfig.cloudnsBaseUrl,
+        baseUrl: ServiceRegistry.instance.getProviderBaseUrl('cloudns'),
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
       ));
@@ -231,7 +231,7 @@ class ClouDNSDriver implements DriverInterface {
           _authId = authIdInt;
           _authPassword = authPassword;
           _client = ApiClient(
-            baseUrl: AppConfig.cloudnsBaseUrl,
+            baseUrl: ServiceRegistry.instance.getProviderBaseUrl('cloudns'),
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           );
           return true;
@@ -664,7 +664,7 @@ class ClouDNSDriver implements DriverInterface {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: DnsDesignTokens.getDnsTypeColor(type),
+              color: DriverColorUtils.getDnsTypeColor(type),
               borderRadius: BorderRadius.circular(22),
             ),
             child: Center(
@@ -692,7 +692,7 @@ class ClouDNSDriver implements DriverInterface {
                     Flexible(child: Text(name.isEmpty ? '@' : name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     if (priority != null && priority > 0) ...[
                       const SizedBox(width: 4),
-                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DnsDesignTokens.dnsTypeMX)),
+                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DriverColorUtils.dnsTypeMX)),
                     ],
                     if (!enabled) ...[
                       const SizedBox(width: 4),

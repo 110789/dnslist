@@ -3,9 +3,9 @@ import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
+import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
+import '../../core/services/service_registry.dart';
 
 class RainyunDriver implements DriverInterface {
   static const String _providerId = 'rainyun';
@@ -158,7 +158,7 @@ class RainyunDriver implements DriverInterface {
 
   Dio _createDioClient(String apiKey) {
     final dio = Dio(BaseOptions(
-      baseUrl: AppConfig.rainyunBaseUrl,
+      baseUrl: ServiceRegistry.instance.getProviderBaseUrl('rainyun'),
       connectTimeout: const Duration(seconds: 30),
       receiveTimeout: const Duration(seconds: 30),
       headers: {
@@ -230,7 +230,7 @@ class RainyunDriver implements DriverInterface {
           developer.log('Rainyun: authentication successful', name: 'RainyunDriver');
           _savedApiKey = apiKey;
           _client = ApiClient(
-            baseUrl: AppConfig.rainyunBaseUrl,
+            baseUrl: ServiceRegistry.instance.getProviderBaseUrl('rainyun'),
             headers: {
               'X-Api-Key': apiKey,
               'Content-Type': 'application/json',
@@ -683,7 +683,7 @@ class RainyunDriver implements DriverInterface {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: DnsDesignTokens.getDnsTypeColor(type),
+              color: DriverColorUtils.getDnsTypeColor(type),
               borderRadius: BorderRadius.circular(22),
             ),
             child: Center(
@@ -720,7 +720,7 @@ class RainyunDriver implements DriverInterface {
                       const SizedBox(width: 4),
                       Text(
                         'P$level',
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DnsDesignTokens.dnsTypeMX),
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DriverColorUtils.dnsTypeMX),
                       ),
                     ],
                     if (!enabled) ...[

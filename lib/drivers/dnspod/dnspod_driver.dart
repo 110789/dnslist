@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
+import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
+import '../../core/services/service_registry.dart';
 import 'dnspod_signer.dart';
 
 class DnspodDriver implements DriverInterface {
@@ -146,7 +146,7 @@ class DnspodDriver implements DriverInterface {
         payload: params,
       );
       final client = Dio(BaseOptions(
-        baseUrl: AppConfig.dnspodBaseUrl,
+        baseUrl: ServiceRegistry.instance.getProviderBaseUrl('dnspod'),
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
         contentType: 'application/json; charset=utf-8',
@@ -682,7 +682,7 @@ class DnspodDriver implements DriverInterface {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: DnsDesignTokens.getDnsTypeColor(type),
+              color: DriverColorUtils.getDnsTypeColor(type),
               borderRadius: BorderRadius.circular(22),
             ),
             child: Center(
@@ -710,7 +710,7 @@ class DnspodDriver implements DriverInterface {
                     Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     if (priority != null && priority > 0) ...[
                       const SizedBox(width: 4),
-                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DnsDesignTokens.dnsTypeMX)),
+                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DriverColorUtils.dnsTypeMX)),
                     ],
                     if (!enabled) ...[
                       const SizedBox(width: 4),

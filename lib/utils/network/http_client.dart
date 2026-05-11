@@ -1,14 +1,16 @@
 import 'package:dio/dio.dart';
-import '../../core/config/app_config.dart';
 
 class HttpClient {
   late final Dio _dio;
 
-  HttpClient() {
+  HttpClient({
+    int connectTimeout = 30000,
+    int receiveTimeout = 30000,
+  }) {
     _dio = Dio(
       BaseOptions(
-        connectTimeout: Duration(milliseconds: AppConfig.connectionTimeout),
-        receiveTimeout: Duration(milliseconds: AppConfig.receiveTimeout),
+        connectTimeout: Duration(milliseconds: connectTimeout),
+        receiveTimeout: Duration(milliseconds: receiveTimeout),
         headers: {'Content-Type': 'application/json'},
       ),
     );

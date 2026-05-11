@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
+import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
+import '../../core/services/service_registry.dart';
 
 class DnsheDriver implements DriverInterface {
   static const String _providerId = 'dnshe';
   static const String _providerName = 'DNSHE';
   static const String _providerIcon = 'assets/icons/dnshe.jpg';
+
+  ApiClient? _client;
+  String? _apiToken;
 
   static const Map<String, String> _errorCodeMap = {
     'auth_invalid_credentials': 'API 密钥或密钥 Secret 错误，请检查凭证是否正确',
@@ -54,7 +57,6 @@ class DnsheDriver implements DriverInterface {
 
   String? _apiKey;
   String? _apiSecret;
-  ApiClient? _client;
 
   @override
   String get providerId => _providerId;
@@ -153,7 +155,7 @@ class DnsheDriver implements DriverInterface {
       _apiKey = apiKey;
       _apiSecret = apiSecret;
       _client = ApiClient(
-        baseUrl: AppConfig.dnsheBaseUrl,
+        baseUrl: ServiceRegistry.instance.getProviderBaseUrl('dnshe'),
         headers: {'X-API-Key': apiKey, 'X-API-Secret': apiSecret},
       );
       final response = await _client!.get('', queryParameters: {'m': 'domain_hub', 'endpoint': 'quota'});
@@ -627,7 +629,7 @@ class DnsheDriver implements DriverInterface {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: DnsDesignTokens.getDnsTypeColor(type),
+              color: DriverColorUtils.getDnsTypeColor(type),
               borderRadius: BorderRadius.circular(22),
             ),
             child: Center(
@@ -655,7 +657,7 @@ class DnsheDriver implements DriverInterface {
                     Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     if (priority != null) ...[
                       const SizedBox(width: 4),
-                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DnsDesignTokens.dnsTypeMX)),
+                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DriverColorUtils.dnsTypeMX)),
                     ],
                   ],
                 ),
@@ -668,7 +670,7 @@ class DnsheDriver implements DriverInterface {
           _TtlTag(ttl: ttl),
           if (proxied) ...[
             const SizedBox(width: 4),
-            const Icon(Icons.cloud, size: 16, color: DnsDesignTokens.dnsTypeA),
+            const Icon(Icons.cloud, size: 16, color: DriverColorUtils.dnsTypeA),
           ],
         ],
       ),
@@ -711,7 +713,7 @@ class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.status});
   @override
   Widget build(BuildContext context) {
-    final color = DnsDesignTokens.getStatusColor(status);
+    final color = DriverColorUtils.getStatusColor(status);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
