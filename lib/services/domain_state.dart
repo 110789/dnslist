@@ -9,6 +9,11 @@ enum LoadingState {
   operating,
 }
 
+enum ListType {
+  domains,
+  dnsRecords,
+}
+
 class DomainState extends ChangeNotifier {
   List<Map<String, dynamic>> _domains = [];
   Map<String, List<Map<String, dynamic>>> _dnsRecords = {};
@@ -18,7 +23,6 @@ class DomainState extends ChangeNotifier {
   String? _selectedDomainId;
 
   bool _refreshLock = false;
-  String? _lastLoadingKey;
 
   DomainState();
 
@@ -31,6 +35,8 @@ class DomainState extends ChangeNotifier {
   bool get isOperating => _loadingState == LoadingState.operating;
   bool get isIdle => _loadingState == LoadingState.idle;
 
+  bool get showCenterLoading => _loadingState == LoadingState.operating;
+
   String? get error => _error;
   String? get errorCode => _errorCode;
   String? get selectedDomainId => _selectedDomainId;
@@ -38,13 +44,6 @@ class DomainState extends ChangeNotifier {
   List<Map<String, dynamic>> get currentDnsRecords {
     if (_selectedDomainId == null) return [];
     return _dnsRecords[_selectedDomainId] ?? [];
-  }
-
-  String _buildCacheKey(String type, String providerId, [String? domainId]) {
-    if (domainId != null) {
-      return '${type}_${providerId}_$domainId';
-    }
-    return '${type}_$providerId';
   }
 
   void _setLoadingState(LoadingState state) {
@@ -63,8 +62,6 @@ class DomainState extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> loadDomains(String providerId, Map<String, String> credentials, {bool isRefresh = false}) async {
-    final cacheKey = _buildCacheKey('domains', providerId);
-    
     if (isRefresh) {
       if (_refreshLock) return {'success': false, 'error': '刷新中', 'errorCode': 'REFRESH_LOCKED'};
       _refreshLock = true;

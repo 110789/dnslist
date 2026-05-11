@@ -21,28 +21,25 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final GlobalKey<RefreshIndicatorState> _refreshKey = GlobalKey<RefreshIndicatorState>();
   bool _hasInitialized = false;
-  String? _lastCredentialId;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _hasInitialized = true;
-      _loadDomains(forceRefresh: false);
+      await _triggerInitialLoad();
     });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_hasInitialized) return;
-    
-    final credentialState = context.read<CredentialState>();
-    final selected = credentialState.selectedCredential;
-    
-    if (selected != null && selected.id != _lastCredentialId) {
-      _lastCredentialId = selected.id;
-      _loadDomains(forceRefresh: true);
+  }
+
+  Future<void> _triggerInitialLoad() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (mounted) {
+      _refreshKey.currentState?.show();
     }
   }
 
@@ -150,7 +147,7 @@ class _HomePageState extends State<HomePage> {
     final supportsRenew = driver?.supportsRenewDomain ?? false;
     final supportsShowNameServers = driver?.supportsShowNameServers ?? false;
 
-    final isOperatingOrRefreshing = state.isOperating || state.isRefreshing;
+    final showCenterLoading = state.showCenterLoading;
 
     return Stack(
       children: [
@@ -188,7 +185,7 @@ class _HomePageState extends State<HomePage> {
             },
           ),
         ),
-        if (isOperatingOrRefreshing)
+        if (showCenterLoading)
           Positioned.fill(
             child: Container(
               color: Colors.black.withValues(alpha: 0.1),

@@ -28,15 +28,22 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _hasInitialized = true;
-      _loadRecords(forceRefresh: false);
+      await _triggerInitialLoad();
     });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+  }
+
+  Future<void> _triggerInitialLoad() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (mounted) {
+      _refreshKey.currentState?.show();
+    }
   }
 
   void _loadRecords({bool forceRefresh = false}) {
@@ -410,7 +417,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
 
     if (records.isEmpty) return _buildEmptyState();
 
-    final isOperatingOrRefreshing = state.isOperating || state.isRefreshing;
+    final showCenterLoading = state.showCenterLoading;
 
     return Stack(
       children: [
@@ -431,7 +438,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
             },
           ),
         ),
-        if (isOperatingOrRefreshing)
+        if (showCenterLoading)
           Positioned.fill(
             child: Container(
               color: Colors.black.withValues(alpha: 0.1),
