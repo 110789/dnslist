@@ -291,19 +291,15 @@ class NewDomainState extends ChangeNotifier {
     Map<String, dynamic> domainData,
     Map<String, String> credentials,
   ) async {
-    _setLoadingState(LoadingState.operating);
-
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.createDomain(domainData);
 
       if (result['error'] != null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult(
           result['error'],
           result['errorCode'] ?? 'UNKNOWN',
@@ -317,7 +313,6 @@ class NewDomainState extends ChangeNotifier {
         credentials: credentials,
       );
     } catch (e) {
-      _setLoadingState(LoadingState.idle);
       return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
@@ -327,12 +322,9 @@ class NewDomainState extends ChangeNotifier {
     String domainId,
     Map<String, String> credentials,
   ) async {
-    _setLoadingState(LoadingState.operating);
-
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
@@ -346,10 +338,8 @@ class NewDomainState extends ChangeNotifier {
         );
       }
 
-      _setLoadingState(LoadingState.idle);
       return result;
     } catch (e) {
-      _setLoadingState(LoadingState.idle);
       return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
@@ -359,19 +349,15 @@ class NewDomainState extends ChangeNotifier {
     String domainId,
     Map<String, String> credentials,
   ) async {
-    _setLoadingState(LoadingState.operating);
-
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.renewDomain(domainId);
 
       if (result['error'] != null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult(
           result['error'],
           result['errorCode'] ?? 'UNKNOWN',
@@ -390,7 +376,6 @@ class NewDomainState extends ChangeNotifier {
       }
       return refreshResult;
     } catch (e) {
-      _setLoadingState(LoadingState.idle);
       return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
@@ -401,19 +386,15 @@ class NewDomainState extends ChangeNotifier {
     Map<String, dynamic> recordData,
     Map<String, String> credentials,
   ) async {
-    _setLoadingState(LoadingState.operating);
-
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.createDnsRecord(domainId, recordData);
 
       if (result['error'] != null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult(
           result['error'],
           result['errorCode'] ?? 'UNKNOWN',
@@ -428,7 +409,6 @@ class NewDomainState extends ChangeNotifier {
         credentials: credentials,
       );
     } catch (e) {
-      _setLoadingState(LoadingState.idle);
       return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
@@ -440,19 +420,15 @@ class NewDomainState extends ChangeNotifier {
     Map<String, dynamic> recordData,
     Map<String, String> credentials,
   ) async {
-    _setLoadingState(LoadingState.operating);
-
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
       final result = await driver.updateDnsRecord(domainId, recordId, recordData);
 
       if (result['error'] != null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult(
           result['error'],
           result['errorCode'] ?? 'UNKNOWN',
@@ -467,7 +443,6 @@ class NewDomainState extends ChangeNotifier {
         credentials: credentials,
       );
     } catch (e) {
-      _setLoadingState(LoadingState.idle);
       return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
@@ -478,12 +453,9 @@ class NewDomainState extends ChangeNotifier {
     String recordId,
     Map<String, String> credentials,
   ) async {
-    _setLoadingState(LoadingState.operating);
-
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        _setLoadingState(LoadingState.idle);
         return _errorResult('Provider not found', 'PROVIDER_NOT_FOUND', 404);
       }
 
@@ -498,10 +470,8 @@ class NewDomainState extends ChangeNotifier {
         );
       }
 
-      _setLoadingState(LoadingState.idle);
       return result;
     } catch (e) {
-      _setLoadingState(LoadingState.idle);
       return _errorResult(e.toString(), 'EXCEPTION', null);
     }
   }
