@@ -464,25 +464,18 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       }
     }
 
-    final showCenterLoading = state.showCenterLoading;
+    final isLoading = state.loadingState == LoadingState.loading;
 
+    if (isLoading && records.isEmpty) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    final showCenterLoading = state.showCenterLoading;
     if (showCenterLoading) {
       return Stack(
         children: [
-          if (records.isNotEmpty)
-            ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
-              itemCount: records.length,
-              separatorBuilder: (_, __) => const DnsDivider(),
-              itemBuilder: (context, index) {
-                final record = records[index];
-                return DnsDnsRecordTile(
-                  record: record,
-                  onEdit: null,
-                  onDelete: null,
-                );
-              },
-            ),
           Positioned.fill(
             child: Container(
               color: Colors.black.withValues(alpha: 0.1),
