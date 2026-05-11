@@ -195,9 +195,12 @@ class DnspodDriver implements DriverInterface {
       _secretId = secretId;
       _secretKey = secretKey;
       final result = await _callApi('DescribeUserDetail', {});
+      if (result['success'] == true) {
+        return true;
+      }
       _secretId = null;
       _secretKey = null;
-      return result['success'] == true;
+      return false;
     } catch (e) {
       _secretId = null;
       _secretKey = null;
