@@ -60,7 +60,9 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   Future<void> _pullToRefresh() async {
     final credential = context.read<CredentialState>().selectedCredential;
     if (credential != null) {
-      await context.read<DomainState>().refreshDnsRecordList(
+      final domainState = context.read<DomainState>();
+      domainState.clearDnsRecords(widget.domainId);
+      await domainState.refreshDnsRecordList(
         providerId: credential.providerId,
         domainId: widget.domainId,
         credentials: credential.credentials,

@@ -328,6 +328,11 @@ class DomainState extends ChangeNotifier {
     _setLoadingState(LoadingState.idle);
   }
 
+  void clearDnsRecords(String domainId) {
+    _dnsRecords[domainId] = [];
+    notifyListeners();
+  }
+
   void clearError() {
     _error = null;
     _errorCode = null;
