@@ -48,7 +48,7 @@ abstract class DriverInterface {
     Map<String, dynamic> recordData,
   );
 
-  Future<void> deleteDnsRecord(String domainId, String recordId);
+  Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId);
 
   Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData);
 

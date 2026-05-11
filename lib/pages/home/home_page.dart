@@ -181,7 +181,6 @@ class _HomePageState extends State<HomePage> {
       final result = await state.deleteDomain(selected.providerId, domainId);
       if (context.mounted) {
         if (result['success']) {
-          await state.refreshDomains(selected.providerId, selected.credentials);
           if (context.mounted) ToastUtil.showSuccess(context, '域名已删除');
         } else {
           final driver = DriverFactory.get(selected.providerId);
@@ -200,12 +199,11 @@ class _HomePageState extends State<HomePage> {
   ) async {
     if (selected == null) return;
     final domainId = domain['id']?.toString() ?? '';
-    final result = await state.renewDomain(selected.providerId, domainId);
+    final result = await state.renewDomain(selected.providerId, domainId, selected.credentials);
     if (context.mounted) {
       if (result['success']) {
         final msg = result['remaining_days'] != null ? '续期成功，剩余 ${result['remaining_days']} 天' : '续期成功';
         ToastUtil.showSuccess(context, msg);
-        await state.refreshDomains(selected.providerId, selected.credentials);
       } else {
         final driver = DriverFactory.get(selected.providerId);
         final errorMsg = result['errorCode'] != null ? driver?.mapErrorCode(result['errorCode'].toString()) : result['error'];
@@ -264,12 +262,11 @@ class _HomePageState extends State<HomePage> {
                 }
               }
               final domainData = driver.prepareDomainData(inputData);
-              final result = await domainState.addDomain(providerId, domainData);
+              final result = await domainState.addDomain(providerId, domainData, context.read<CredentialState>().selectedCredential!.credentials);
               if (!result['success'] && context.mounted) {
                 final errorMsg = result['errorCode'] != null ? driver.mapErrorCode(result['errorCode'].toString()) : result['error'];
                 ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
               } else {
-                await domainState.refreshDomains(providerId, context.read<CredentialState>().selectedCredential!.credentials);
                 if (context.mounted) ToastUtil.showSuccess(context, '添加成功');
               }
             },

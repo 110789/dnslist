@@ -532,9 +532,13 @@ class DnspodDriver implements DriverInterface {
   }
 
   @override
-  Future<void> deleteDnsRecord(String domainId, String recordId) async {
-    if (_secretId == null || _secretKey == null) return;
-    if (domainId.isEmpty || recordId.isEmpty) return;
+  Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId) async {
+    if (_secretId == null || _secretKey == null) {
+      return {'success': false, 'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED'};
+    }
+    if (domainId.isEmpty || recordId.isEmpty) {
+      return {'success': false, 'error': '域名或记录标识无效', 'errorCode': 'INVALID_ID'};
+    }
     try {
       final domainIdInt = int.tryParse(domainId);
       final recordIdInt = int.tryParse(recordId);
@@ -542,8 +546,14 @@ class DnspodDriver implements DriverInterface {
         'DomainId': domainIdInt ?? domainId,
         'RecordId': recordIdInt ?? recordId,
       };
-      await _callApi('DeleteRecord', params);
-    } catch (e) {}
+      final result = await _callApi('DeleteRecord', params);
+      if (result['success'] == true) {
+        return {'success': true, 'statusCode': 'OK'};
+      }
+      return _parseError(result['data']);
+    } catch (e) {
+      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+    }
   }
 
   @override

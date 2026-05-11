@@ -493,25 +493,39 @@ class ClouDNSDriver implements DriverInterface {
   }
 
   @override
-  Future<void> deleteDnsRecord(String domainId, String recordId) async {
-    if (_authId == null || _authPassword == null) return;
-    if (domainId.isEmpty || recordId.isEmpty) return;
+  Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId) async {
+    if (_authId == null || _authPassword == null) {
+      return {'success': false, 'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED'};
+    }
+    if (domainId.isEmpty || recordId.isEmpty) {
+      return {'success': false, 'error': '域名或记录标识无效', 'errorCode': 'INVALID_ID'};
+    }
     try {
       final domainsResult = await getDomains();
-      if (domainsResult['success'] != true) return;
+      if (domainsResult['success'] != true) {
+        return {'success': false, 'error': '获取域名信息失败', 'errorCode': 'GET_DOMAIN_FAILED'};
+      }
       final domains = domainsResult['domains'] as List;
       final domain = domains.firstWhere(
         (d) => d['id'].toString() == domainId || d['domain'].toString() == domainId,
         orElse: () => {},
       );
-      if (domain.isEmpty) return;
+      if (domain.isEmpty) {
+        return {'success': false, 'error': '域名不存在', 'errorCode': 'DOMAIN_NOT_FOUND'};
+      }
       final domainName = domain['domain'].toString();
       final params = <String, dynamic>{
         'domain-name': domainName,
         'id': int.tryParse(recordId) ?? recordId,
       };
-      await _callApi('dns/delete-record.json', params);
-    } catch (e) {}
+      final result = await _callApi('dns/delete-record.json', params);
+      if (result['success'] == true) {
+        return {'success': true, 'statusCode': 'OK'};
+      }
+      return _parseError(result['data']);
+    } catch (e) {
+      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+    }
   }
 
   @override

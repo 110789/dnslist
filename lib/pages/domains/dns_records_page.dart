@@ -153,7 +153,6 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 if (mounted) {
                   if (result['success']) {
                     ToastUtil.showSuccess(context, '记录添加成功');
-                    _loadRecords();
                   } else {
                     ToastUtil.showError(
                       context,
@@ -262,7 +261,6 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 if (mounted) {
                   if (result['success']) {
                     ToastUtil.showSuccess(context, '记录已更新');
-                    _loadRecords();
                   } else {
                     ToastUtil.showError(
                       context,
@@ -300,7 +298,6 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       if (mounted) {
         if (result['success']) {
           ToastUtil.showSuccess(context, '记录已删除');
-          _loadRecords();
         } else {
           ToastUtil.showError(
             context,

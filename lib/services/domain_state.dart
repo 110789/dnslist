@@ -128,39 +128,34 @@ class DomainState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<Map<String, dynamic>> addDomain(String providerId, Map<String, dynamic> domainData) async {
-    _isLoading = true;
-    _error = null;
-    _errorCode = null;
-    notifyListeners();
-
+  Future<Map<String, dynamic>> addDomain(String providerId, Map<String, dynamic> domainData, Map<String, String> credentials) async {
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
-        _error = result['error'] as String;
-        _errorCode = result['errorCode'] as String;
-        _isLoading = false;
-        notifyListeners();
-        return result;
+        return {'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
       }
 
       final result = await driver.createDomain(domainData);
-      _isLoading = false;
-      notifyListeners();
       
       if (result['error'] != null) {
-        _error = result['error'];
-        _errorCode = result['errorCode'];
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
       
-      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
-    } catch (e) {
-      _error = e.toString();
-      _errorCode = 'EXCEPTION';
-      _isLoading = false;
+      _domains = [];
+      _isLoading = true;
       notifyListeners();
+      
+      final reloadResult = await driver.getDomains();
+      _isLoading = false;
+      
+      if (reloadResult['success'] == true) {
+        _domains = List<Map<String, dynamic>>.from(reloadResult['domains'] ?? []);
+      } else {
+        _domains = [];
+      }
+      notifyListeners();
+      return {'success': true, 'statusCode': 'OK', 'data': result['data']};
+    } catch (e) {
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
@@ -169,28 +164,30 @@ class DomainState extends ChangeNotifier {
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
-        _error = result['error'] as String;
-        _errorCode = result['errorCode'] as String;
-        notifyListeners();
-        return result;
+        return {'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
       }
 
       final result = await driver.deleteDomain(domainId);
 
       if (result['success'] == true) {
+        _domains = [];
+        _isLoading = true;
         notifyListeners();
-        return result;
+        
+        final reloadResult = await driver.getDomains();
+        _isLoading = false;
+        
+        if (reloadResult['success'] == true) {
+          _domains = List<Map<String, dynamic>>.from(reloadResult['domains'] ?? []);
+        } else {
+          _domains = [];
+        }
+        notifyListeners();
+        return {'success': true, 'statusCode': 'OK'};
       }
 
-      _error = result['error'] as String? ?? '删除失败';
-      _errorCode = result['errorCode'] as String? ?? 'UNKNOWN';
-      notifyListeners();
       return result;
     } catch (e) {
-      _error = e.toString();
-      _errorCode = 'EXCEPTION';
-      notifyListeners();
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
@@ -201,143 +198,130 @@ class DomainState extends ChangeNotifier {
     return loadDomains(providerId, credentials);
   }
 
-  Future<Map<String, dynamic>> renewDomain(String providerId, String domainId) async {
-    _isLoading = true;
-    _error = null;
-    _errorCode = null;
-    notifyListeners();
-
+  Future<Map<String, dynamic>> renewDomain(String providerId, String domainId, Map<String, String> credentials) async {
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
-        _error = result['error'] as String;
-        _errorCode = result['errorCode'] as String;
-        _isLoading = false;
-        notifyListeners();
-        return result;
+        return {'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
       }
 
       final result = await driver.renewDomain(domainId);
-      _isLoading = false;
-      notifyListeners();
       
       if (result['error'] != null) {
-        _error = result['error'];
-        _errorCode = result['errorCode'];
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
       
-      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
-    } catch (e) {
-      _error = e.toString();
-      _errorCode = 'EXCEPTION';
-      _isLoading = false;
+      _domains = [];
+      _isLoading = true;
       notifyListeners();
+      
+      final reloadResult = await driver.getDomains();
+      _isLoading = false;
+      
+      if (reloadResult['success'] == true) {
+        _domains = List<Map<String, dynamic>>.from(reloadResult['domains'] ?? []);
+      } else {
+        _domains = [];
+      }
+      notifyListeners();
+      return {'success': true, 'statusCode': 'OK', 'data': result['data']};
+    } catch (e) {
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
 
   Future<Map<String, dynamic>> createDnsRecord(String providerId, String domainId, Map<String, dynamic> recordData) async {
-    _isLoading = true;
-    _error = null;
-    _errorCode = null;
-    notifyListeners();
-
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
-        _error = result['error'] as String;
-        _errorCode = result['errorCode'] as String;
-        _isLoading = false;
-        notifyListeners();
-        return result;
+        return {'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
       }
 
       final result = await driver.createDnsRecord(domainId, recordData);
-      _isLoading = false;
-      notifyListeners();
       
       if (result['error'] != null) {
-        _error = result['error'];
-        _errorCode = result['errorCode'];
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
       
-      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
-    } catch (e) {
-      _error = e.toString();
-      _errorCode = 'EXCEPTION';
-      _isLoading = false;
+      _dnsRecords[domainId] = [];
+      _isLoading = true;
       notifyListeners();
+      
+      final reloadResult = await driver.getDnsRecords(domainId);
+      _isLoading = false;
+      
+      if (reloadResult['success'] == true) {
+        _dnsRecords[domainId] = List<Map<String, dynamic>>.from(reloadResult['records'] ?? []);
+      } else {
+        _dnsRecords[domainId] = [];
+      }
+      notifyListeners();
+      return {'success': true, 'statusCode': 'OK', 'data': result['data']};
+    } catch (e) {
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
 
   Future<Map<String, dynamic>> updateDnsRecord(String providerId, String domainId, String recordId, Map<String, dynamic> recordData) async {
-    _isLoading = true;
-    _error = null;
-    _errorCode = null;
-    notifyListeners();
-
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
-        _error = result['error'] as String;
-        _errorCode = result['errorCode'] as String;
-        _isLoading = false;
-        notifyListeners();
-        return result;
+        return {'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
       }
 
       final result = await driver.updateDnsRecord(domainId, recordId, recordData);
-      _isLoading = false;
-      notifyListeners();
       
       if (result['error'] != null) {
-        _error = result['error'];
-        _errorCode = result['errorCode'];
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
       
-      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK', 'data': result['data']};
-    } catch (e) {
-      _error = e.toString();
-      _errorCode = 'EXCEPTION';
-      _isLoading = false;
+      _dnsRecords[domainId] = [];
+      _isLoading = true;
       notifyListeners();
+      
+      final reloadResult = await driver.getDnsRecords(domainId);
+      _isLoading = false;
+      
+      if (reloadResult['success'] == true) {
+        _dnsRecords[domainId] = List<Map<String, dynamic>>.from(reloadResult['records'] ?? []);
+      } else {
+        _dnsRecords[domainId] = [];
+      }
+      notifyListeners();
+      return {'success': true, 'statusCode': 'OK', 'data': result['data']};
+    } catch (e) {
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }
 
-  Future<Map<String, dynamic>> deleteDnsRecord(String providerId, String domainId, String recordId) async {
-    _isLoading = true;
-    _error = null;
-    _errorCode = null;
-    notifyListeners();
-
+Future<Map<String, dynamic>> deleteDnsRecord(String providerId, String domainId, String recordId) async {
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
-        final result = <String, dynamic>{'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
-        _error = result['error'] as String;
-        _errorCode = result['errorCode'] as String;
-        _isLoading = false;
-        notifyListeners();
-        return result;
+        return {'success': false, 'error': 'Provider not found', 'errorCode': 'PROVIDER_NOT_FOUND', 'statusCode': 404};
       }
 
-      await driver.deleteDnsRecord(domainId, recordId);
-      _isLoading = false;
-      notifyListeners();
-      return {'success': true, 'statusCode': 'OK'};
+      final result = await driver.deleteDnsRecord(domainId, recordId);
+      
+      if (result['success'] == true) {
+        _dnsRecords[domainId] = [];
+        _isLoading = true;
+        notifyListeners();
+        
+        final reloadResult = await driver.getDnsRecords(domainId);
+        _isLoading = false;
+        
+        if (reloadResult['success'] == true) {
+          _dnsRecords[domainId] = List<Map<String, dynamic>>.from(reloadResult['records'] ?? []);
+        } else {
+          _dnsRecords[domainId] = [];
+        }
+        notifyListeners();
+        return {'success': true, 'statusCode': 'OK'};
+      }
+
+      return result;
     } catch (e) {
-      _error = e.toString();
-      _errorCode = 'EXCEPTION';
-      _isLoading = false;
-      notifyListeners();
       return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
     }
   }

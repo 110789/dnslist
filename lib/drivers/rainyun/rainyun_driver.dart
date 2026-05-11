@@ -546,18 +546,46 @@ class RainyunDriver implements DriverInterface {
   }
 
   @override
-  Future<void> deleteDnsRecord(String domainId, String recordId) async {
-    if (_client == null) return;
-    if (domainId.isEmpty || recordId.isEmpty) return;
+  Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId) async {
+    if (_client == null) {
+      return {'success': false, 'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED'};
+    }
+    if (domainId.isEmpty || recordId.isEmpty) {
+      return {'success': false, 'error': '域名或记录标识无效', 'errorCode': 'INVALID_ID'};
+    }
 
     try {
       final recordIdValue = int.tryParse(recordId) ?? recordId;
-      await _client!.dio.request(
+      final response = await _client!.dio.request(
         '/product/domain/$domainId/dns',
         data: {'record_id': recordIdValue},
         options: Options(method: 'DELETE'),
       );
+
+      if (response.data == null) {
+        return {'error': '服务器无响应', 'errorCode': 'UNKNOWN', 'success': false};
+      }
+
+      var respData = response.data;
+      if (respData is String) {
+        try {
+          respData = jsonDecode(respData);
+        } catch (_) {
+          return {'error': '响应解析失败', 'errorCode': 'PARSE_ERROR', 'success': false};
+        }
+      }
+
+      if (respData is Map) {
+        final code = respData['code'];
+        if (code == 200 || code == '200') {
+          return {'success': true, 'statusCode': 'OK'};
+        }
+        return _parseError(respData);
+      }
+
+      return {'error': '响应数据格式异常', 'errorCode': 'PARSE_ERROR', 'success': false};
     } catch (e) {
+      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
     }
   }
 

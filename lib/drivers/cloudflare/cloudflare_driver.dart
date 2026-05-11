@@ -345,11 +345,19 @@ class CloudflareDriver implements DriverInterface {
   }
 
   @override
-  Future<void> deleteDnsRecord(String domainId, String recordId) async {
-    if (_client == null) return;
+  Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId) async {
+    if (_client == null) {
+      return {'success': false, 'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED'};
+    }
     try {
-      await _client!.delete('/zones/$domainId/dns_records/$recordId');
-    } catch (e) {}
+      final response = await _client!.delete('/zones/$domainId/dns_records/$recordId');
+      if (response.data['success'] == true) {
+        return {'success': true, 'statusCode': 'OK'};
+      }
+      return _parseError(response.data);
+    } catch (e) {
+      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+    }
   }
 
   @override
