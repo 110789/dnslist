@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
@@ -31,6 +32,7 @@ class RainyunDriver implements DriverInterface {
     'permission_denied': '无权限执行此操作',
   };
 
+  String? _savedApiKey;
   ApiClient? _client;
 
   @override
@@ -103,10 +105,10 @@ class RainyunDriver implements DriverInterface {
       return {'error': '服务器无响应，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
     }
     final data = responseData is Map ? responseData : {};
-    final success = data['success'];
-    if (success == false || success == 'false') {
-      final errorCode = data['error_code']?.toString() ?? '';
-      final message = data['message']?.toString() ?? '';
+    final code = data['code'];
+    if (code != 200 && code != '200') {
+      final errorCode = data['error_code']?.toString() ?? code?.toString() ?? '';
+      final message = data['message']?.toString() ?? data['msg']?.toString() ?? '';
       final mappedMessage = _errorCodeMap[errorCode];
       if (mappedMessage != null) {
         return {'error': mappedMessage, 'errorCode': errorCode, 'success': false, 'rawMessage': message};
@@ -120,6 +122,13 @@ class RainyunDriver implements DriverInterface {
 
   String _handleException(dynamic e) {
     if (e is DioException) {
+      final response = e.response;
+      if (response != null) {
+        developer.log(
+          'Rainyun API Error: status=${response.statusCode}, data=${response.data}',
+          name: 'RainyunDriver',
+        );
+      }
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
           return '连接超时，请检查网络后重试';
@@ -130,10 +139,43 @@ class RainyunDriver implements DriverInterface {
         case DioExceptionType.connectionError:
           return '网络连接失败，请检查网络设置';
         default:
+          if (response != null) {
+            final statusCode = response.statusCode;
+            if (statusCode == 401) return 'API 密钥无效，请检查密钥是否正确';
+            if (statusCode == 403) return '无访问权限，请检查域名是否属于您的账户';
+            if (statusCode == 404) return '域名不存在';
+            if (statusCode == 429) return '请求频率超限，请稍后重试';
+          }
           return '网络请求失败，请稍后重试';
       }
     }
+    developer.log(
+      'Rainyun Driver Exception: $e',
+      name: 'RainyunDriver',
+    );
     return '操作失败，请稍后重试';
+  }
+
+  Dio _createDioClient(String apiKey) {
+    final dio = Dio(BaseOptions(
+      baseUrl: AppConfig.rainyunBaseUrl,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'X-Api-Key': apiKey,
+        'Content-Type': 'application/json',
+      },
+      validateStatus: (status) => true,
+    ));
+
+    dio.interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      error: true,
+      logPrint: (o) => developer.log(o.toString(), name: 'RainyunDriver'),
+    ));
+
+    return dio;
   }
 
   @override
@@ -141,33 +183,52 @@ class RainyunDriver implements DriverInterface {
     final apiKey = credentials['apiKey'];
     if (apiKey == null || apiKey.isEmpty) return false;
 
+    developer.log(
+      'Rainyun validateCredential: starting validation',
+      name: 'RainyunDriver',
+    );
+
     try {
-      final dio = Dio(BaseOptions(
-        baseUrl: AppConfig.rainyunBaseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        headers: {
-          'X-Api-Key': apiKey,
-          'Content-Type': 'application/json',
-        },
-      ));
+      final dio = _createDioClient(apiKey);
+
+      developer.log(
+        'Rainyun: sending GET /product/ request',
+        name: 'RainyunDriver',
+      );
 
       final response = await dio.get('/product/');
 
-      if (response.data == null) return false;
+      developer.log(
+        'Rainyun response: statusCode=${response.statusCode}, data=${response.data}',
+        name: 'RainyunDriver',
+      );
+
+      if (response.data == null) {
+        developer.log('Rainyun: response data is null', name: 'RainyunDriver');
+        return false;
+      }
 
       var data = response.data;
       if (data is String) {
+        developer.log('Rainyun: parsing string response', name: 'RainyunDriver');
         try {
           data = jsonDecode(data);
-        } catch (_) {
+        } catch (e) {
+          developer.log('Rainyun: JSON parse failed: $e', name: 'RainyunDriver');
           return false;
         }
       }
 
       if (data is Map) {
-        final success = data['success'];
-        if (success == true || success == 'true') {
+        final code = data['code'];
+        developer.log(
+          'Rainyun: code field = $code (type: ${code.runtimeType})',
+          name: 'RainyunDriver',
+        );
+
+        if (code == 200 || code == '200') {
+          developer.log('Rainyun: authentication successful', name: 'RainyunDriver');
+          _savedApiKey = apiKey;
           _client = ApiClient(
             baseUrl: AppConfig.rainyunBaseUrl,
             headers: {
@@ -177,10 +238,27 @@ class RainyunDriver implements DriverInterface {
           );
           return true;
         }
+
+        final errorCode = data['error_code']?.toString() ?? '';
+        final errorMessage = data['message']?.toString() ?? '';
+        developer.log(
+          'Rainyun: auth failed - code=$code, error_code=$errorCode, message=$errorMessage',
+          name: 'RainyunDriver',
+        );
       }
 
       return false;
+    } on DioException catch (e) {
+      developer.log(
+        'Rainyun DioException: type=${e.type}, message=${e.message}, response=${e.response?.data}',
+        name: 'RainyunDriver',
+      );
+      return false;
     } catch (e) {
+      developer.log(
+        'Rainyun Exception: $e',
+        name: 'RainyunDriver',
+      );
       return false;
     }
   }
@@ -207,7 +285,7 @@ class RainyunDriver implements DriverInterface {
 
       final response = await _client!.get(
         '/product/domain/',
-        queryParameters: {'options': jsonEncode(options)},
+        queryParameters: {'options': '{}'},
       );
 
       if (response.data == null) {
@@ -224,26 +302,31 @@ class RainyunDriver implements DriverInterface {
       }
 
       if (data is Map) {
-        final success = data['success'];
-        if (success == true || success == 'true') {
-          final domainList = data['data'] as List? ?? [];
+        final code = data['code'];
+        if (code == 200 || code == '200') {
+          final dataObj = data['data'] as Map? ?? {};
+          final domainList = dataObj['Records'] as List? ?? [];
+          final totalRecords = dataObj['TotalRecords'] as int? ?? 0;
           final domains = domainList.map((zone) {
             return {
-              'id': zone['id']?.toString() ?? '',
-              'name': zone['domain']?.toString() ?? zone['name']?.toString() ?? '',
-              'domain': zone['domain']?.toString() ?? zone['name']?.toString() ?? '',
-              'status': zone['status']?.toString() ?? 'active',
-              'create_date': zone['create_date'],
-              'exp_date': zone['exp_date'],
-              'auto_renew': zone['auto_renew'] ?? false,
-              'product': zone['product']?.toString() ?? 'domain',
+              'id': zone['ID']?.toString() ?? zone['id']?.toString() ?? '',
+              'name': zone['Domain']?.toString() ?? zone['domain']?.toString() ?? zone['Name']?.toString() ?? '',
+              'domain': zone['Domain']?.toString() ?? zone['domain']?.toString() ?? zone['Name']?.toString() ?? '',
+              'status': zone['Status']?.toString() ?? zone['status']?.toString() ?? 'active',
+              'create_date': zone['CreateDate'] ?? zone['create_date'],
+              'exp_date': zone['ExpDate'] ?? zone['exp_date'],
+              'auto_renew': zone['AutoRenew'] ?? zone['auto_renew'] ?? false,
+              'product': zone['Product']?.toString() ?? zone['product']?.toString() ?? 'domain',
             };
           }).toList();
 
-          final pagination = data['pagination'] as Map? ?? {};
           return {
             'domains': domains,
-            'pagination': pagination,
+            'pagination': {
+              'total': totalRecords,
+              'page': page,
+              'pageSize': pageSize,
+            },
             'success': true,
             'statusCode': 'OK',
             'total': domains.length,
@@ -319,8 +402,8 @@ class RainyunDriver implements DriverInterface {
       }
 
       if (data is Map) {
-        final success = data['success'];
-        if (success == true || success == 'true') {
+        final code = data['code'];
+        if (code == 200 || code == '200') {
           final recordList = data['data'] as List? ?? [];
           final records = recordList.map((record) {
             return {
@@ -399,8 +482,8 @@ class RainyunDriver implements DriverInterface {
       }
 
       if (respData is Map) {
-        final success = respData['success'];
-        if (success == true || success == 'true') {
+        final code = respData['code'];
+        if (code == 200 || code == '200') {
           return {'success': true, 'statusCode': 'OK', 'message': 'DNS 记录创建成功', 'data': respData['data']};
         }
         return _parseError(respData);
@@ -449,8 +532,8 @@ class RainyunDriver implements DriverInterface {
       }
 
       if (respData is Map) {
-        final success = respData['success'];
-        if (success == true || success == 'true') {
+        final code = respData['code'];
+        if (code == 200 || code == '200') {
           return {'success': true, 'statusCode': 'OK', 'message': 'DNS 记录更新成功', 'data': respData['data']};
         }
         return _parseError(respData);
