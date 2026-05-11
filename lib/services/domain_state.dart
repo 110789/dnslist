@@ -53,7 +53,7 @@ class DomainState extends ChangeNotifier {
       }
 
       final result = await driver.getDomains();
-      
+
       if (result['error'] != null) {
         final errorCode = result['errorCode'] ?? 'UNKNOWN';
         final errorMessage = result['error'] ?? '操作失败';
@@ -63,7 +63,7 @@ class DomainState extends ChangeNotifier {
         notifyListeners();
         return {'success': false, 'error': errorMessage, 'errorCode': errorCode, 'statusCode': result['statusCode']};
       }
-      
+
       _domains = List<Map<String, dynamic>>.from(result['domains'] ?? []);
       DriverManager().setCredential(providerId, credentials);
       _isLoading = false;
@@ -79,9 +79,7 @@ class DomainState extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> loadDnsRecords(String providerId, String domainId) async {
-    _dnsRecords[domainId] = [];
     _isLoading = true;
-    _error = null;
     _error = null;
     _errorCode = null;
     notifyListeners();
@@ -98,7 +96,7 @@ class DomainState extends ChangeNotifier {
       }
 
       final result = await driver.getDnsRecords(domainId);
-      
+
       if (result['error'] != null) {
         final errorCode = result['errorCode'] ?? 'UNKNOWN';
         final errorMessage = result['error'] ?? '操作失败';
@@ -108,7 +106,7 @@ class DomainState extends ChangeNotifier {
         notifyListeners();
         return {'success': false, 'error': errorMessage, 'errorCode': errorCode, 'statusCode': result['statusCode']};
       }
-      
+
       _dnsRecords[domainId] = List<Map<String, dynamic>>.from(result['records'] ?? []);
       _selectedDomainId = domainId;
       _isLoading = false;
@@ -136,22 +134,19 @@ class DomainState extends ChangeNotifier {
       }
 
       final result = await driver.createDomain(domainData);
-      
+
       if (result['error'] != null) {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
-      
-      _domains = [];
+
       _isLoading = true;
       notifyListeners();
-      
+
       final reloadResult = await driver.getDomains();
       _isLoading = false;
-      
+
       if (reloadResult['success'] == true) {
         _domains = List<Map<String, dynamic>>.from(reloadResult['domains'] ?? []);
-      } else {
-        _domains = [];
       }
       notifyListeners();
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
@@ -170,17 +165,14 @@ class DomainState extends ChangeNotifier {
       final result = await driver.deleteDomain(domainId);
 
       if (result['success'] == true) {
-        _domains = [];
         _isLoading = true;
         notifyListeners();
-        
+
         final reloadResult = await driver.getDomains();
         _isLoading = false;
-        
+
         if (reloadResult['success'] == true) {
           _domains = List<Map<String, dynamic>>.from(reloadResult['domains'] ?? []);
-        } else {
-          _domains = [];
         }
         notifyListeners();
         return {'success': true, 'statusCode': 'OK'};
@@ -193,8 +185,6 @@ class DomainState extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> refreshDomains(String providerId, Map<String, String> credentials) async {
-    _domains = [];
-    notifyListeners();
     return loadDomains(providerId, credentials);
   }
 
@@ -206,22 +196,19 @@ class DomainState extends ChangeNotifier {
       }
 
       final result = await driver.renewDomain(domainId);
-      
+
       if (result['error'] != null) {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
-      
-      _domains = [];
+
       _isLoading = true;
       notifyListeners();
-      
+
       final reloadResult = await driver.getDomains();
       _isLoading = false;
-      
+
       if (reloadResult['success'] == true) {
         _domains = List<Map<String, dynamic>>.from(reloadResult['domains'] ?? []);
-      } else {
-        _domains = [];
       }
       notifyListeners();
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
@@ -238,22 +225,19 @@ class DomainState extends ChangeNotifier {
       }
 
       final result = await driver.createDnsRecord(domainId, recordData);
-      
+
       if (result['error'] != null) {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
-      
-      _dnsRecords[domainId] = [];
+
       _isLoading = true;
       notifyListeners();
-      
+
       final reloadResult = await driver.getDnsRecords(domainId);
       _isLoading = false;
-      
+
       if (reloadResult['success'] == true) {
         _dnsRecords[domainId] = List<Map<String, dynamic>>.from(reloadResult['records'] ?? []);
-      } else {
-        _dnsRecords[domainId] = [];
       }
       notifyListeners();
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
@@ -270,22 +254,19 @@ class DomainState extends ChangeNotifier {
       }
 
       final result = await driver.updateDnsRecord(domainId, recordId, recordData);
-      
+
       if (result['error'] != null) {
         return {'success': false, 'error': result['error'], 'errorCode': result['errorCode'] ?? 'UNKNOWN', 'statusCode': result['statusCode']};
       }
-      
-      _dnsRecords[domainId] = [];
+
       _isLoading = true;
       notifyListeners();
-      
+
       final reloadResult = await driver.getDnsRecords(domainId);
       _isLoading = false;
-      
+
       if (reloadResult['success'] == true) {
         _dnsRecords[domainId] = List<Map<String, dynamic>>.from(reloadResult['records'] ?? []);
-      } else {
-        _dnsRecords[domainId] = [];
       }
       notifyListeners();
       return {'success': true, 'statusCode': 'OK', 'data': result['data']};
@@ -294,7 +275,7 @@ class DomainState extends ChangeNotifier {
     }
   }
 
-Future<Map<String, dynamic>> deleteDnsRecord(String providerId, String domainId, String recordId) async {
+  Future<Map<String, dynamic>> deleteDnsRecord(String providerId, String domainId, String recordId) async {
     try {
       final driver = DriverFactory.get(providerId);
       if (driver == null) {
@@ -302,19 +283,16 @@ Future<Map<String, dynamic>> deleteDnsRecord(String providerId, String domainId,
       }
 
       final result = await driver.deleteDnsRecord(domainId, recordId);
-      
+
       if (result['success'] == true) {
-        _dnsRecords[domainId] = [];
         _isLoading = true;
         notifyListeners();
-        
+
         final reloadResult = await driver.getDnsRecords(domainId);
         _isLoading = false;
-        
+
         if (reloadResult['success'] == true) {
           _dnsRecords[domainId] = List<Map<String, dynamic>>.from(reloadResult['records'] ?? []);
-        } else {
-          _dnsRecords[domainId] = [];
         }
         notifyListeners();
         return {'success': true, 'statusCode': 'OK'};
