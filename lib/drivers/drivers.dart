@@ -4,3 +4,4 @@ export 'driver_manager.dart';
 export 'driver_registry.dart';
 export 'cloudflare/cloudflare_driver.dart';
 export 'dnshe/dnshe_driver.dart';
+export 'dnspod/dnspod_driver.dart';

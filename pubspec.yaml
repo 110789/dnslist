@@ -36,6 +36,9 @@ dependencies:
   # 基础底座 - 网络
   dio: ^5.4.0
 
+  # DNSPod 签名
+  crypto: ^3.0.3
+
   # 基础底座 - 本地存储
   shared_preferences: ^2.2.2
 

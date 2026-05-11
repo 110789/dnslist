@@ -1,6 +1,7 @@
 import 'driver_factory.dart';
 import 'cloudflare/cloudflare_driver.dart';
 import 'dnshe/dnshe_driver.dart';
+import 'dnspod/dnspod_driver.dart';
 
 class DriverRegistry {
   static bool _registered = false;
@@ -9,6 +10,7 @@ class DriverRegistry {
     if (_registered) return;
     DriverFactory.register(CloudflareDriver());
     DriverFactory.register(DnsheDriver());
+    DriverFactory.register(DnspodDriver());
     _registered = true;
   }
 
