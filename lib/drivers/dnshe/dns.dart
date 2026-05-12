@@ -63,14 +63,26 @@ class DnsheDns {
     }
 
     try {
-      final bodyData = <String, dynamic>{'subdomain_id': subdomainId};
-      if (recordData.containsKey('type')) bodyData['type'] = recordData['type'];
-      if (recordData.containsKey('name')) bodyData['name'] = recordData['name'];
-      if (recordData.containsKey('content')) bodyData['content'] = recordData['content'];
-      if (recordData.containsKey('ttl') && recordData['ttl'] != null && recordData['ttl'] > 0) bodyData['ttl'] = recordData['ttl'];
-      if (recordData.containsKey('priority') && recordData['priority'] != null && recordData['priority'] > 0) bodyData['priority'] = recordData['priority'];
-      if (recordData.containsKey('line')) bodyData['line'] = recordData['line'];
-      if (recordData.containsKey('proxied')) bodyData['proxied'] = recordData['proxied'] ?? false;
+      final bodyData = <String, dynamic>{
+        'subdomain_id': subdomainId,
+        'type': recordData['type'] ?? 'A',
+        'content': recordData['content'] ?? '',
+      };
+
+      final name = recordData['name'];
+      if (name != null && name.toString().isNotEmpty) {
+        bodyData['name'] = name;
+      }
+
+      final ttl = recordData['ttl'];
+      if (ttl != null && ttl is int && ttl > 0) {
+        bodyData['ttl'] = ttl;
+      }
+
+      final priority = recordData['priority'];
+      if (priority != null && priority is int && priority > 0) {
+        bodyData['priority'] = priority;
+      }
 
       final response = await _client.post('', queryParameters: {
         'm': 'domain_hub',
@@ -111,12 +123,29 @@ class DnsheDns {
 
     try {
       final bodyData = <String, dynamic>{'id': recordIdInt};
-      if (recordData.containsKey('type')) bodyData['type'] = recordData['type'];
-      if (recordData.containsKey('name')) bodyData['name'] = recordData['name'];
-      if (recordData.containsKey('content')) bodyData['content'] = recordData['content'];
-      if (recordData.containsKey('ttl') && recordData['ttl'] != null && recordData['ttl'] > 0) bodyData['ttl'] = recordData['ttl'];
-      if (recordData.containsKey('priority') && recordData['priority'] != null && recordData['priority'] > 0) bodyData['priority'] = recordData['priority'];
-      if (recordData.containsKey('proxied')) bodyData['proxied'] = recordData['proxied'];
+
+      final type = recordData['type'];
+      if (type != null) bodyData['type'] = type;
+
+      final name = recordData['name'];
+      if (name != null && name.toString().isNotEmpty) {
+        bodyData['name'] = name;
+      }
+
+      final content = recordData['content'];
+      if (content != null && content.toString().isNotEmpty) {
+        bodyData['content'] = content;
+      }
+
+      final ttl = recordData['ttl'];
+      if (ttl != null && ttl is int && ttl > 0) {
+        bodyData['ttl'] = ttl;
+      }
+
+      final priority = recordData['priority'];
+      if (priority != null && priority is int && priority > 0) {
+        bodyData['priority'] = priority;
+      }
 
       final response = await _client.post('', queryParameters: {
         'm': 'domain_hub',

@@ -182,7 +182,7 @@ class DnsheDriver implements DriverInterface {
   bool get supportsShowNameServers => false;
 
   @override
-  bool get supportsProxy => true;
+  bool get supportsProxy => false;
 
   @override
   Widget buildDomainListItem(
@@ -290,12 +290,12 @@ class DnsheDriver implements DriverInterface {
   List<DnsRecordField> getAddRecordFields() {
     return [
       const DnsRecordField(
-        key: 'subdomain',
-        label: '主机记录',
+        key: 'name',
+        label: '记录名称',
         hintText: '例如: www 或 @',
       ),
       const DnsRecordField(
-        key: 'record',
+        key: 'content',
         label: '记录值',
         hintText: '例如: 192.168.1.1',
       ),
@@ -313,16 +313,16 @@ class DnsheDriver implements DriverInterface {
   List<DnsRecordField> getEditRecordFields(Map<String, dynamic> recordData) {
     return [
       DnsRecordField(
-        key: 'subdomain',
-        label: '主机记录',
+        key: 'name',
+        label: '记录名称',
         hintText: '例如: www 或 @',
         initialValue: recordData['name']?.toString() ?? '',
       ),
       DnsRecordField(
-        key: 'record',
+        key: 'content',
         label: '记录值',
         hintText: '例如: 192.168.1.1',
-        initialValue: recordData['record']?.toString() ?? recordData['content']?.toString() ?? '',
+        initialValue: recordData['content']?.toString() ?? '',
       ),
       DnsRecordField(
         key: 'ttl',
@@ -342,17 +342,13 @@ class DnsheDriver implements DriverInterface {
   }) {
     final data = <String, dynamic>{
       'type': recordType,
-      'subdomain': fieldValues['subdomain'] ?? '',
-      'record': fieldValues['record'] ?? '',
+      'name': fieldValues['name'] ?? '',
+      'content': fieldValues['content'] ?? '',
       'ttl': int.tryParse(fieldValues['ttl'] ?? '3600') ?? 3600,
     };
 
     if (recordType == 'MX' || recordType == 'SRV') {
       data['priority'] = int.tryParse(fieldValues['priority'] ?? '10') ?? 10;
-    }
-
-    if (supportsProxy) {
-      data['proxied'] = fieldValues['proxied'] == 'true';
     }
 
     return data;
