@@ -190,7 +190,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                       setDialogState(() => isSubmitting = false);
                       ToastUtil.showError(
                         context,
-                        result['error'] ?? '添加失败',
+                        result['error'] ?? '',
                         errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
                       );
                     }

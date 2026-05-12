@@ -24,7 +24,7 @@ class CloudflareDriver implements DriverInterface {
 
   @override
   String mapErrorCode(String code) {
-    return code;
+    return '';
   }
 
   @override

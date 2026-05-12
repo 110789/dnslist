@@ -244,11 +244,11 @@ class _HomePageState extends State<HomePage> {
                             ToastUtil.showSuccess(context, '域名已删除');
                           } else {
                             Navigator.pop(dialogContext);
-                            ToastUtil.showError(context, errorMsg ?? '删除失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+                            ToastUtil.showError(context, errorMsg ?? '', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
                           }
                         }
                       },
-                child: isDeleting
+                      child: isDeleting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text('删除'),
               ),
@@ -297,7 +297,7 @@ class _HomePageState extends State<HomePage> {
                             final driver = DriverFactory.get(selected.providerId);
                             final errCode = result['errorCode']?.toString() ?? '';
                             final errorMsg = errCode.isNotEmpty ? driver?.mapErrorCode(errCode) : result['error'];
-                            ToastUtil.showError(context, errorMsg ?? '续期失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+                            ToastUtil.showError(context, errorMsg ?? '', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
                           }
                         }
                       },
@@ -413,7 +413,7 @@ class _HomePageState extends State<HomePage> {
                             ToastUtil.showSuccess(context, '域名添加成功');
                           } else {
                             Navigator.pop(dialogContext);
-                            ToastUtil.showError(context, errorMsg ?? '添加失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+                            ToastUtil.showError(context, errorMsg ?? '', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
                           }
                         }
                       }
@@ -1115,7 +1115,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
       if (mounted) {
         final errCode = result['errorCode']?.toString();
         final errorMsg = errCode != null ? driver.mapErrorCode(errCode) : result['error'];
-        ToastUtil.showError(context, errorMsg ?? '凭证校验失败', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
+        ToastUtil.showError(context, errorMsg ?? '', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
       }
       return;
     }

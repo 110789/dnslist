@@ -120,7 +120,7 @@ class NewDomainState extends ChangeNotifier {
 
       if (domainsResult['error'] != null) {
         final errorCode = domainsResult['errorCode'] ?? 'UNKNOWN';
-        final errorMessage = domainsResult['error'] ?? '操作失败';
+        final errorMessage = domainsResult['error']?.toString() ?? '';
         _setError(errorMessage, errorCode);
         return RefreshResult.fail(
           error: errorMessage,
@@ -158,7 +158,7 @@ class NewDomainState extends ChangeNotifier {
 
       if (result['error'] != null) {
         final errorCode = result['errorCode'] ?? 'UNKNOWN';
-        final errorMessage = result['error'] ?? '操作失败';
+        final errorMessage = result['error']?.toString() ?? '';
         _setError(errorMessage, errorCode);
         return RefreshResult.fail(
           error: errorMessage,
