@@ -1,17 +1,13 @@
 import 'package:flutter/foundation.dart';
 import '../drivers/driver_factory.dart';
 import '../core/refresh/refresh_core.dart';
+import '../core/refresh/refresh_types.dart';
 
 enum LoadingState {
   idle,
   loading,
   refreshing,
   operating,
-}
-
-enum RefreshAnimationType {
-  pullDown,
-  centerLoading,
 }
 
 class NewDomainState extends ChangeNotifier {

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../services/new_domain_state.dart';
-import '../../services/credential_state.dart';
-import 'refresh_core.dart';
+import '../core/refresh/refresh_core.dart';
+import '../core/refresh/refresh_types.dart';
+import 'new_domain_state.dart';
+import 'credential_state.dart';
 
 class RefreshHelper {
   static Future<void> refreshDomainListManual(BuildContext context) async {

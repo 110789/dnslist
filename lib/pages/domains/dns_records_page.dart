@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/credential_state.dart';
 import '../../services/new_domain_state.dart';
-import '../../core/refresh/refresh_helper.dart';
+import '../../services/refresh_helper.dart';
 import '../../drivers/driver_factory.dart';
 import '../../utils/toast_util.dart';
 import '../../core/ui/md3_widgets.dart';

@@ -1,0 +1,4 @@
+enum RefreshAnimationType {
+  pullDown,
+  centerLoading,
+}
