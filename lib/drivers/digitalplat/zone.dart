@@ -181,9 +181,13 @@ class DigitalplatZone {
         'name': '',
         'domain': '',
         'status': 'unknown',
+        'nameservers': <String>[],
+        'name_servers': <String>[],
       };
     }
 
+    final nsList = (domain['nameservers'] as List?)?.cast<String>() ?? <String>[];
+    
     return {
       'id': domain['domain']?.toString() ?? '',
       'domain_id': domain['domain']?.toString() ?? '',
@@ -194,8 +198,8 @@ class DigitalplatZone {
       'lifecycle_type': domain['lifecycle_type']?.toString() ?? '',
       'expires_at': _formatDigitalplatDate(domain['expires_at']?.toString()),
       'created_at': _formatDigitalplatDate(domain['created_at']?.toString()),
-      'nameservers': (domain['nameservers'] as List?)?.map((e) => e.toString()).toList() ?? [],
-      'name_servers': (domain['nameservers'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      'nameservers': nsList,
+      'name_servers': nsList,
       'registrant': domain['registrant']?.toString() ?? '',
       'registrar': domain['registrar']?.toString() ?? '',
       'dns_server': domain['dns_server']?.toString() ?? '',
