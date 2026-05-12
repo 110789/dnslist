@@ -19,8 +19,9 @@ class SettingsPage extends StatelessWidget {
         elevation: 0,
         scrolledUnderElevation: 2,
       ),
-      body: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, _) {
+      body: Selector<ThemeProvider, DarkModeOption>(
+        selector: (_, theme) => theme.darkMode,
+        builder: (context, darkMode, _) {
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
             children: [
@@ -30,8 +31,8 @@ class SettingsPage extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.dark_mode_outlined,
                     title: '外观模式',
-                    subtitle: _getDarkModeLabel(themeProvider.darkMode),
-                    onTap: () => _showDarkModeSheet(context, themeProvider),
+                    subtitle: _getDarkModeLabel(darkMode),
+                    onTap: () => _showDarkModeSheet(context, context.read<ThemeProvider>()),
                     showDivider: true,
                   ),
                   _SettingsTile(
@@ -43,7 +44,7 @@ class SettingsPage extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.phone_android,
                     title: '界面风格',
-                    subtitle: themeProvider.uiStyle == UIStyle.md3 ? 'Material Design 3' : 'Cupertino',
+                    subtitle: context.read<ThemeProvider>().uiStyle == UIStyle.md3 ? 'Material Design 3' : 'Cupertino',
                   ),
                 ],
               ),

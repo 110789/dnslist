@@ -5,13 +5,18 @@ class CredentialState extends ChangeNotifier {
   final CredentialStorage _storage;
   List<CredentialModel> _credentials = [];
   String? _selectedCredentialId;
+  List<CredentialModel>? _sortedCredentials;
+  bool _dirty = true;
 
   CredentialState(this._storage);
 
   List<CredentialModel> get credentials {
-    final sorted = List<CredentialModel>.from(_credentials);
-    sorted.sort((a, b) => a.order.compareTo(b.order));
-    return sorted;
+    if (_sortedCredentials == null || _dirty) {
+      _sortedCredentials = List<CredentialModel>.from(_credentials)
+        ..sort((a, b) => a.order.compareTo(b.order));
+      _dirty = false;
+    }
+    return _sortedCredentials!;
   }
 
   String? get selectedCredentialId => _selectedCredentialId;
@@ -29,15 +34,13 @@ class CredentialState extends ChangeNotifier {
     _credentials = await _storage.loadAll();
     _selectedCredentialId = await _storage.getSelectedIdAsync();
     if (_credentials.isNotEmpty && _selectedCredentialId == null) {
-      final sorted = List<CredentialModel>.from(_credentials);
-      sorted.sort((a, b) => a.order.compareTo(b.order));
-      _selectedCredentialId = sorted.first.id;
+      _dirty = true;
+      _selectedCredentialId = credentials.first.id;
     } else if (_selectedCredentialId != null) {
       final exists = _credentials.any((c) => c.id == _selectedCredentialId);
       if (!exists && _credentials.isNotEmpty) {
-        final sorted = List<CredentialModel>.from(_credentials);
-        sorted.sort((a, b) => a.order.compareTo(b.order));
-        _selectedCredentialId = sorted.first.id;
+        _dirty = true;
+        _selectedCredentialId = credentials.first.id;
       }
     }
     notifyListeners();
@@ -49,6 +52,7 @@ class CredentialState extends ChangeNotifier {
     await _storage.add(newCredential);
     _credentials.add(newCredential);
     _selectedCredentialId = newCredential.id;
+    _dirty = true;
     notifyListeners();
   }
 
@@ -57,13 +61,13 @@ class CredentialState extends ChangeNotifier {
     _credentials.removeWhere((e) => e.id == id);
     if (_selectedCredentialId == id) {
       if (_credentials.isNotEmpty) {
-        final sorted = List<CredentialModel>.from(_credentials);
-        sorted.sort((a, b) => a.order.compareTo(b.order));
-        _selectedCredentialId = sorted.first.id;
+        _dirty = true;
+        _selectedCredentialId = credentials.first.id;
       } else {
         _selectedCredentialId = null;
       }
     }
+    _dirty = true;
     notifyListeners();
   }
 
@@ -72,6 +76,7 @@ class CredentialState extends ChangeNotifier {
     final index = _credentials.indexWhere((e) => e.id == credential.id);
     if (index != -1) {
       _credentials[index] = credential;
+      _dirty = true;
       notifyListeners();
     }
   }
@@ -93,6 +98,7 @@ class CredentialState extends ChangeNotifier {
     }).toList();
 
     await _storage.saveOrder(_credentials);
+    _dirty = true;
   }
 
   void selectCredential(String id) {

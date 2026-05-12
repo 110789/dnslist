@@ -31,37 +31,27 @@ class ApiClient {
   }
 
   Future<Response> get(String path, {Map<String, dynamic>? queryParameters, Map<String, String>? headers}) async {
-    if (headers != null) _dio.options.headers.addAll(headers);
-    final result = await _dio.get(path, queryParameters: queryParameters);
-    if (headers != null) headers.forEach((k, v) => _dio.options.headers.remove(k));
-    return result;
+    final options = Options(headers: headers);
+    return _dio.get(path, queryParameters: queryParameters, options: options);
   }
 
   Future<Response> post(String path, {dynamic data, Map<String, dynamic>? queryParameters, Map<String, String>? headers}) async {
-    if (headers != null) _dio.options.headers.addAll(headers);
-    final result = await _dio.post(path, data: data, queryParameters: queryParameters);
-    if (headers != null) headers.forEach((k, v) => _dio.options.headers.remove(k));
-    return result;
+    final options = Options(headers: headers);
+    return _dio.post(path, data: data, queryParameters: queryParameters, options: options);
   }
 
   Future<Response> put(String path, {dynamic data, Map<String, String>? headers}) async {
-    if (headers != null) _dio.options.headers.addAll(headers);
-    final result = await _dio.put(path, data: data);
-    if (headers != null) headers.forEach((k, v) => _dio.options.headers.remove(k));
-    return result;
+    final options = Options(headers: headers);
+    return _dio.put(path, data: data, options: options);
   }
 
   Future<Response> delete(String path, {Map<String, String>? headers}) async {
-    if (headers != null) _dio.options.headers.addAll(headers);
-    final result = await _dio.delete(path);
-    if (headers != null) headers.forEach((k, v) => _dio.options.headers.remove(k));
-    return result;
+    final options = Options(headers: headers);
+    return _dio.delete(path, options: options);
   }
 
   Future<Response> patch(String path, {dynamic data, Map<String, String>? headers}) async {
-    if (headers != null) _dio.options.headers.addAll(headers);
-    final result = await _dio.patch(path, data: data);
-    if (headers != null) headers.forEach((k, v) => _dio.options.headers.remove(k));
-    return result;
+    final options = Options(headers: headers);
+    return _dio.patch(path, data: data, options: options);
   }
 }

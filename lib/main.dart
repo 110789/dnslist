@@ -111,15 +111,17 @@ void main() async {
     return true;
   };
 
-  await _safeInit('LocalStorage', () async {
-    await LocalStorage.instance.init();
-  });
+  await Future.wait([
+    _safeInit('LocalStorage', () async {
+      await LocalStorage.instance.init();
+    }),
+    _safeInit('Database', _initDatabase),
+  ]);
 
-  await _safeInit('Database', _initDatabase);
-
-  await _safeInit('ServiceRegistry', _initServiceRegistry);
-
-  await _safeDriverInit();
+  await Future.wait([
+    _safeInit('ServiceRegistry', _initServiceRegistry),
+    _safeDriverInit(),
+  ]);
 
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
@@ -144,7 +146,9 @@ class MyApp extends StatelessWidget {
     final domainState = NewDomainState();
     final themeProvider = ThemeProvider(repository: userPrefsRepository);
 
-    credentialState.loadCredentials();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      credentialState.loadCredentials();
+    });
 
     return MultiProvider(
       providers: [
@@ -152,13 +156,14 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: domainState),
         ChangeNotifierProvider.value(value: themeProvider),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, theme, _) {
+      child: Selector<ThemeProvider, bool>(
+        selector: (_, theme) => theme.isDarkMode,
+        builder: (context, isDarkMode, _) {
           return MaterialApp.router(
             title: 'DNS管理工具',
             routerConfig: AppRouter.router,
             debugShowCheckedModeBanner: false,
-            theme: theme.isDarkMode ? AppTheme.md3Dark : AppTheme.md3Light,
+            theme: isDarkMode ? AppTheme.md3Dark : AppTheme.md3Light,
           );
         },
       ),

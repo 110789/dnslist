@@ -15,12 +15,13 @@ class CredentialRepository {
   }
 
   Future<void> saveAll(List<CredentialModel> credentials) async {
-    final db = await _service.transaction((txn) async {
+    await _service.transaction((txn) async {
       await txn.delete(TableNames.credentials);
+      final batch = txn.batch();
       for (var i = 0; i < credentials.length; i++) {
-        final cred = credentials[i];
-        await txn.insert(TableNames.credentials, _toMap(cred, i));
+        batch.insert(TableNames.credentials, _toMap(credentials[i], i));
       }
+      await batch.commit(noResult: true);
     });
   }
 
@@ -57,15 +58,18 @@ class CredentialRepository {
   }
 
   Future<void> saveOrder(List<CredentialModel> credentials) async {
-    final db = await _service.transaction((txn) async {
+    await _service.transaction((txn) async {
+      final batch = txn.batch();
+      final now = DateTime.now().millisecondsSinceEpoch;
       for (var i = 0; i < credentials.length; i++) {
-        await txn.update(
+        batch.update(
           TableNames.credentials,
-          {'order_index': i, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+          {'order_index': i, 'updated_at': now},
           where: 'id = ?',
           whereArgs: [credentials[i].id],
         );
       }
+      await batch.commit(noResult: true);
     });
   }
 

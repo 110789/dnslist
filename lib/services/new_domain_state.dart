@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import '../drivers/driver_factory.dart';
 import '../core/refresh/refresh_core.dart';
 import '../core/refresh/refresh_types.dart';
@@ -20,8 +20,24 @@ class NewDomainState extends ChangeNotifier {
   bool _isRefreshing = false;
 
   final DomainRefreshCore _refreshCore = DomainRefreshCore();
+  bool _pendingNotify = false;
 
   NewDomainState();
+
+  void _batchNotify() {
+    if (_pendingNotify) return;
+    _pendingNotify = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_pendingNotify) {
+        _pendingNotify = false;
+        notifyListeners();
+      }
+    });
+  }
+
+  void notify() {
+    notifyListeners();
+  }
 
   List<Map<String, dynamic>> get domains => _domains;
   Map<String, List<Map<String, dynamic>>> get dnsRecords => _dnsRecords;
@@ -51,44 +67,66 @@ class NewDomainState extends ChangeNotifier {
     return _dnsRecords[_selectedDomainId] ?? [];
   }
 
-  void _setLoadingState(LoadingState state) {
+  void _setLoadingState(LoadingState state, {bool batch = false}) {
     _loadingState = state;
-    notifyListeners();
+    if (batch) {
+      _batchNotify();
+    } else {
+      notifyListeners();
+    }
   }
 
-  void _setError(String? error, String? errorCode) {
+  void _setError(String? error, String? errorCode, {bool batch = false}) {
     _error = error;
     _errorCode = errorCode;
+    if (batch) {
+      _batchNotify();
+    }
   }
 
-  void _clearError() {
+  void _clearError({bool batch = false}) {
     _error = null;
     _errorCode = null;
+    if (batch) {
+      _batchNotify();
+    }
   }
 
-  void _clearListData({required bool isDomain}) {
+  void _clearListData({required bool isDomain, bool batch = false}) {
     if (isDomain) {
       _domains = [];
     } else if (_selectedDomainId != null) {
       _dnsRecords[_selectedDomainId!] = [];
     }
-    notifyListeners();
+    if (batch) {
+      _batchNotify();
+    } else {
+      notifyListeners();
+    }
   }
 
-  void _startRefreshAnimation(RefreshAnimationType animationType) {
+  void _startRefreshAnimation(RefreshAnimationType animationType, {bool batch = false}) {
     if (animationType == RefreshAnimationType.pullDown) {
       _loadingState = LoadingState.refreshing;
       _isRefreshing = true;
     } else {
       _loadingState = LoadingState.loading;
     }
-    notifyListeners();
+    if (batch) {
+      _batchNotify();
+    } else {
+      notifyListeners();
+    }
   }
 
-  void _stopRefreshAnimation() {
+  void _stopRefreshAnimation({bool batch = false}) {
     _isRefreshing = false;
     _loadingState = LoadingState.idle;
-    notifyListeners();
+    if (batch) {
+      _batchNotify();
+    } else {
+      notifyListeners();
+    }
   }
 
   Future<RefreshResult> _fetchDomainList({
@@ -206,8 +244,8 @@ class NewDomainState extends ChangeNotifier {
     required RefreshTriggerType triggerType,
     RefreshAnimationType animationType = RefreshAnimationType.pullDown,
   }) async {
-    _clearListData(isDomain: true);
-    _startRefreshAnimation(animationType);
+    _clearListData(isDomain: true, batch: true);
+    _startRefreshAnimation(animationType, batch: true);
 
     return _executeRefresh(
       fetchData: () => _fetchDomainList(
@@ -225,8 +263,8 @@ class NewDomainState extends ChangeNotifier {
     required RefreshTriggerType triggerType,
     RefreshAnimationType animationType = RefreshAnimationType.pullDown,
   }) async {
-    _clearListData(isDomain: false);
-    _startRefreshAnimation(animationType);
+    _clearListData(isDomain: false, batch: true);
+    _startRefreshAnimation(animationType, batch: true);
 
     return _executeDnsRefresh(
       fetchData: () => _fetchDnsRecordList(
