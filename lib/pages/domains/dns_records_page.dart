@@ -67,6 +67,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     final priorityController = TextEditingController(text: '10');
     String selectedType = 'A';
     int ttl = 3600;
+    bool proxied = false;
     bool isSubmitting = false;
     bool hasError = false;
 
@@ -143,6 +144,21 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                       color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('小黄云 (代理/CDN)'),
+                    subtitle: Text(
+                      proxied ? '已开启: 流量经过Cloudflare代理' : '已关闭: 仅DNS解析',
+                      style: Theme.of(dialogContext).textTheme.bodySmall,
+                    ),
+                    secondary: Icon(
+                      Icons.cloud_outlined,
+                      color: proxied ? Colors.orange : Theme.of(dialogContext).colorScheme.outline,
+                    ),
+                    value: proxied,
+                    onChanged: (v) => setDialogState(() => proxied = v),
+                  ),
                   if (hasError)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -170,6 +186,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     'name': nameController.text,
                     'content': contentController.text,
                     'ttl': ttl,
+                    'proxied': proxied,
                   };
 
                   if (selectedType == 'MX' || selectedType == 'SRV') {
@@ -214,6 +231,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
     final priorityController = TextEditingController(text: (record['priority'] ?? 10).toString());
     String selectedType = record['type'] ?? 'A';
     int ttl = record['ttl'] ?? 3600;
+    bool proxied = record['proxied'] ?? false;
     bool isSubmitting = false;
 
     showDialog(
@@ -268,6 +286,21 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     keyboardType: TextInputType.number,
                     onChanged: (v) => ttl = int.tryParse(v) ?? 3600,
                   ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('小黄云 (代理/CDN)'),
+                    subtitle: Text(
+                      proxied ? '已开启: 流量经过Cloudflare代理' : '已关闭: 仅DNS解析',
+                      style: Theme.of(dialogContext).textTheme.bodySmall,
+                    ),
+                    secondary: Icon(
+                      Icons.cloud_outlined,
+                      color: proxied ? Colors.orange : Theme.of(dialogContext).colorScheme.outline,
+                    ),
+                    value: proxied,
+                    onChanged: (v) => setDialogState(() => proxied = v),
+                  ),
                 ],
               ),
             ),
@@ -285,6 +318,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     'name': nameController.text,
                     'content': contentController.text,
                     'ttl': ttl,
+                    'proxied': proxied,
                   };
 
                   if (selectedType == 'MX' || selectedType == 'SRV') {

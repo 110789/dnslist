@@ -3,16 +3,15 @@ import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
 import '../../utils/network/api_client.dart';
 import '../../utils/driver/driver_utils.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
-import '../../core/ui/md3_widgets.dart';
 
 class CloudflareDriver implements DriverInterface {
   static const String _providerId = 'cloudflare';
   static const String _providerName = 'Cloudflare';
   static const String _providerIcon = 'assets/icons/cloudflare.svg';
-  static const String _baseUrl = AppConfig.cloudflareBaseUrl;
+  static const String _baseUrl = 'https://api.cloudflare.com/client/v4';
   static const int _maxMessageLen = DriverConstants.maxMessageLen;
+  static const int _connectionTimeout = 30000;
+  static const int _receiveTimeout = 30000;
 
   ApiClient? _client;
   String? _apiToken;
@@ -59,8 +58,8 @@ class CloudflareDriver implements DriverInterface {
         'Authorization': 'Bearer $_apiToken',
         'Content-Type': 'application/json',
       },
-      connectTimeout: AppConfig.connectionTimeout,
-      receiveTimeout: AppConfig.receiveTimeout,
+      connectTimeout: _connectionTimeout,
+      receiveTimeout: _receiveTimeout,
     );
   }
 
@@ -323,11 +322,17 @@ class CloudflareDriver implements DriverInterface {
 
   Map<String, dynamic> _prepareDnsRecordData(Map<String, dynamic> recordData) {
     final data = Map<String, dynamic>.from(recordData);
+    
+    if (data.containsKey('proxied') && data['proxied'] == null) {
+      data.remove('proxied');
+    } else if (!data.containsKey('proxied')) {
+      data['proxied'] = false;
+    }
+    
     final removeIfNull = (String key) {
       if (data.containsKey(key) && data[key] == null) data.remove(key);
     };
     removeIfNull('priority');
-    removeIfNull('proxied');
     if (data.containsKey('ttl') && (data['ttl'] == null || data['ttl'] == 0)) {
       data.remove('ttl');
     } else if (data['ttl'] == 1) {
@@ -536,7 +541,7 @@ class CloudflareDriver implements DriverInterface {
     final content = recordData['content']?.toString() ?? '';
     final ttl = recordData['ttl'] as int? ?? 3600;
     final proxied = recordData['proxied'] == true;
-    final typeColor = DnsDesignTokens.getDnsTypeColor(type);
+    final typeColor = DriverColorTokens.getDnsTypeColor(type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -566,12 +571,39 @@ class CloudflareDriver implements DriverInterface {
             ),
           ),
           const SizedBox(width: 8),
-          DnsTtlTag(ttl: ttl),
+          _buildTtlTag(ttl),
           if (proxied) ...[
             const SizedBox(width: 4),
             const Icon(Icons.cloud, size: 16, color: Color(0xFF3B82F6)),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildTtlTag(int ttl) {
+    String label;
+    if (ttl <= 0) {
+      label = 'TTL: $ttl';
+    } else if (ttl < 60) {
+      label = 'TTL: ${ttl}s';
+    } else if (ttl < 3600) {
+      label = 'TTL: ${(ttl / 60).round()}m';
+    } else if (ttl < 86400) {
+      label = 'TTL: ${(ttl / 3600).round()}h';
+    } else {
+      label = 'TTL: ${(ttl / 86400).round()}d';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F4FD),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
       ),
     );
   }
@@ -593,4 +625,3 @@ class CloudflareDriver implements DriverInterface {
     }
   }
 }
-
