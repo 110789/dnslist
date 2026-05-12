@@ -12,18 +12,7 @@ class DigitalplatZone {
     Map<String, String>? filters,
   }) async {
     try {
-      final queryParams = <String, dynamic>{
-        'page': page,
-        'per_page': pageSize,
-      };
-      if (filters != null && filters.containsKey('keyword')) {
-        queryParams['search'] = filters['keyword'];
-      }
-      if (filters != null && filters.containsKey('status')) {
-        queryParams['status'] = filters['status'];
-      }
-
-      final response = await _client.get('/domains', queryParameters: queryParams);
+      final response = await _client.get('/domains');
       if (response.data == null) {
         return _errorResult('Empty response', 'EMPTY_RESPONSE', page, pageSize);
       }
@@ -184,14 +173,14 @@ class DigitalplatZone {
     }
 
     return {
-      'id': domain['domain']?.toString() ?? '',
-      'domain_id': domain['domain']?.toString() ?? '',
-      'name': domain['domain']?.toString() ?? '',
-      'domain': domain['domain']?.toString() ?? '',
+      'id': domain['name']?.toString() ?? '',
+      'domain_id': domain['name']?.toString() ?? '',
+      'name': domain['name']?.toString() ?? '',
+      'domain': domain['name']?.toString() ?? '',
       'status': domain['status']?.toString() ?? 'unknown',
       'slot_type': domain['slot_type']?.toString() ?? '',
       'lifecycle_type': domain['lifecycle_type']?.toString() ?? '',
-      'expires_at': domain['expires_at']?.toString() ?? '',
+      'expires_at': domain['expiry_date']?.toString() ?? '',
       'created_at': domain['created_at']?.toString() ?? '',
       'nameservers': domain['nameservers'] as List? ?? [],
       'registrant': domain['registrant']?.toString() ?? '',

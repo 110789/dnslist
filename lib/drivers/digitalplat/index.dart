@@ -96,7 +96,7 @@ class DigitalplatDriver implements DriverInterface {
       _apiToken = apiToken;
       _client = DigitalplatCore.createClient(apiToken);
 
-      final response = await _client!.get('/me');
+      final response = await _client!.get('/domains');
       
       if (response.statusCode == 401) {
         _resetClient();
