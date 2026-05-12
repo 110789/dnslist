@@ -195,6 +195,7 @@ class DigitalplatZone {
       'expires_at': _formatDigitalplatDate(domain['expires_at']?.toString()),
       'created_at': _formatDigitalplatDate(domain['created_at']?.toString()),
       'nameservers': (domain['nameservers'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      'name_servers': (domain['nameservers'] as List?)?.map((e) => e.toString()).toList() ?? [],
       'registrant': domain['registrant']?.toString() ?? '',
       'registrar': domain['registrar']?.toString() ?? '',
       'dns_server': domain['dns_server']?.toString() ?? '',
