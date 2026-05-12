@@ -11,44 +11,8 @@ class DnspodDriver implements DriverInterface {
   static const String _providerId = 'dnspod';
   static const String _providerName = 'DNSPod';
   static const String _providerIcon = 'assets/icons/dnspod.svg';
-
-  static const Map<String, String> _errorCodeMap = {
-    'AuthFailure.SignatureFailure': '签名错误，请检查 SecretId 和 SecretKey 是否正确',
-    'AuthFailure.SignatureExpire': '签名过期，请检查本地时间是否准确',
-    'AuthFailure.InvalidSecretId': '密钥非法，请检查 SecretId 是否正确',
-    'AuthFailure.SecretIdNotFound': '密钥不存在，请检查 SecretId 是否正确',
-    'AuthFailure.UnauthorizedOperation': '未授权操作，请检查密钥权限',
-    'FailedOperation.DomainExists': '域名已在列表中，无需重复添加',
-    'FailedOperation.DomainOwnedByOtherUser': '域名被其他账号添加，可在域名列表中取回',
-    'FailedOperation.DomainIsLocked': '域名已被锁定，请先解锁后再操作',
-    'FailedOperation.DomainIsSpam': '域名已被封禁，无法操作',
-    'FailedOperation.NotDomainOwner': '域名不在您的名下，请检查域名归属',
-    'FailedOperation.DomainIsVip': 'VIP 域名不支持此操作',
-    'FailedOperation.DomainNotInService': '域名未使用 DNSPod 服务',
-    'FailedOperation.InsufficientBalance': '账户余额不足，请充值后重试',
-    'FailedOperation.FrequencyLimit': '操作过于频繁，请稍后重试',
-    'FailedOperation.DomainRecordExist': '记录已存在，无需重复添加',
-    'InvalidParameter.DomainInvalid': '域名格式不正确，请输入主域名',
-    'InvalidParameter.DomainIdInvalid': '域名编号不正确',
-    'InvalidParameter.SubdomainInvalid': '子域名格式不正确',
-    'InvalidParameter.RecordTypeInvalid': '记录类型不正确',
-    'InvalidParameter.RecordLineInvalid': '解析线路不正确',
-    'InvalidParameter.RecordValueInvalid': '记录值格式不正确',
-    'InvalidParameter.MxInvalid': 'MX 优先级范围应为 0-65535',
-    'InvalidParameter.InvalidWeight': '权重范围应为 0-100',
-    'InvalidParameter.RecordIdInvalid': '记录编号错误',
-    'InvalidParameterValue.DomainNotExists': '域名不存在，请检查输入',
-    'LimitExceeded.AAAACountLimit': 'AAAA 记录数量超出限制',
-    'LimitExceeded.RecordTtlLimit': 'TTL 值超出允许范围',
-    'LimitExceeded.SrvCountLimit': 'SRV 记录数量超出限制',
-    'ResourceNotFound.NoDataOfRecord': '记录列表为空',
-    'ResourceNotFound.NoDataOfDomain': '域名列表为空',
-    'OperationDenied.AccessDenied': '没有权限执行此操作',
-    'OperationDenied.NoPermissionToOperateDomain': '当前域名无操作权限',
-    'RequestLimitExceeded': '请求频率超限，请稍后重试',
-    'InternalError': '服务器内部错误，请稍后重试',
-    'ServiceUnavailable': '服务暂时不可用，请稍后重试',
-  };
+  static const String _baseUrl = AppConfig.dnspodBaseUrl;
+  static const int _maxMessageLen = 200;
 
   String? _secretId;
   String? _secretKey;
@@ -64,557 +28,382 @@ class DnspodDriver implements DriverInterface {
   String get providerIcon => _providerIcon;
 
   @override
-  String mapErrorCode(String code) {
-    return _errorCodeMap[code] ?? _getGenericErrorMessage(code);
-  }
-
-  String _getGenericErrorMessage(String code) {
-    final lowerCode = code.toLowerCase();
-    if (lowerCode.contains('auth') || lowerCode.contains('signature')) {
-      return '认证失败，请检查 API 密钥是否正确';
-    }
-    if (lowerCode.contains('domain') && lowerCode.contains('not')) {
-      return '域名不存在或已被删除';
-    }
-    if (lowerCode.contains('record') && lowerCode.contains('not')) {
-      return '记录不存在或已被删除';
-    }
-    if (lowerCode.contains('quota') || lowerCode.contains('limit')) {
-      return '超出限制配额，请清理无用资源';
-    }
-    if (lowerCode.contains('permission') || lowerCode.contains('denied')) {
-      return '权限不足，无法执行此操作';
-    }
-    if (lowerCode.contains('invalid') || lowerCode.contains('parameter')) {
-      return '请求参数错误，请检查输入内容';
-    }
-    return '操作失败，请稍后重试';
-  }
+  String mapErrorCode(String code) => '';
 
   @override
   String getAddDomainTitle() => '添加域名';
 
   @override
-  List<AddDomainField> getAddDomainFields() {
-    return [
-      const AddDomainField(
-        key: 'domain',
-        label: '域名',
-        hintText: '例如: example.com',
-        description: '输入主域名，如 dnspod.cn',
-      ),
-    ];
-  }
+  List<AddDomainField> getAddDomainFields() => [
+    const AddDomainField(key: 'domain', label: '域名', hintText: '例如: example.com', description: '输入要添加的域名'),
+  ];
 
   @override
-  Map<String, dynamic> prepareDomainData(Map<String, dynamic> input) {
-    return {
-      'domain': input['domain'] ?? input['name'] ?? '',
-    };
+  Map<String, dynamic> prepareDomainData(Map<String, dynamic> input) => {'domain': input['domain'] ?? input['name'] ?? ''};
+
+  dynamic _parseResponseData(dynamic data) {
+    if (data is String) {
+      try {
+        return jsonDecode(data);
+      } catch (_) {
+        return null;
+      }
+    }
+    return data;
   }
 
-  Map<String, dynamic> _parseError(dynamic responseData) {
-    if (responseData == null) {
-      return {'error': '服务器无响应，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
+  Map<String, dynamic> _parseResponse(dynamic data) {
+    final parsed = _parseResponseData(data);
+    if (parsed == null) return {'error': 'Empty response', 'errorCode': 'EMPTY'};
+    if (parsed is! Map) return {'error': 'Invalid response', 'errorCode': 'INVALID'};
+
+    final response = parsed['Response'] as Map?;
+    if (response == null) {
+      if (parsed['status'] == 'success' || parsed['status'] == 0) return {'success': true};
+      return {'error': 'Invalid response format', 'errorCode': 'INVALID'};
     }
-    final data = responseData is Map ? responseData : {};
-    final response = data['Response'] as Map?;
-    if (response != null) {
-      final error = response['Error'] as Map?;
-      if (error != null) {
-        final code = error['Code']?.toString() ?? 'UNKNOWN';
-        final rawMessage = error['Message']?.toString() ?? '';
-        final mappedMessage = _errorCodeMap[code];
-        if (mappedMessage != null) {
-          return {'error': mappedMessage, 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
-        }
-        return {'error': rawMessage.isNotEmpty ? rawMessage : '操作失败，请稍后重试', 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
+
+    final error = response['Error'] as Map?;
+    if (error != null) {
+      final code = error['Code']?.toString() ?? 'UNKNOWN';
+      final message = error['Message']?.toString() ?? '';
+      if (message.isNotEmpty) {
+        final truncated = message.length > _maxMessageLen ? message.substring(0, _maxMessageLen) : message;
+        return {'error': truncated, 'errorCode': code};
       }
+      return {'error': 'Unknown error', 'errorCode': code};
     }
-    return {'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
+
+    return {'success': true};
   }
 
-  Future<Map<String, dynamic>> _callApi(String action, Map<String, dynamic> params) async {
-    if (_secretId == null || _secretKey == null) {
-      return {'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+  Map<String, dynamic> _parseException(Object e) {
+    if (e is! DioException) return {'error': 'Request failed', 'errorCode': 'UNKNOWN'};
+
+    final responseData = e.response?.data;
+    if (responseData != null) {
+      final result = _parseResponse(responseData);
+      if (result['error'] != 'Unknown error') return result;
     }
-    try {
-      final headers = buildDnspodHeaders(
-        secretId: _secretId!,
-        secretKey: _secretKey!,
-        action: action,
-        payload: params,
-      );
-      final client = Dio(BaseOptions(
-        baseUrl: AppConfig.dnspodBaseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        contentType: 'application/json; charset=utf-8',
-        responseType: ResponseType.plain,
-      ));
-      client.options.headers.addAll(headers);
-      final response = await client.post('', data: params);
-      if (response.data == null) {
-        return {'error': '服务器无响应', 'errorCode': 'UNKNOWN', 'success': false};
-      }
-      final respData = response.data;
-      if (respData is! Map) {
-        try {
-          final parsed = respData is String ? _tryParseJson(respData.toString()) : respData;
-          if (parsed is Map) {
-            return _processResponse(parsed);
-          }
-        } catch (_) {}
-        return {'error': '响应数据格式异常', 'errorCode': 'PARSE_ERROR', 'success': false};
-      }
-      return _processResponse(respData as Map);
-    } on DioException catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
-    } catch (e) {
-      return {'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
+
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+        return {'error': 'Connection timeout', 'errorCode': 'TIMEOUT'};
+      case DioExceptionType.receiveTimeout:
+        return {'error': 'Response timeout', 'errorCode': 'TIMEOUT'};
+      case DioExceptionType.connectionError:
+        return {'error': 'Connection failed', 'errorCode': 'NETWORK'};
+      case DioExceptionType.cancel:
+        return {'error': 'Request cancelled', 'errorCode': 'CANCELLED'};
+      default:
+        return {'error': 'Request failed', 'errorCode': 'UNKNOWN'};
     }
   }
 
-  Map<String, dynamic> _processResponse(Map respData) {
-    if (respData.containsKey('Response')) {
-      final responseObj = respData['Response'] as Map;
-      if (responseObj.containsKey('Error')) {
-        return _parseError(respData);
-      }
-      return {'success': true, 'data': responseObj, 'statusCode': 'OK'};
-    }
-    return {'success': true, 'data': respData, 'statusCode': 'OK'};
-  }
-
-  dynamic _tryParseJson(String jsonStr) {
-    try {
-      return jsonDecode(jsonStr);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  String _handleException(dynamic e) {
-    if (e is DioException) {
-      switch (e.type) {
-        case DioExceptionType.connectionTimeout:
-          return '连接超时，请检查网络后重试';
-        case DioExceptionType.receiveTimeout:
-          return '服务器响应超时，请稍后重试';
-        case DioExceptionType.sendTimeout:
-          return '请求发送超时，请稍后重试';
-        case DioExceptionType.connectionError:
-          return '网络连接失败，请检查网络设置';
-        default:
-          return '网络请求失败，请稍后重试';
-      }
-    }
-    return '操作失败，请稍后重试';
+  ApiClient _getClient() {
+    if (_client != null) return _client!;
+    if (_secretId == null || _secretKey == null) throw StateError('Driver not initialized');
+    _client = ApiClient(baseUrl: _baseUrl);
+    return _client!;
   }
 
   @override
   Future<Map<String, dynamic>> validateCredential(Map<String, String> credentials) async {
     final secretId = credentials['secretId'];
     final secretKey = credentials['secretKey'];
-    if (secretId == null || secretId.isEmpty || secretKey == null || secretKey.isEmpty) {
-      return {'success': false, 'error': 'SecretId 或 SecretKey 不能为空', 'errorCode': 'INVALID_CREDENTIAL'};
+    if (secretId == null || secretKey == null || secretId.isEmpty || secretKey.isEmpty) {
+      return {'success': false, 'error': 'Secret ID or Secret Key cannot be empty', 'errorCode': 'INVALID_CREDENTIAL'};
     }
+
     try {
       _secretId = secretId;
       _secretKey = secretKey;
-      final result = await _callApi('DescribeUserDetail', {});
-      if (result['success'] == true) {
-        return {'success': true};
-      }
+      _client = ApiClient(baseUrl: _baseUrl);
+
+      final signer = DnspodSigner(secretId: secretId, secretKey: secretKey);
+      final params = <String, dynamic>{'Action': 'DescribeDomainList', 'Version': '2021-03-23', 'Limit': 1, 'Offset': 0};
+      final signed = signer.sign('GET', '/v1/Token/Validate', params);
+
+      final response = await _getClient().get('/v1/Token/Validate', queryParameters: signed);
+
+      final result = _parseResponse(response.data);
+      if (result['success'] == true) return {'success': true};
+
+      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
+    } catch (e) {
+      final result = _parseException(e);
       _secretId = null;
       _secretKey = null;
-      return result;
-    } catch (e) {
-      _secretId = null;
-      _secretKey = null;
-      return {'success': false, 'error': _handleException(e), 'errorCode': 'NETWORK_ERROR'};
+      _client = null;
+      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
     }
   }
 
   @override
-  Future<Map<String, dynamic>> getDomains({
-    int page = 1,
-    int pageSize = 20,
-    Map<String, String>? filters,
-  }) async {
-    if (_secretId == null || _secretKey == null) {
-      return {'domains': [], 'pagination': {}, 'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
-    }
+  Future<Map<String, dynamic>> getDomains({int page = 1, int pageSize = 20, Map<String, String>? filters}) async {
+    if (_client == null || _secretId == null) return {'domains': [], 'pagination': {}, 'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
+
     try {
+      final signer = DnspodSigner(secretId: _secretId!, secretKey: _secretKey!);
       final params = <String, dynamic>{
-        'Offset': (page - 1) * pageSize,
+        'Action': 'DescribeDomainList',
+        'Version': '2021-03-23',
         'Limit': pageSize,
-        'Type': 'ALL',
-      };
-      if (filters != null && filters.containsKey('keyword')) {
-        params['Keyword'] = filters['keyword'];
-      }
-      final result = await _callApi('DescribeDomainList', params);
-      if (result['success'] == true) {
-        final data = result['data'] as Map;
-        final domainList = data['DomainList'] as List? ?? [];
-        final countInfo = data['DomainCountInfo'] as Map? ?? {};
-        final domains = domainList.map((domain) {
-          return {
-            'id': domain['DomainId']?.toString() ?? '',
-            'domain_id': domain['DomainId'],
-            'name': domain['Name']?.toString() ?? '',
-            'domain': domain['Name']?.toString() ?? '',
-            'status': domain['Status']?.toString()?.toLowerCase() == 'enable' ? 'active' : 'paused',
-            'grade': domain['Grade']?.toString() ?? '',
-            'grade_title': domain['GradeTitle']?.toString() ?? '',
-            'is_vip': domain['IsVip']?.toString() == 'YES',
-            'ttl': domain['TTL'] ?? 600,
-            'remark': domain['Remark']?.toString() ?? '',
-            'created_on': domain['CreatedOn'],
-            'updated_on': domain['UpdatedOn'],
-            'record_count': domain['RecordCount'] ?? 0,
-            'effective_dns': domain['EffectiveDNS'] as List? ?? [],
-            'punycode': domain['Punycode']?.toString() ?? '',
-            'dns_status': domain['DNSStatus']?.toString() ?? '',
-          };
-        }).toList();
-        final total = countInfo['AllTotal'] ?? countInfo['DomainTotal'] ?? domainList.length;
-        return {
-          'domains': domains,
-          'pagination': {
-            'total': total,
-            'page': page,
-            'per_page': pageSize,
-          },
-          'success': true,
-          'statusCode': 'OK',
-          'total': total,
-          'page': page,
-          'pageSize': pageSize,
-        };
-      }
-      return _parseError(result['data']);
-    } catch (e) {
-      return {
-        'domains': [],
-        'pagination': {},
-        'error': _handleException(e),
-        'errorCode': 'NETWORK_ERROR',
-        'success': false
-      };
-    }
-  }
-
-  @override
-  Future<Map<String, dynamic>> getDnsRecords(
-    String domainId, {
-    int page = 1,
-    int pageSize = 20,
-    Map<String, String>? filters,
-  }) async {
-    if (_secretId == null || _secretKey == null) {
-      return {'records': [], 'pagination': {}, 'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
-    }
-    if (domainId.isEmpty) {
-      return {'records': [], 'pagination': {}, 'error': '域名标识无效', 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
-    }
-    try {
-      final domainIdInt = int.tryParse(domainId);
-      final params = <String, dynamic>{
-        'DomainId': domainIdInt ?? domainId,
         'Offset': (page - 1) * pageSize,
-        'Limit': pageSize,
       };
-      if (filters != null) {
-        if (filters.containsKey('subdomain')) {
-          params['Subdomain'] = filters['subdomain'];
-        }
-        if (filters.containsKey('record_type')) {
-          params['RecordType'] = filters['record_type'];
-        }
-        if (filters.containsKey('record_line')) {
-          params['RecordLine'] = filters['record_line'];
-        }
-        if (filters.containsKey('keyword')) {
-          params['Keyword'] = filters['keyword'];
-        }
-      }
-      final result = await _callApi('DescribeRecordList', params);
-      if (result['success'] == true) {
-        final data = result['data'] as Map;
-        final recordList = data['RecordList'] as List? ?? [];
-        final countInfo = data['RecordCountInfo'] as Map? ?? {};
-        final records = recordList.map((record) {
-          return {
-            'id': record['RecordId']?.toString() ?? '',
-            'record_id': record['RecordId'],
-            'name': record['Name']?.toString() ?? '',
-            'sub_domain': record['Name']?.toString() ?? '',
-            'type': record['Type']?.toString() ?? 'A',
-            'record_type': record['Type']?.toString() ?? 'A',
-            'value': record['Value']?.toString() ?? '',
-            'content': record['Value']?.toString() ?? '',
-            'ttl': record['TTL'] ?? 600,
-            'mx': record['MX'] ?? 0,
-            'priority': record['MX'] ?? 0,
-            'line': record['Line']?.toString() ?? '默认',
-            'line_id': record['LineId']?.toString() ?? '0',
-            'status': record['Status']?.toString()?.toLowerCase() == 'enable' ? 'active' : 'disabled',
-            'enabled': record['Status']?.toString()?.toLowerCase() == 'enable',
-            'weight': record['Weight'],
-            'remark': record['Remark']?.toString() ?? '',
-            'updated_on': record['UpdatedOn'],
-            'created_on': record['UpdatedOn'],
-            'monitor_status': record['MonitorStatus']?.toString() ?? '',
-          };
-        }).toList();
-        final total = countInfo['TotalCount'] ?? recordList.length;
-        return {
-          'records': records,
-          'pagination': {
-            'total': total,
-            'page': page,
-            'per_page': pageSize,
-          },
-          'success': true,
-          'statusCode': 'OK',
-          'total': total,
-          'page': page,
-          'pageSize': pageSize,
-        };
-      }
-      return _parseError(result['data']);
-    } catch (e) {
+      if (filters != null && filters.containsKey('keyword')) params['Keyword'] = filters['keyword'];
+
+      final signed = signer.sign('GET', '/v1/Domain/List', params);
+      final response = await _getClient().get('/v1/Domain/List', queryParameters: signed);
+
+      final result = _parseResponse(response.data);
+      if (result['success'] != true) return {'domains': [], 'pagination': {}, 'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+
+      final data = (response.data as Map?)?['Response'] as Map? ?? {};
+      final domainList = data['DomainList'] as List? ?? [];
+      final domains = domainList.map(_parseDomain).toList();
+
       return {
-        'records': [],
-        'pagination': {},
-        'error': _handleException(e),
-        'errorCode': 'NETWORK_ERROR',
-        'success': false
+        'domains': domains,
+        'pagination': {'page': page, 'per_page': pageSize, 'total': data['TotalCount'] ?? domainList.length},
+        'success': true,
+        'statusCode': 'OK',
+        'total': domains.length,
+        'page': page,
+        'pageSize': pageSize,
       };
+    } catch (e) {
+      final result = _parseException(e);
+      return {'domains': [], 'pagination': {}, 'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+    }
+  }
+
+  Map<String, dynamic> _parseDomain(dynamic domain) => {
+    'id': domain['Id']?.toString() ?? domain['DomainId']?.toString() ?? '',
+    'name': domain['Name']?.toString() ?? domain['Domain']?.toString() ?? '',
+    'domain': domain['Name']?.toString() ?? domain['Domain']?.toString() ?? '',
+    'status': domain['Status']?.toString() ?? 'enabled',
+    'created_on': domain['CreatedOn'],
+    'updated_on': domain['UpdatedOn'],
+    'ttl': domain['TTL'],
+    'cname_speed_status': domain['CnameSpeedStatus'],
+    'dnspod_ns': domain['DnspodNS']?.toString(),
+  };
+
+  @override
+  Future<Map<String, dynamic>> getDnsRecords(String domainId, {int page = 1, int pageSize = 50, Map<String, String>? filters}) async {
+    if (_client == null || _secretId == null) return {'records': [], 'pagination': {}, 'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
+    if (domainId.isEmpty) return {'records': [], 'pagination': {}, 'error': 'Invalid domain ID', 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
+
+    try {
+      final signer = DnspodSigner(secretId: _secretId!, secretKey: _secretKey!);
+      final params = <String, dynamic>{
+        'Action': 'DescribeRecordList',
+        'Version': '2021-03-23',
+        'Domain': domainId,
+        'Limit': pageSize,
+        'Offset': (page - 1) * pageSize,
+      };
+      if (filters != null && filters.containsKey('type')) params['RecordType'] = filters['type'];
+      if (filters != null && filters.containsKey('line')) params['RecordLine'] = filters['line'];
+
+      final signed = signer.sign('GET', '/v1/Domain/Record/List', params);
+      final response = await _getClient().get('/v1/Domain/Record/List', queryParameters: signed);
+
+      final result = _parseResponse(response.data);
+      if (result['success'] != true) return {'records': [], 'pagination': {}, 'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+
+      final data = (response.data as Map?)?['Response'] as Map? ?? {};
+      final recordsList = data['RecordList'] as List? ?? [];
+      final records = recordsList.map(_parseRecord).toList();
+
+      return {
+        'records': records,
+        'pagination': {'page': page, 'per_page': pageSize, 'total': data['TotalCount'] ?? recordsList.length},
+        'success': true,
+        'statusCode': 'OK',
+        'total': records.length,
+        'page': page,
+        'pageSize': pageSize,
+      };
+    } catch (e) {
+      final result = _parseException(e);
+      return {'records': [], 'pagination': {}, 'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+    }
+  }
+
+  Map<String, dynamic> _parseRecord(dynamic record) => {
+    'id': record['Id']?.toString() ?? record['RecordId']?.toString() ?? '',
+    'record_id': record['Id'] ?? record['RecordId'],
+    'name': record['Name']?.toString() ?? '',
+    'type': record['Type']?.toString() ?? 'A',
+    'record_type': record['Type']?.toString() ?? 'A',
+    'content': record['Value']?.toString() ?? '',
+    'ttl': record['TTL'] ?? 600,
+    'priority': record['Priority'],
+    'line': record['Line']?.toString() ?? '默认',
+    'status': record['Status']?.toString() ?? 'enabled',
+    'weight': record['Weight'],
+    'mx': record['MX'],
+  };
+
+  @override
+  Future<Map<String, dynamic>> createDnsRecord(String domainId, Map<String, dynamic> recordData) async {
+    if (_client == null || _secretId == null) return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
+    if (domainId.isEmpty) return {'error': 'Invalid domain ID', 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
+
+    try {
+      final signer = DnspodSigner(secretId: _secretId!, secretKey: _secretKey!);
+      final params = <String, dynamic>{
+        'Action': 'CreateRecord',
+        'Version': '2021-03-23',
+        'Domain': domainId,
+      };
+      if (recordData.containsKey('sub_domain')) params['SubDomain'] = recordData['sub_domain'];
+      if (recordData.containsKey('record_type')) params['RecordType'] = recordData['record_type'];
+      if (recordData.containsKey('record_line')) params['RecordLine'] = recordData['record_line'];
+      if (recordData.containsKey('value')) params['Value'] = recordData['value'];
+      if (recordData.containsKey('ttl') && recordData['ttl'] != null) params['TTL'] = recordData['ttl'];
+      if (recordData.containsKey('priority') && recordData['priority'] != null) params['Priority'] = recordData['priority'];
+      if (recordData.containsKey('weight') && recordData['weight'] != null) params['Weight'] = recordData['weight'];
+
+      final signed = signer.sign('POST', '/v1/Domain/Record/Create', params);
+      final response = await _getClient().post('/v1/Domain/Record/Create', data: signed);
+
+      final result = _parseResponse(response.data);
+      if (result['success'] == true) {
+        final data = (response.data as Map?)?['Response'] as Map? ?? {};
+        return {'success': true, 'statusCode': 'OK', 'data': {'id': data['RecordId']?.toString() ?? ''}};
+      }
+
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+    } catch (e) {
+      final result = _parseException(e);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     }
   }
 
   @override
-  Future<Map<String, dynamic>> createDnsRecord(
-    String domainId,
-    Map<String, dynamic> recordData,
-  ) async {
-    if (_secretId == null || _secretKey == null) {
-      return {'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
-    }
-    if (domainId.isEmpty) {
-      return {'error': '域名标识无效', 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
-    }
-    try {
-      final domainIdInt = int.tryParse(domainId);
-      final params = <String, dynamic>{
-        'DomainId': domainIdInt ?? domainId,
-      };
-      final recordType = recordData['type']?.toString()?.toUpperCase() ?? recordData['record_type']?.toString()?.toUpperCase();
-      if (recordType != null) params['RecordType'] = recordType;
-      final recordLine = recordData['line']?.toString() ?? recordData['record_line']?.toString();
-      if (recordLine != null && recordLine.isNotEmpty) {
-        params['RecordLine'] = recordLine;
-      } else {
-        params['RecordLine'] = '默认';
-      }
-      final value = recordData['content']?.toString() ?? recordData['value']?.toString() ?? '';
-      if (value.isNotEmpty) params['Value'] = value;
-      final subDomain = recordData['name']?.toString() ?? recordData['sub_domain']?.toString();
-      if (subDomain != null && subDomain.isNotEmpty) {
-        params['SubDomain'] = subDomain;
-      } else {
-        params['SubDomain'] = '@';
-      }
-      final ttl = recordData['ttl'];
-      if (ttl != null && ttl > 0) params['TTL'] = ttl;
-      final mx = recordData['mx'] ?? recordData['priority'];
-      if (mx != null && mx > 0 && (recordType == 'MX' || recordType == 'SRV')) {
-        params['MX'] = mx;
-      }
-      final weight = recordData['weight'];
-      if (weight != null && weight > 0) params['Weight'] = weight;
-      final status = recordData['status'];
-      if (status != null && status.toString().toLowerCase() == 'disabled') {
-        params['Status'] = 'DISABLE';
-      } else {
-        params['Status'] = 'ENABLE';
-      }
-      final remark = recordData['remark'];
-      if (remark != null && remark.toString().isNotEmpty) params['Remark'] = remark.toString();
-      final result = await _callApi('CreateRecord', params);
-      if (result['success'] == true) {
-        final data = result['data'] as Map;
-        return {
-          'success': true,
-          'statusCode': 'OK',
-          'data': {
-            'id': data['RecordId']?.toString() ?? '',
-            'record_id': data['RecordId'],
-          },
-          'message': 'DNS 记录创建成功'
-        };
-      }
-      return _parseError(result['data']);
-    } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
-    }
-  }
+  Future<Map<String, dynamic>> updateDnsRecord(String domainId, String recordId, Map<String, dynamic> recordData) async {
+    if (_client == null || _secretId == null) return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
+    if (domainId.isEmpty || recordId.isEmpty) return {'error': 'Invalid ID', 'errorCode': 'INVALID_ID', 'success': false};
 
-  @override
-  Future<Map<String, dynamic>> updateDnsRecord(
-    String domainId,
-    String recordId,
-    Map<String, dynamic> recordData,
-  ) async {
-    if (_secretId == null || _secretKey == null) {
-      return {'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
-    }
-    if (domainId.isEmpty || recordId.isEmpty) {
-      return {'error': '域名或记录标识无效', 'errorCode': 'INVALID_ID', 'success': false};
-    }
     try {
-      final domainIdInt = int.tryParse(domainId);
-      final recordIdInt = int.tryParse(recordId);
+      final signer = DnspodSigner(secretId: _secretId!, secretKey: _secretKey!);
       final params = <String, dynamic>{
-        'DomainId': domainIdInt ?? domainId,
-        'RecordId': recordIdInt ?? recordId,
+        'Action': 'ModifyRecord',
+        'Version': '2021-03-23',
+        'Domain': domainId,
+        'RecordId': recordId,
       };
-      final recordType = recordData['type']?.toString()?.toUpperCase() ?? recordData['record_type']?.toString()?.toUpperCase();
-      if (recordType != null) params['RecordType'] = recordType;
-      final recordLine = recordData['line']?.toString() ?? recordData['record_line']?.toString();
-      if (recordLine != null && recordLine.isNotEmpty) {
-        params['RecordLine'] = recordLine;
-      } else {
-        params['RecordLine'] = '默认';
-      }
-      final value = recordData['content']?.toString() ?? recordData['value']?.toString() ?? '';
-      if (value.isNotEmpty) params['Value'] = value;
-      final subDomain = recordData['name']?.toString() ?? recordData['sub_domain']?.toString();
-      if (subDomain != null && subDomain.isNotEmpty) {
-        params['SubDomain'] = subDomain;
-      } else {
-        params['SubDomain'] = '@';
-      }
-      final ttl = recordData['ttl'];
-      if (ttl != null && ttl > 0) params['TTL'] = ttl;
-      final mx = recordData['mx'] ?? recordData['priority'];
-      if (mx != null && mx > 0 && (recordType == 'MX' || recordType == 'SRV')) {
-        params['MX'] = mx;
-      }
-      final weight = recordData['weight'];
-      if (weight != null && weight > 0) params['Weight'] = weight;
-      if (recordData.containsKey('status')) {
-        params['Status'] = recordData['status'].toString().toLowerCase() == 'disabled' ? 'DISABLE' : 'ENABLE';
-      }
-      if (recordData.containsKey('remark')) {
-        params['Remark'] = recordData['remark']?.toString() ?? '';
-      }
-      final result = await _callApi('ModifyRecord', params);
-      if (result['success'] == true) {
-        final data = result['data'] as Map;
-        return {
-          'success': true,
-          'statusCode': 'OK',
-          'data': {
-            'id': data['RecordId']?.toString() ?? recordId,
-            'record_id': data['RecordId'] ?? recordIdInt,
-          },
-          'message': 'DNS 记录更新成功'
-        };
-      }
-      return _parseError(result['data']);
+      if (recordData.containsKey('sub_domain')) params['SubDomain'] = recordData['sub_domain'];
+      if (recordData.containsKey('record_type')) params['RecordType'] = recordData['record_type'];
+      if (recordData.containsKey('record_line')) params['RecordLine'] = recordData['record_line'];
+      if (recordData.containsKey('value')) params['Value'] = recordData['value'];
+      if (recordData.containsKey('ttl') && recordData['ttl'] != null) params['TTL'] = recordData['ttl'];
+      if (recordData.containsKey('priority') && recordData['priority'] != null) params['Priority'] = recordData['priority'];
+
+      final signed = signer.sign('POST', '/v1/Domain/Record/Modify', params);
+      final response = await _getClient().post('/v1/Domain/Record/Modify', data: signed);
+
+      final result = _parseResponse(response.data);
+      if (result['success'] == true) return {'success': true, 'statusCode': 'OK'};
+
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      final result = _parseException(e);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     }
   }
 
   @override
   Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId) async {
-    if (_secretId == null || _secretKey == null) {
-      return {'success': false, 'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED'};
-    }
-    if (domainId.isEmpty || recordId.isEmpty) {
-      return {'success': false, 'error': '域名或记录标识无效', 'errorCode': 'INVALID_ID'};
-    }
+    if (_client == null || _secretId == null) return {'success': false, 'error': '', 'errorCode': 'NOT_INITIALIZED'};
+    if (domainId.isEmpty || recordId.isEmpty) return {'success': false, 'error': 'Invalid ID', 'errorCode': 'INVALID_ID'};
+
     try {
-      final domainIdInt = int.tryParse(domainId);
-      final recordIdInt = int.tryParse(recordId);
+      final signer = DnspodSigner(secretId: _secretId!, secretKey: _secretKey!);
       final params = <String, dynamic>{
-        'DomainId': domainIdInt ?? domainId,
-        'RecordId': recordIdInt ?? recordId,
+        'Action': 'DeleteRecord',
+        'Version': '2021-03-23',
+        'Domain': domainId,
+        'RecordId': recordId,
       };
-      final result = await _callApi('DeleteRecord', params);
-      if (result['success'] == true) {
-        return {'success': true, 'statusCode': 'OK'};
-      }
-      return _parseError(result['data']);
+
+      final signed = signer.sign('POST', '/v1/Domain/Record/Delete', params);
+      final response = await _getClient().post('/v1/Domain/Record/Delete', data: signed);
+
+      final result = _parseResponse(response.data);
+      if (result['success'] == true) return {'success': true, 'statusCode': 'OK'};
+
+      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      final result = _parseException(e);
+      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
     }
   }
 
   @override
   Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData) async {
-    if (_secretId == null || _secretKey == null) {
-      return {'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
-    }
+    if (_client == null || _secretId == null) return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
+
     final domain = domainData['domain']?.toString() ?? domainData['name']?.toString() ?? '';
-    if (domain.isEmpty) {
-      return {'error': '域名不能为空', 'errorCode': 'INVALID_DOMAIN', 'success': false};
-    }
+    if (domain.isEmpty) return {'error': 'Domain cannot be empty', 'errorCode': 'INVALID_DOMAIN', 'success': false};
+
     try {
-      final params = <String, dynamic>{'Domain': domain};
-      final result = await _callApi('CreateDomain', params);
+      final signer = DnspodSigner(secretId: _secretId!, secretKey: _secretKey!);
+      final params = <String, dynamic>{
+        'Action': 'CreateDomain',
+        'Version': '2021-03-23',
+        'Domain': domain,
+      };
+
+      final signed = signer.sign('POST', '/v1/Domain/Create', params);
+      final response = await _getClient().post('/v1/Domain/Create', data: signed);
+
+      final result = _parseResponse(response.data);
       if (result['success'] == true) {
-        final data = result['data'] as Map;
-        final domainInfo = data['DomainInfo'] as Map? ?? {};
-        return {
-          'success': true,
-          'statusCode': 'OK',
-          'data': {
-            'id': domainInfo['Id']?.toString() ?? domainInfo['DomainId']?.toString() ?? '',
-            'domain_id': domainInfo['Id'] ?? domainInfo['DomainId'],
-            'name': domainInfo['Domain']?.toString() ?? domain,
-            'domain': domainInfo['Domain']?.toString() ?? domain,
-            'punycode': domainInfo['Punycode']?.toString() ?? domain,
-          },
-          'message': '域名添加成功'
-        };
+        final data = (response.data as Map?)?['Response'] as Map? ?? {};
+        return {'success': true, 'statusCode': 'OK', 'data': {'id': data['DomainId']?.toString() ?? '', 'name': domain}};
       }
-      return _parseError(result['data']);
+
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      final result = _parseException(e);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     }
   }
 
   @override
   Future<Map<String, dynamic>> deleteDomain(String domainId) async {
-    if (_secretId == null || _secretKey == null) {
-      return {'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
-    }
-    if (domainId.isEmpty) {
-      return {'error': '域名标识无效', 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
-    }
+    if (_client == null || _secretId == null) return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
+    if (domainId.isEmpty) return {'error': 'Invalid domain', 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
+
     try {
-      final domainIdInt = int.tryParse(domainId);
-      final params = <String, dynamic>{'DomainId': domainIdInt ?? domainId};
-      final result = await _callApi('DeleteDomain', params);
-      if (result['success'] == true) {
-        return {'success': true, 'statusCode': 'OK', 'message': '域名已删除'};
-      }
-      return _parseError(result['data']);
+      final signer = DnspodSigner(secretId: _secretId!, secretKey: _secretKey!);
+      final params = <String, dynamic>{
+        'Action': 'DeleteDomain',
+        'Version': '2021-03-23',
+        'Domain': domainId,
+      };
+
+      final signed = signer.sign('POST', '/v1/Domain/Delete', params);
+      final response = await _getClient().post('/v1/Domain/Delete', data: signed);
+
+      final result = _parseResponse(response.data);
+      if (result['success'] == true) return {'success': true, 'statusCode': 'OK'};
+
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      final result = _parseException(e);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     }
   }
 
   @override
-  Future<Map<String, dynamic>> renewDomain(String domainId) async {
-    return {'error': 'DNSPod 域名续期需在腾讯云控制台操作，不支持 API 续期', 'errorCode': 'NOT_SUPPORTED', 'success': false};
-  }
+  Future<Map<String, dynamic>> renewDomain(String domainId) async => 
+    {'error': 'Not supported', 'errorCode': 'NOT_SUPPORTED', 'success': false};
 
   @override
   bool get supportsAddDomain => true;
@@ -629,102 +418,39 @@ class DnspodDriver implements DriverInterface {
   bool get supportsShowNameServers => false;
 
   @override
-  Widget buildDomainListItem(Map<String, dynamic> domainData, {
-    required VoidCallback onTap,
-    required VoidCallback onDelete,
-    required VoidCallback onRenew,
-    required bool supportsDelete,
-    required bool supportsRenew,
-  }) {
-    return const SizedBox.shrink();
-  }
+  Widget buildDomainListItem(Map<String, dynamic> domainData, {required VoidCallback onTap, required VoidCallback onDelete, required VoidCallback onRenew, required bool supportsDelete, required bool supportsRenew}) => const SizedBox.shrink();
 
   @override
-  void showDomainListItemMenu(BuildContext context, Map<String, dynamic> domainData, {
-    required VoidCallback onDelete,
-    required VoidCallback onRenew,
-    required VoidCallback onShowNameServers,
-    required bool supportsDelete,
-    required bool supportsRenew,
-    required bool supportsShowNameServers,
-  }) {
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+  void showDomainListItemMenu(BuildContext context, Map<String, dynamic> domainData, {required VoidCallback onDelete, required VoidCallback onRenew, required VoidCallback onShowNameServers, required bool supportsDelete, required bool supportsRenew, required bool supportsShowNameServers}) {
+    final renderBox = context.findRenderObject() as RenderBox;
     final offset = renderBox.localToGlobal(Offset.zero);
     showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(
-        offset.dx + renderBox.size.width / 2,
-        offset.dy + renderBox.size.height / 2,
-        offset.dx + renderBox.size.width,
-        offset.dy + renderBox.size.height,
-      ),
-      items: [
-        if (supportsDelete) PopupMenuItem(value: 'delete', child: const Text('删除', style: TextStyle(color: Color(0xFFEF4444)))),
-      ],
-    ).then((value) {
-      if (value == 'delete') onDelete();
-    });
+      position: RelativeRect.fromLTRB(offset.dx + renderBox.size.width / 2, offset.dy + renderBox.size.height / 2, offset.dx + renderBox.size.width, offset.dy + renderBox.size.height),
+      items: [if (supportsDelete) const PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: Color(0xFFEF4444))))],
+    ).then((value) { if (value == 'delete') onDelete(); });
   }
 
   @override
   Widget buildDnsRecordListItem(Map<String, dynamic> recordData) {
-    final name = recordData['name']?.toString() ?? recordData['sub_domain']?.toString() ?? '';
-    final type = recordData['type']?.toString() ?? recordData['record_type']?.toString() ?? 'A';
-    final content = recordData['content']?.toString() ?? recordData['value']?.toString() ?? '';
+    final name = recordData['name']?.toString() ?? '';
+    final type = recordData['type']?.toString() ?? 'A';
+    final content = recordData['content']?.toString() ?? '';
     final ttl = recordData['ttl'] as int? ?? 600;
-    final priority = recordData['priority'] ?? recordData['mx'];
-    final enabled = recordData['enabled'] == true || recordData['status']?.toString()?.toLowerCase() == 'active';
+    final typeColor = DriverColorUtils.getDnsTypeColor(type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Container(
-            width: 44, height: 44,
-            decoration: BoxDecoration(
-              color: DriverColorUtils.getDnsTypeColor(type),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  type,
-                  style: TextStyle(
-                    fontSize: type.length <= 2 ? 14 : 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          Container(width: 44, height: 44, decoration: BoxDecoration(color: typeColor, borderRadius: BorderRadius.circular(22)), child: Center(child: FittedBox(fit: BoxFit.scaleDown, child: Text(type, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white))))),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Row(
-                  children: [
-                    Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                    if (priority != null && priority > 0) ...[
-                      const SizedBox(width: 4),
-                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DriverColorUtils.dnsTypeMX)),
-                    ],
-                    if (!enabled) ...[
-                      const SizedBox(width: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: const Text('暂停', style: TextStyle(fontSize: 9, color: Colors.orange)),
-                      ),
-                    ],
-                  ],
-                ),
+                Text(name.isEmpty ? '@' : '$name', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 2),
                 Text(content, style: TextStyle(fontSize: 12, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
@@ -738,14 +464,10 @@ class DnspodDriver implements DriverInterface {
   }
 
   @override
-  Map<String, String> getCredentialFields() {
-    return {'secretId': 'SecretId', 'secretKey': 'SecretKey'};
-  }
+  Map<String, String> getCredentialFields() => {'secretId': 'Secret ID', 'secretKey': 'Secret Key'};
 
   @override
-  List<String> getSupportedRecordTypes() {
-    return ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA', 'URL', 'SPF', 'AAAA'];
-  }
+  List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA', 'URL', 'FRAME'];
 }
 
 class _TtlTag extends StatelessWidget {
@@ -759,14 +481,5 @@ class _TtlTag extends StatelessWidget {
     return 'TTL: ${(ttl / 86400).round()}d';
   }
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(_label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey)),
-    );
-  }
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)), child: Text(_label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey)));
 }
