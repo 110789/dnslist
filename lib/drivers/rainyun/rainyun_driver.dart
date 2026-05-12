@@ -2,20 +2,18 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
-import '../../utils/network/api_client.dart';
 import '../../utils/driver/driver_utils.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
-import '../../core/ui/md3_widgets.dart';
 
 class RainyunDriver implements DriverInterface {
   static const String _providerId = 'rainyun';
   static const String _providerName = '雨云';
   static const String _providerIcon = 'assets/icons/rainyun.svg';
-  static const String _baseUrl = AppConfig.rainyunBaseUrl;
+  static const String _baseUrl = 'https://api.v2.rainyun.com';
   static const int _maxMessageLen = DriverConstants.maxMessageLen;
+  static const int _connectionTimeout = 30000;
+  static const int _receiveTimeout = 30000;
 
-  ApiClient? _client;
+  Dio? _client;
   String? _apiKey;
 
   @override
@@ -41,13 +39,15 @@ class RainyunDriver implements DriverInterface {
   @override
   Map<String, dynamic> prepareDomainData(Map<String, dynamic> input) => {'domain': input['domain'] ?? input['name'] ?? ''};
 
-  ApiClient _getClient() {
+  Dio _getClient() {
     if (_client != null) return _client!;
     if (_apiKey == null) throw StateError('Driver not initialized');
-    _client = ApiClient(
+    _client = Dio(BaseOptions(
       baseUrl: _baseUrl,
-      headers: {'X-Api-Key': _apiKey!, 'Content-Type': 'application/json'},
-    );
+      connectTimeout: Duration(milliseconds: _connectionTimeout),
+      receiveTimeout: Duration(milliseconds: _receiveTimeout),
+      headers: {'X-Api-Key': _apiKey, 'Content-Type': 'application/json'},
+    ));
     return _client!;
   }
 
@@ -102,7 +102,7 @@ class RainyunDriver implements DriverInterface {
     }
 
     try {
-      final dio = Dio(BaseOptions(baseUrl: _baseUrl, connectTimeout: const Duration(seconds: 30), receiveTimeout: const Duration(seconds: 30), headers: {'X-Api-Key': apiKey, 'Content-Type': 'application/json'}, validateStatus: (status) => true));
+      final dio = Dio(BaseOptions(baseUrl: _baseUrl, connectTimeout: Duration(milliseconds: _connectionTimeout), receiveTimeout: Duration(milliseconds: _receiveTimeout), headers: {'X-Api-Key': apiKey, 'Content-Type': 'application/json'}, validateStatus: (status) => true));
       final response = await dio.get('/product/');
 
       if (response.data == null) {
@@ -112,7 +112,7 @@ class RainyunDriver implements DriverInterface {
       final result = _parseResponse(response.data);
       if (result['success'] == true) {
         _apiKey = apiKey;
-        _client = ApiClient(baseUrl: _baseUrl, headers: {'X-Api-Key': apiKey, 'Content-Type': 'application/json'});
+        _client = dio;
         return {'success': true};
       }
 
@@ -279,7 +279,7 @@ class RainyunDriver implements DriverInterface {
 
     try {
       final recordIdValue = int.tryParse(recordId) ?? recordId;
-      final response = await _getClient().dio.request('/product/domain/$domainId/dns', data: {'record_id': recordIdValue}, options: Options(method: 'DELETE'));
+      final response = await _getClient().delete('/product/domain/$domainId/dns', data: {'record_id': recordIdValue});
 
       if (response.data == null) return {'success': false, 'error': 'Empty response', 'errorCode': 'EMPTY_RESPONSE'};
 
@@ -335,7 +335,7 @@ class RainyunDriver implements DriverInterface {
     final level = recordData['level'] as int? ?? recordData['priority'] as int? ?? 1;
     final line = recordData['line']?.toString() ?? 'DEFAULT';
     final enabled = recordData['enabled'] == true || recordData['status']?.toString() == 'enabled';
-    final typeColor = DnsDesignTokens.getDnsTypeColor(type);
+    final typeColor = DriverColorTokens.getDnsTypeColor(type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -351,7 +351,7 @@ class RainyunDriver implements DriverInterface {
                 Row(
                   children: [
                     Flexible(child: Text(name.isEmpty ? '@' : name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                    if (type == 'MX' || type == 'SRV') ...[const SizedBox(width: 4), Text('P$level', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DnsDesignTokens.dnsTypeMX))],
+                    if (type == 'MX' || type == 'SRV') ...[const SizedBox(width: 4), Text('P$level', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DriverColorTokens.dnsTypeMX))],
                     if (!enabled) ...[const SizedBox(width: 4), Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1), decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)), child: const Text('暂停', style: TextStyle(fontSize: 9, color: Colors.orange)))],
                   ],
                 ),
@@ -361,10 +361,58 @@ class RainyunDriver implements DriverInterface {
             ),
           ),
           const SizedBox(width: 8),
-          DnsTtlTag(ttl: ttl),
-          if (line != 'DEFAULT') ...[const SizedBox(width: 4), _LineTag(line: line)],
+          _buildTtlTag(ttl),
+          if (line != 'DEFAULT') ...[const SizedBox(width: 4), _buildLineTag(line)],
         ],
       ),
+    );
+  }
+
+  Widget _buildTtlTag(int ttl) {
+    String label;
+    if (ttl <= 0) {
+      label = 'TTL: $ttl';
+    } else if (ttl < 60) {
+      label = 'TTL: ${ttl}s';
+    } else if (ttl < 3600) {
+      label = 'TTL: ${(ttl / 60).round()}m';
+    } else if (ttl < 86400) {
+      label = 'TTL: ${(ttl / 3600).round()}h';
+    } else {
+      label = 'TTL: ${(ttl / 86400).round()}d';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F4FD),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
+      ),
+    );
+  }
+
+  Widget _buildLineTag(String line) {
+    String label;
+    switch (line) {
+      case 'LTEL': label = '电信'; break;
+      case 'LCNC': label = '联通'; break;
+      case 'LMOB': label = '移动'; break;
+      case 'LEDU': label = '教育'; break;
+      case 'LSEO': label = '搜索'; break;
+      case 'LFOR': label = '国外'; break;
+      default: label = line;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: Text(label, style: const TextStyle(fontSize: 9, color: Colors.blue)),
     );
   }
 
@@ -373,22 +421,4 @@ class RainyunDriver implements DriverInterface {
 
   @override
   List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV'];
-}
-
-class _LineTag extends StatelessWidget {
-  final String line;
-  const _LineTag({required this.line});
-  String get _label {
-    switch (line) {
-      case 'LTEL': return '电信';
-      case 'LCNC': return '联通';
-      case 'LMOB': return '移动';
-      case 'LEDU': return '教育';
-      case 'LSEO': return '搜索';
-      case 'LFOR': return '国外';
-      default: return line;
-    }
-  }
-  @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2), decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2)), child: Text(_label, style: const TextStyle(fontSize: 9, color: Colors.blue)));
 }

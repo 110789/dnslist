@@ -110,7 +110,10 @@ class DnsCard extends StatelessWidget {
           padding: padding ?? const EdgeInsets.all(DnsSpacing.md),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(DnsRadius.md),
-            border: Border.all(color: colorScheme.outlineVariant),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+              width: 0.5,
+            ),
           ),
           child: child,
         ),
@@ -165,12 +168,14 @@ class DnsListTile extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     if (subtitle != null) ...[
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 4),
                       DefaultTextStyle(
                         style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: colorScheme.onSurfaceVariant,
@@ -207,15 +212,16 @@ class DnsSectionHeader extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(DnsSpacing.md, DnsSpacing.md, DnsSpacing.md, DnsSpacing.sm),
+      padding: const EdgeInsets.fromLTRB(DnsSpacing.md + 4, DnsSpacing.md, DnsSpacing.md, DnsSpacing.sm),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              color: colorScheme.primary,
+            title.toUpperCase(),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w600,
+              letterSpacing: 0.8,
             ),
           ),
           if (actionLabel != null)
@@ -664,11 +670,25 @@ class DnsEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 72, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.5)),
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 44,
+                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+              ),
+            ),
             const SizedBox(height: DnsSpacing.lg),
             Text(
               title,
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
             if (description != null) ...[
@@ -708,11 +728,33 @@ class DnsErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, size: 72, color: colorScheme.error.withValues(alpha: 0.7)),
+            Container(
+              width: 96,
+              height: 96,
+              decoration: BoxDecoration(
+                color: colorScheme.errorContainer.withValues(alpha: 0.3),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline,
+                size: 44,
+                color: colorScheme.error.withValues(alpha: 0.8),
+              ),
+            ),
             const SizedBox(height: DnsSpacing.lg),
             Text(
+              '加载失败',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: DnsSpacing.sm),
+            Text(
               message,
-              style: Theme.of(context).textTheme.bodyLarge,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
             if (onRetry != null) ...[
@@ -737,14 +779,27 @@ class DnsLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const CircularProgressIndicator(),
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: CircularProgressIndicator(
+              strokeWidth: 3,
+              color: colorScheme.primary,
+            ),
+          ),
           if (message != null) ...[
             const SizedBox(height: DnsSpacing.md),
-            Text(message!, style: Theme.of(context).textTheme.bodyMedium),
+            Text(
+              message!,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ],
       ),
@@ -775,9 +830,13 @@ class DnsButton extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     final child = isLoading
-        ? const SizedBox(
-            height: 20, width: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+        ? SizedBox(
+            height: 20,
+            width: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: isDestructive ? colorScheme.onError : colorScheme.onPrimary,
+            ),
           )
         : Row(
             mainAxisSize: MainAxisSize.min,
@@ -835,7 +894,10 @@ class DnsOutlinedButton extends StatelessWidget {
       ],
     );
 
-    final button = OutlinedButton(onPressed: onPressed, child: child);
+    final button = OutlinedButton(
+      onPressed: onPressed,
+      child: child,
+    );
     return expanded ? SizedBox(width: double.infinity, child: button) : button;
   }
 }
@@ -850,26 +912,39 @@ Future<bool?> showDnsConfirmDialog(
 }) {
   return showDialog<bool>(
     context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(title),
-      content: Text(message),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: Text(cancelLabel),
+    builder: (ctx) {
+      final colorScheme = Theme.of(ctx).colorScheme;
+      return AlertDialog(
+        title: Text(
+          title,
+          style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        FilledButton(
-          onPressed: () => Navigator.pop(ctx, true),
-          style: isDestructive
-              ? FilledButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  foregroundColor: Theme.of(context).colorScheme.onError,
-                )
-              : null,
-          child: Text(confirmLabel),
+        content: Text(
+          message,
+          style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
-      ],
-    ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(cancelLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: isDestructive
+                ? FilledButton.styleFrom(
+                    backgroundColor: colorScheme.error,
+                    foregroundColor: colorScheme.onError,
+                  )
+                : null,
+            child: Text(confirmLabel),
+          ),
+        ],
+      );
+    },
   );
 }
 

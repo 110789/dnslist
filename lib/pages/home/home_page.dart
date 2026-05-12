@@ -700,39 +700,42 @@ class _DrawerHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHighest,
-        border: Border(
-          bottom: BorderSide(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
+        color: colorScheme.surface,
       ),
       padding: EdgeInsets.fromLTRB(
-        DnsSpacing.md,
-        DnsSpacing.md + MediaQuery.of(context).padding.top,
-        DnsSpacing.sm,
-        DnsSpacing.md,
+        DnsSpacing.lg,
+        DnsSpacing.md + topPadding,
+        DnsSpacing.lg,
+        DnsSpacing.lg,
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: colorScheme.primaryContainer,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colorScheme.primary,
+                  colorScheme.primary.withValues(alpha: 0.8),
+                ],
+              ),
               borderRadius: BorderRadius.circular(DnsRadius.md),
             ),
-            child: Icon(Icons.dns, size: 24, color: colorScheme.onPrimaryContainer),
+            child: Icon(Icons.dns, size: 26, color: colorScheme.onPrimary),
           ),
           const SizedBox(width: DnsSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   'DNS管理工具',
@@ -741,7 +744,7 @@ class _DrawerHeader extends StatelessWidget {
                         color: colorScheme.onSurface,
                       ),
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   credentialCount > 0 ? '$credentialCount 个凭证' : '未添加凭证',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(

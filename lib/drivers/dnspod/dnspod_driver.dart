@@ -3,16 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
 import '../../utils/driver/driver_utils.dart';
-import '../../utils/network/api_client.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
-import '../../core/ui/md3_widgets.dart';
-import 'dnspod_signer.dart';
 
 class DnspodDriver implements DriverInterface {
   static const String _providerId = 'dnspod';
   static const String _providerName = 'DNSPod';
   static const String _providerIcon = 'assets/icons/dnspod.svg';
+  static const String _baseUrl = 'https://dnspod.tencentcloudapi.com';
+  static const int _connectionTimeout = 30000;
+  static const int _receiveTimeout = 30000;
 
   static const Map<String, String> _errorCodeMap = {
     'AuthFailure.SignatureFailure': '签名错误，请检查 SecretId 和 SecretKey 是否正确',
@@ -54,7 +52,7 @@ class DnspodDriver implements DriverInterface {
 
   String? _secretId;
   String? _secretKey;
-  ApiClient? _client;
+  Dio? _client;
 
   @override
   String get providerId => _providerId;
@@ -65,7 +63,7 @@ class DnspodDriver implements DriverInterface {
   @override
   String get providerIcon => _providerIcon;
 
-@override
+  @override
   String mapErrorCode(String code) => '';
 
   String _getGenericErrorMessage(String code) {
@@ -113,6 +111,18 @@ class DnspodDriver implements DriverInterface {
     };
   }
 
+  Dio _getClient() {
+    if (_client != null) return _client!;
+    _client = Dio(BaseOptions(
+      baseUrl: _baseUrl,
+      connectTimeout: Duration(milliseconds: _connectionTimeout),
+      receiveTimeout: Duration(milliseconds: _receiveTimeout),
+      contentType: 'application/json; charset=utf-8',
+      responseType: ResponseType.plain,
+    ));
+    return _client!;
+  }
+
   Map<String, dynamic> _parseError(dynamic responseData) {
     if (responseData == null) {
       return {'error': '服务器无响应，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
@@ -139,19 +149,13 @@ class DnspodDriver implements DriverInterface {
       return {'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
     }
     try {
-      final headers = buildDnspodHeaders(
+      final headers = _buildDnspodHeaders(
         secretId: _secretId!,
         secretKey: _secretKey!,
         action: action,
         payload: params,
       );
-      final client = Dio(BaseOptions(
-        baseUrl: AppConfig.dnspodBaseUrl,
-        connectTimeout: const Duration(seconds: 30),
-        receiveTimeout: const Duration(seconds: 30),
-        contentType: 'application/json; charset=utf-8',
-        responseType: ResponseType.plain,
-      ));
+      final client = _getClient();
       client.options.headers.addAll(headers);
       final response = await client.post('', data: params);
       if (response.data == null) {
@@ -173,6 +177,37 @@ class DnspodDriver implements DriverInterface {
     } catch (e) {
       return {'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
     }
+  }
+
+  Map<String, String> _buildDnspodHeaders({
+    required String secretId,
+    required String secretKey,
+    required String action,
+    required Map<String, dynamic> payload,
+  }) {
+    final timestamp = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    final nonce = timestamp.toString();
+    final sortedParams = Map<String, dynamic>.from(payload)
+      ..['Action'] = action
+      ..['SecretId'] = secretId
+      ..['Timestamp'] = timestamp
+      ..['Nonce'] = nonce
+      ..['Version'] = '2021-03-23';
+    
+    final queryString = sortedParams.entries
+        .where((e) => e.value != null)
+        .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}')
+        .join('&');
+    
+    final payloadStr = jsonEncode(payload);
+    
+    return {
+      'Content-Type': 'application/json; charset=utf-8',
+      'X-TC-Action': action,
+      'X-TC-Timestamp': timestamp.toString(),
+      'X-TC-Nonce': nonce,
+      'X-TC-Version': '2021-03-23',
+    };
   }
 
   Map<String, dynamic> _processResponse(Map respData) {
@@ -674,6 +709,7 @@ class DnspodDriver implements DriverInterface {
     final ttl = recordData['ttl'] as int? ?? 600;
     final priority = recordData['priority'] ?? recordData['mx'];
     final enabled = recordData['enabled'] == true || recordData['status']?.toString()?.toLowerCase() == 'active';
+    final typeColor = DriverColorTokens.getDnsTypeColor(type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -682,7 +718,7 @@ class DnspodDriver implements DriverInterface {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: DnsDesignTokens.getDnsTypeColor(type),
+              color: typeColor,
               borderRadius: BorderRadius.circular(22),
             ),
             child: Center(
@@ -710,7 +746,7 @@ class DnspodDriver implements DriverInterface {
                     Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     if (priority != null && priority > 0) ...[
                       const SizedBox(width: 4),
-                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DnsDesignTokens.dnsTypeMX)),
+                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DriverColorTokens.dnsTypeMX)),
                     ],
                     if (!enabled) ...[
                       const SizedBox(width: 4),
@@ -731,8 +767,35 @@ class DnspodDriver implements DriverInterface {
             ),
           ),
           const SizedBox(width: 8),
-          DnsTtlTag(ttl: ttl),
+          _buildTtlTag(ttl),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTtlTag(int ttl) {
+    String label;
+    if (ttl <= 0) {
+      label = 'TTL: $ttl';
+    } else if (ttl < 60) {
+      label = 'TTL: ${ttl}s';
+    } else if (ttl < 3600) {
+      label = 'TTL: ${(ttl / 60).round()}m';
+    } else if (ttl < 86400) {
+      label = 'TTL: ${(ttl / 3600).round()}h';
+    } else {
+      label = 'TTL: ${(ttl / 86400).round()}d';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F4FD),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
       ),
     );
   }

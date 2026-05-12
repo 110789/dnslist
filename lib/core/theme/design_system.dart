@@ -46,6 +46,35 @@ class DnsDesignTokens {
       default: return statusSuspended;
     }
   }
+
+  static const lightSurface = Color(0xFFFAFAFA);
+  static const lightSurfaceContainer = Color(0xFFF5F5F5);
+  static const lightSurfaceContainerHigh = Color(0xFFEEEEEE);
+  static const lightOnSurface = Color(0xFF1A1A1A);
+  static const lightOnSurfaceVariant = Color(0xFF666666);
+  static const lightOutline = Color(0xFFE0E0E0);
+  static const lightOutlineVariant = Color(0xFFEEEEEE);
+
+  static const darkSurface = Color(0xFF121212);
+  static const darkSurfaceContainer = Color(0xFF1E1E1E);
+  static const darkSurfaceContainerHigh = Color(0xFF2A2A2A);
+  static const darkOnSurface = Color(0xFFF5F5F5);
+  static const darkOnSurfaceVariant = Color(0xFFB0B0B0);
+  static const darkOutline = Color(0xFF3A3A3A);
+  static const darkOutlineVariant = Color(0xFF2A2A2A);
+
+  static const double radiusSm = 8.0;
+  static const double radiusMd = 12.0;
+  static const double radiusLg = 16.0;
+  static const double radiusXl = 20.0;
+  static const double radiusXxl = 28.0;
+
+  static const double spacingXs = 4.0;
+  static const double spacingSm = 8.0;
+  static const double spacingMd = 16.0;
+  static const double spacingLg = 24.0;
+  static const double spacingXl = 32.0;
+  static const double spacingXxl = 48.0;
 }
 
 class DnsTypography {

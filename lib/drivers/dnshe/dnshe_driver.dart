@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
-import '../../utils/network/api_client.dart';
 import '../../utils/driver/driver_utils.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
-import '../../core/ui/md3_widgets.dart';
 
 class DnsheDriver implements DriverInterface {
   static const String _providerId = 'dnshe';
   static const String _providerName = 'DNSHE';
   static const String _providerIcon = 'assets/icons/dnshe.jpg';
-  static const String _baseUrl = AppConfig.dnsheBaseUrl;
+  static const String _baseUrl = 'https://api005.dnshe.com/index.php';
   static const int _maxMessageLen = DriverConstants.maxMessageLen;
+  static const int _connectionTimeout = 30000;
+  static const int _receiveTimeout = 30000;
 
-  ApiClient? _client;
+  Dio? _client;
   String? _apiKey;
   String? _apiSecret;
 
@@ -45,16 +43,22 @@ class DnsheDriver implements DriverInterface {
     'rootdomain': input['rootdomain'] ?? '',
   };
 
-  ApiClient _getClient() {
+  Dio _getClient() {
     if (_client != null) return _client!;
     if (_apiKey == null || _apiSecret == null) {
       throw StateError('Driver not initialized');
     }
-    _client = ApiClient(
-      baseUrl: _baseUrl,
-      headers: {'X-API-Key': _apiKey!, 'X-API-Secret': _apiSecret!},
-    );
+    _client = _createClient();
     return _client!;
+  }
+
+  Dio _createClient() {
+    return Dio(BaseOptions(
+      baseUrl: _baseUrl,
+      connectTimeout: Duration(milliseconds: _connectionTimeout),
+      receiveTimeout: Duration(milliseconds: _receiveTimeout),
+      headers: {'X-API-Key': _apiKey, 'X-API-Secret': _apiSecret},
+    ));
   }
 
   Map<String, dynamic> _parseResponse(dynamic data) {
@@ -100,7 +104,7 @@ class DnsheDriver implements DriverInterface {
     try {
       _apiKey = apiKey;
       _apiSecret = apiSecret;
-      _client = ApiClient(baseUrl: _baseUrl, headers: {'X-API-Key': apiKey, 'X-API-Secret': apiSecret!});
+      _client = _createClient();
 
       final response = await _client!.get('', queryParameters: {'m': 'domain_hub', 'endpoint': 'quota'});
 
@@ -548,7 +552,7 @@ class DnsheDriver implements DriverInterface {
     final ttl = recordData['ttl'] as int? ?? 3600;
     final proxied = recordData['proxied'] == true;
     final priority = recordData['priority'];
-    final typeColor = DnsDesignTokens.getDnsTypeColor(type);
+    final typeColor = DriverColorTokens.getDnsTypeColor(type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -568,7 +572,7 @@ class DnsheDriver implements DriverInterface {
                 Row(
                   children: [
                     Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                    if (priority != null) ...[const SizedBox(width: 4), Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DnsDesignTokens.dnsTypeMX))],
+                    if (priority != null) ...[const SizedBox(width: 4), Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DriverColorTokens.dnsTypeMX))],
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -577,9 +581,36 @@ class DnsheDriver implements DriverInterface {
             ),
           ),
           const SizedBox(width: 8),
-          DnsTtlTag(ttl: ttl),
-          if (proxied) ...[const SizedBox(width: 4), const Icon(Icons.cloud, size: 16, color: DnsDesignTokens.dnsTypeA)],
+          _buildTtlTag(ttl),
+          if (proxied) ...[const SizedBox(width: 4), const Icon(Icons.cloud, size: 16, color: Color(0xFF3B82F6))],
         ],
+      ),
+    );
+  }
+
+  Widget _buildTtlTag(int ttl) {
+    String label;
+    if (ttl <= 0) {
+      label = 'TTL: $ttl';
+    } else if (ttl < 60) {
+      label = 'TTL: ${ttl}s';
+    } else if (ttl < 3600) {
+      label = 'TTL: ${(ttl / 60).round()}m';
+    } else if (ttl < 86400) {
+      label = 'TTL: ${(ttl / 3600).round()}h';
+    } else {
+      label = 'TTL: ${(ttl / 86400).round()}d';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F4FD),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
       ),
     );
   }

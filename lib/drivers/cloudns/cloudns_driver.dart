@@ -2,22 +2,20 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
-import '../../utils/network/api_client.dart';
 import '../../utils/driver/driver_utils.dart';
-import '../../core/config/app_config.dart';
-import '../../core/theme/design_system.dart';
-import '../../core/ui/md3_widgets.dart';
 
 class ClouDNSDriver implements DriverInterface {
   static const String _providerId = 'cloudns';
   static const String _providerName = 'ClouDNS';
   static const String _providerIcon = 'assets/icons/cloudns.svg';
-  static const String _baseUrl = AppConfig.cloudnsBaseUrl;
+  static const String _baseUrl = 'https://api.cloudns.net';
   static const int _maxMessageLen = DriverConstants.maxMessageLen;
+  static const int _connectionTimeout = 30000;
+  static const int _receiveTimeout = 30000;
 
   int? _authId;
   String? _authPassword;
-  ApiClient? _client;
+  Dio? _client;
 
   @override
   String get providerId => _providerId;
@@ -41,6 +39,16 @@ class ClouDNSDriver implements DriverInterface {
 
   @override
   Map<String, dynamic> prepareDomainData(Map<String, dynamic> input) => {'domain': input['domain'] ?? input['name'] ?? ''};
+
+  Dio _getClient() {
+    if (_client != null) return _client!;
+    _client = Dio(BaseOptions(
+      baseUrl: _baseUrl,
+      connectTimeout: Duration(milliseconds: _connectionTimeout),
+      receiveTimeout: Duration(milliseconds: _receiveTimeout),
+    ));
+    return _client!;
+  }
 
   dynamic _parseResponseData(dynamic data) {
     if (data is String) {
@@ -88,7 +96,7 @@ class ClouDNSDriver implements DriverInterface {
 
     try {
       final queryParams = <String, dynamic>{'auth-id': _authId, 'auth-password': _authPassword, ...params};
-      final response = await Dio(BaseOptions(baseUrl: _baseUrl, connectTimeout: const Duration(seconds: 30), receiveTimeout: const Duration(seconds: 30))).get('/$action', queryParameters: queryParams);
+      final response = await _getClient().get('/$action', queryParameters: queryParams);
 
       if (response.data == null) return {'error': 'Empty response', 'errorCode': 'EMPTY_RESPONSE', 'success': false};
 
@@ -264,7 +272,7 @@ class ClouDNSDriver implements DriverInterface {
     final type = recordData['type']?.toString() ?? 'A';
     final content = recordData['record']?.toString() ?? recordData['content']?.toString() ?? '';
     final ttl = recordData['ttl'] as int? ?? 3600;
-    final typeColor = DnsDesignTokens.getDnsTypeColor(type);
+    final typeColor = DriverColorTokens.getDnsTypeColor(type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -284,8 +292,35 @@ class ClouDNSDriver implements DriverInterface {
             ),
           ),
           const SizedBox(width: 8),
-          DnsTtlTag(ttl: ttl),
+          _buildTtlTag(ttl),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTtlTag(int ttl) {
+    String label;
+    if (ttl <= 0) {
+      label = 'TTL: $ttl';
+    } else if (ttl < 60) {
+      label = 'TTL: ${ttl}s';
+    } else if (ttl < 3600) {
+      label = 'TTL: ${(ttl / 60).round()}m';
+    } else if (ttl < 86400) {
+      label = 'TTL: ${(ttl / 3600).round()}h';
+    } else {
+      label = 'TTL: ${(ttl / 86400).round()}d';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE8F4FD),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF64748B)),
       ),
     );
   }

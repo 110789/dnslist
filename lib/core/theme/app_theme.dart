@@ -34,6 +34,12 @@ class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: DnsDesignTokens.primarySeed,
       brightness: Brightness.light,
+      surface: DnsDesignTokens.lightSurface,
+      onSurface: DnsDesignTokens.lightOnSurface,
+      surfaceContainerLow: DnsDesignTokens.lightSurfaceContainer,
+      surfaceContainerHighest: DnsDesignTokens.lightSurfaceContainerHigh,
+      outline: DnsDesignTokens.lightOutline,
+      outlineVariant: DnsDesignTokens.lightOutlineVariant,
     );
     return ThemeData(
       useMaterial3: true,
@@ -57,7 +63,7 @@ class AppTheme {
         color: colorScheme.surfaceContainerLow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DnsRadius.md),
-          side: BorderSide(color: colorScheme.outlineVariant),
+          side: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -69,17 +75,23 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DnsRadius.md),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderSide: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DnsRadius.md),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+          borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DnsRadius.md),
-          borderSide: BorderSide(color: colorScheme.error),
+          borderSide: BorderSide(color: colorScheme.error, width: 0.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide(color: colorScheme.error, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -116,7 +128,7 @@ class AppTheme {
       ),
       dividerTheme: DividerThemeData(
         space: 1,
-        thickness: 1,
+        thickness: 0.5,
         color: colorScheme.outlineVariant,
       ),
       snackBarTheme: SnackBarThemeData(
@@ -125,6 +137,7 @@ class AppTheme {
       ),
       dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.xl)),
+        backgroundColor: colorScheme.surface,
       ),
       bottomSheetTheme: BottomSheetThemeData(
         shape: const RoundedRectangleBorder(
@@ -132,17 +145,48 @@ class AppTheme {
         ),
         showDragHandle: true,
         dragHandleColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+        backgroundColor: colorScheme.surface,
       ),
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
         height: 64,
         indicatorColor: colorScheme.secondaryContainer,
+        backgroundColor: colorScheme.surface,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colorScheme.onSurface);
           }
           return TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: colorScheme.onSurfaceVariant);
         }),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.primary;
+          return colorScheme.outline;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.primaryContainer;
+          return colorScheme.surfaceContainerHighest;
+        }),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.primary;
+          return Colors.transparent;
+        }),
+        checkColor: WidgetStateProperty.all(colorScheme.onPrimary),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+        color: colorScheme.surface,
+        elevation: 3,
+      ),
+      drawerTheme: DrawerThemeData(
+        backgroundColor: colorScheme.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.horizontal(right: Radius.circular(DnsRadius.xl)),
+        ),
       ),
     );
   }
@@ -151,6 +195,12 @@ class AppTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: DnsDesignTokens.primarySeedDark,
       brightness: Brightness.dark,
+      surface: DnsDesignTokens.darkSurface,
+      onSurface: DnsDesignTokens.darkOnSurface,
+      surfaceContainerLow: DnsDesignTokens.darkSurfaceContainer,
+      surfaceContainerHighest: DnsDesignTokens.darkSurfaceContainerHigh,
+      outline: DnsDesignTokens.darkOutline,
+      outlineVariant: DnsDesignTokens.darkOutlineVariant,
     );
     return ThemeData(
       useMaterial3: true,
@@ -174,7 +224,7 @@ class AppTheme {
         color: colorScheme.surfaceContainerLow,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(DnsRadius.md),
-          side: BorderSide(color: colorScheme.outlineVariant),
+          side: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -186,17 +236,23 @@ class AppTheme {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DnsRadius.md),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderSide: BorderSide(color: colorScheme.outlineVariant, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DnsRadius.md),
-          borderSide: BorderSide(color: colorScheme.primary, width: 2),
+          borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(DnsRadius.md),
-          borderSide: BorderSide(color: colorScheme.error),
+          borderSide: BorderSide(color: colorScheme.error, width: 0.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DnsRadius.md),
+          borderSide: BorderSide(color: colorScheme.error, width: 1.5),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        labelStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+        hintStyle: TextStyle(color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -233,15 +289,18 @@ class AppTheme {
       ),
       dividerTheme: DividerThemeData(
         space: 1,
-        thickness: 1,
+        thickness: 0.5,
         color: colorScheme.outlineVariant,
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+        backgroundColor: colorScheme.inverseSurface,
+        contentTextStyle: TextStyle(color: colorScheme.onInverseSurface),
       ),
       dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.xl)),
+        backgroundColor: colorScheme.surface,
       ),
       bottomSheetTheme: BottomSheetThemeData(
         shape: const RoundedRectangleBorder(
@@ -249,17 +308,48 @@ class AppTheme {
         ),
         showDragHandle: true,
         dragHandleColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+        backgroundColor: colorScheme.surface,
       ),
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
         height: 64,
         indicatorColor: colorScheme.secondaryContainer,
+        backgroundColor: colorScheme.surface,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colorScheme.onSurface);
           }
           return TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: colorScheme.onSurfaceVariant);
         }),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.primary;
+          return colorScheme.outline;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.primaryContainer;
+          return colorScheme.surfaceContainerHighest;
+        }),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return colorScheme.primary;
+          return Colors.transparent;
+        }),
+        checkColor: WidgetStateProperty.all(colorScheme.onPrimary),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
+      popupMenuTheme: PopupMenuThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.md)),
+        color: colorScheme.surface,
+        elevation: 3,
+      ),
+      drawerTheme: DrawerThemeData(
+        backgroundColor: colorScheme.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.horizontal(right: Radius.circular(DnsRadius.xl)),
+        ),
       ),
     );
   }

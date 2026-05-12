@@ -65,7 +65,7 @@ Future<void> _initServiceRegistry() async {
   final localStorage = LocalStorage.instance;
   await localStorage.init();
 
-  final config = FrameworkConfig(
+  final config = DefaultFrameworkConfig(
     appName: 'DNS管理工具',
     appVersion: '1.0.0',
     providerBaseUrls: const {
