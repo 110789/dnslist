@@ -146,9 +146,7 @@ class MyApp extends StatelessWidget {
     final domainState = NewDomainState();
     final themeProvider = ThemeProvider(repository: userPrefsRepository);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      credentialState.loadCredentials();
-    });
+    credentialState.loadCredentials();
 
     return MultiProvider(
       providers: [
