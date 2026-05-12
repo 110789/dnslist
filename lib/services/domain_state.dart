@@ -89,28 +89,27 @@ class DomainState extends ChangeNotifier {
         return result;
       }
 
-      final valid = await driver.validateCredential(credentials);
-      if (!valid) {
-        final result = <String, dynamic>{'success': false, 'error': '凭证无效或权限不足', 'errorCode': 'AUTH_FAILED', 'statusCode': 401};
-        _setError(result['error'] as String, result['errorCode'] as String);
+      final result = await driver.validateCredential(credentials);
+      if (result['success'] != true) {
+        _setError(result['error'] as String? ?? '凭证无效或权限不足', result['errorCode'] as String? ?? 'AUTH_FAILED');
         _setLoadingState(LoadingState.idle);
         return result;
       }
 
-      final result = await driver.getDomains();
+      final domainsResult = await driver.getDomains();
 
-      if (result['error'] != null) {
-        final errorCode = result['errorCode'] ?? 'UNKNOWN';
-        final errorMessage = result['error'] ?? '操作失败';
+      if (domainsResult['error'] != null) {
+        final errorCode = domainsResult['errorCode'] ?? 'UNKNOWN';
+        final errorMessage = domainsResult['error'] ?? '操作失败';
         _setError(errorMessage, errorCode);
         _setLoadingState(LoadingState.idle);
-        return {'success': false, 'error': errorMessage, 'errorCode': errorCode, 'statusCode': result['statusCode']};
+        return {'success': false, 'error': errorMessage, 'errorCode': errorCode, 'statusCode': domainsResult['statusCode']};
       }
 
-      _domains = List<Map<String, dynamic>>.from(result['domains'] ?? []);
+      _domains = List<Map<String, dynamic>>.from(domainsResult['domains'] ?? []);
       DriverManager().setCredential(providerId, credentials);
       _setLoadingState(LoadingState.idle);
-      return {'success': true, 'statusCode': result['statusCode'] ?? 'OK'};
+      return {'success': true, 'statusCode': domainsResult['statusCode'] ?? 'OK'};
     } catch (e) {
       _setError(e.toString(), 'EXCEPTION');
       _setLoadingState(LoadingState.idle);

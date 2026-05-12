@@ -22,7 +22,7 @@ abstract class DriverInterface {
   String get providerName;
   String get providerIcon;
 
-  Future<bool> validateCredential(Map<String, String> credentials);
+  Future<Map<String, dynamic>> validateCredential(Map<String, String> credentials);
 
   Future<Map<String, dynamic>> getDomains({
     int page = 1,

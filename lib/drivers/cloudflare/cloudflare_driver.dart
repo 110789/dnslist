@@ -172,7 +172,7 @@ class CloudflareDriver implements DriverInterface {
     };
   }
 
-  Map<String, dynamic> _parseDioException(dynamic e) {
+  Map<String, dynamic> _parseDioException(Object e) {
     if (e is! DioException) {
       return {
         'error': '操作失败，请稍后重试',
@@ -290,9 +290,11 @@ class CloudflareDriver implements DriverInterface {
   }
 
   @override
-  Future<bool> validateCredential(Map<String, String> credentials) async {
+  Future<Map<String, dynamic>> validateCredential(Map<String, String> credentials) async {
     final apiToken = credentials['apiToken'];
-    if (apiToken == null || apiToken.isEmpty) return false;
+    if (apiToken == null || apiToken.isEmpty) {
+      return {'success': false, 'error': 'API Token 不能为空', 'errorCode': 'INVALID_CREDENTIAL'};
+    }
     try {
       _apiToken = apiToken;
       _client = ApiClient(
@@ -305,14 +307,19 @@ class CloudflareDriver implements DriverInterface {
         receiveTimeout: AppConfig.receiveTimeout,
       );
       final response = await _client!.get('/user/tokens/verify');
-      if (response.data == null) return false;
+      if (response.data == null) {
+        _apiToken = null;
+        _client = null;
+        return {'success': false, 'error': '服务器无响应', 'errorCode': 'UNKNOWN'};
+      }
       final data = response.data is Map ? response.data : <String, dynamic>{};
-      if (data['success'] == true) return true;
-      return false;
+      if (data['success'] == true) return {'success': true};
+      return _parseError(data);
     } catch (e) {
+      final result = _parseDioException(e);
       _apiToken = null;
       _client = null;
-      return false;
+      return result;
     }
   }
 
@@ -388,7 +395,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return _parseDioException(e as dynamic);
+      return _parseDioException(e);
     }
   }
 
@@ -463,7 +470,7 @@ class CloudflareDriver implements DriverInterface {
       return {
         'records': [],
         'pagination': {},
-        ..._parseDioException(e as dynamic),
+        ..._parseDioException(e),
       };
     }
   }
@@ -503,7 +510,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return _parseDioException(e as dynamic);
+      return _parseDioException(e);
     }
   }
 
@@ -543,7 +550,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return _parseDioException(e as dynamic);
+      return _parseDioException(e);
     }
   }
 
@@ -587,7 +594,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return _parseDioException(e as dynamic);
+      return _parseDioException(e);
     }
   }
 
@@ -634,7 +641,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return _parseDioException(e as dynamic);
+      return _parseDioException(e);
     }
   }
 
@@ -669,7 +676,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return _parseDioException(e as dynamic);
+      return _parseDioException(e);
     }
   }
 

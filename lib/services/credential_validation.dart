@@ -16,21 +16,8 @@ class CredentialValidationService {
         };
       }
 
-      final valid = await driver.validateCredential(credentials);
-
-      if (valid) {
-        return {
-          'success': true,
-          'statusCode': 'OK',
-        };
-      } else {
-        return {
-          'success': false,
-          'error': driver.mapErrorCode('AUTH_FAILED'),
-          'errorCode': 'AUTH_FAILED',
-          'statusCode': 401,
-        };
-      }
+      final result = await driver.validateCredential(credentials);
+      return result;
     } catch (e) {
       return {
         'success': false,

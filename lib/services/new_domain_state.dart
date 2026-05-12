@@ -108,19 +108,19 @@ class NewDomainState extends ChangeNotifier {
         );
       }
 
-      final valid = await driver.validateCredential(credentials);
-      if (!valid) {
+      final result = await driver.validateCredential(credentials);
+      if (result['success'] != true) {
         return RefreshResult.fail(
-          error: '凭证验证失败，请检查 Token 是否正确',
-          errorCode: 'AUTH_FAILED',
+          error: result['error'] as String? ?? '凭证验证失败，请检查 Token 是否正确',
+          errorCode: result['errorCode'] as String? ?? 'AUTH_FAILED',
         );
       }
 
-      final result = await driver.getDomains();
+      final domainsResult = await driver.getDomains();
 
-      if (result['error'] != null) {
-        final errorCode = result['errorCode'] ?? 'UNKNOWN';
-        final errorMessage = result['error'] ?? '操作失败';
+      if (domainsResult['error'] != null) {
+        final errorCode = domainsResult['errorCode'] ?? 'UNKNOWN';
+        final errorMessage = domainsResult['error'] ?? '操作失败';
         _setError(errorMessage, errorCode);
         return RefreshResult.fail(
           error: errorMessage,
@@ -128,7 +128,7 @@ class NewDomainState extends ChangeNotifier {
         );
       }
 
-      _domains = List<Map<String, dynamic>>.from(result['domains'] ?? []);
+      _domains = List<Map<String, dynamic>>.from(domainsResult['domains'] ?? []);
       _clearError();
       return RefreshResult.ok(data: _domains);
     } catch (e) {
