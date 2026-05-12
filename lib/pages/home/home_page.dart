@@ -27,9 +27,20 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final credentialState = context.read<CredentialState>();
-      await credentialState.loadCredentials();
+      await credentialState.init();
       if (mounted) {
-        await RefreshHelper.refreshDomainListPassive(context);
+        if (credentialState.hasSelected) {
+          final selected = credentialState.selectedCredential;
+          if (selected != null) {
+            await RefreshHelper.refreshDomainListPassiveWithCredential(
+              context,
+              providerId: selected.providerId,
+              credentials: selected.credentials,
+            );
+          }
+        } else {
+          await RefreshHelper.refreshDomainListPassive(context);
+        }
       }
     });
   }
