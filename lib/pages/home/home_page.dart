@@ -993,30 +993,21 @@ class _CredentialDialogState extends State<_CredentialDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isEditing) ...[
-              Container(
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(DnsRadius.md),
-                  border: Border.all(color: colorScheme.outlineVariant),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: DropdownButtonFormField<String>(
-                  value: _selectedProviderId,
-                  decoration: InputDecoration(
-                    labelText: '选择服务商',
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    fillColor: Colors.transparent,
-                    filled: false,
+              DropdownButtonFormField<String>(
+                value: _selectedProviderId,
+                decoration: InputDecoration(
+                  labelText: '选择服务商',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(DnsRadius.md),
                   ),
-                  isExpanded: true,
-                  items: drivers.map((d) => DropdownMenuItem(value: d.providerId, child: Text(d.providerName))).toList(),
-                  onChanged: (value) => setState(() {
-                    _selectedProviderId = value;
-                    _controllers.clear();
-                  }),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
+                isExpanded: true,
+                items: drivers.map((d) => DropdownMenuItem(value: d.providerId, child: Text(d.providerName))).toList(),
+                onChanged: (value) => setState(() {
+                  _selectedProviderId = value;
+                  _controllers.clear();
+                }),
               ),
               const SizedBox(height: 12),
             ],
