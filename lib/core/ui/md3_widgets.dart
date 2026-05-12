@@ -1106,14 +1106,12 @@ class DnsBottomSheet extends StatelessWidget {
   final String? title;
   final List<Widget> children;
   final Widget? footer;
-  final bool showCloseButton;
 
   const DnsBottomSheet({
     super.key,
     this.title,
     required this.children,
     this.footer,
-    this.showCloseButton = true,
   });
 
   static Future<T?> show<T>({
@@ -1121,7 +1119,6 @@ class DnsBottomSheet extends StatelessWidget {
     String? title,
     required List<Widget> children,
     Widget? footer,
-    bool showCloseButton = true,
   }) {
     return showModalBottomSheet<T>(
       context: context,
@@ -1131,7 +1128,6 @@ class DnsBottomSheet extends StatelessWidget {
         title: title,
         children: children,
         footer: footer,
-        showCloseButton: showCloseButton,
       ),
     );
   }
@@ -1154,11 +1150,7 @@ class DnsBottomSheet extends StatelessWidget {
         children: [
           _DragHandle(color: colorScheme.onSurfaceVariant),
           if (title != null)
-            _TitleRow(
-              title: title!,
-              showCloseButton: showCloseButton,
-              onClose: () => Navigator.pop(context),
-            ),
+            _TitleRow(title: title!),
           Flexible(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -1208,14 +1200,8 @@ class _DragHandle extends StatelessWidget {
 
 class _TitleRow extends StatelessWidget {
   final String title;
-  final bool showCloseButton;
-  final VoidCallback onClose;
 
-  const _TitleRow({
-    required this.title,
-    required this.showCloseButton,
-    required this.onClose,
-  });
+  const _TitleRow({required this.title});
 
   @override
   Widget build(BuildContext context) {
@@ -1226,35 +1212,16 @@ class _TitleRow extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(
         DnsSpacing.md,
         DnsSpacing.xs,
-        DnsSpacing.xs,
+        DnsSpacing.md,
         DnsSpacing.sm,
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: colorScheme.onSurface,
-              ),
-            ),
-          ),
-          if (showCloseButton)
-            IconButton(
-              onPressed: onClose,
-              icon: Icon(
-                Icons.close,
-                size: 20,
-                color: colorScheme.onSurfaceVariant,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 32,
-                minHeight: 32,
-              ),
-            ),
-        ],
+      child: Text(
+        title,
+        textAlign: TextAlign.center,
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+          color: colorScheme.onSurface,
+        ),
       ),
     );
   }
