@@ -7,7 +7,7 @@ class DigitalplatParser {
   static Map<String, dynamic> parseResponse(dynamic data) {
     if (data == null) return DriverResponseParser.parseEmpty();
 
-    Map<String, dynamic>? dataMap;
+    Map<String, dynamic> dataMap;
     if (data is Map) {
       dataMap = Map<String, dynamic>.from(data);
     } else if (data is String) {
@@ -22,10 +22,6 @@ class DigitalplatParser {
         return DriverResponseParser.parseInvalid();
       }
     } else {
-      return DriverResponseParser.parseInvalid();
-    }
-
-    if (dataMap == null) {
       return DriverResponseParser.parseInvalid();
     }
 

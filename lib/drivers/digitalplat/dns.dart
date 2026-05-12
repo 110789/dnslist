@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 class DigitalplatDns {
+  // ignore: unused_field
   final Dio _client;
 
   DigitalplatDns(this._client);

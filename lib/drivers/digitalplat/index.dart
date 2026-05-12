@@ -14,6 +14,7 @@ import 'dns.dart';
 
 class DigitalplatDriver implements DriverInterface {
   Dio? _client;
+  // ignore: unused_field
   String? _apiToken;
   DigitalplatZone? _zone;
   DigitalplatDns? _dns;
@@ -39,9 +40,20 @@ class DigitalplatDriver implements DriverInterface {
       case 'invalid_domain':
         return '无效的域名格式';
       case 'authentication_failed':
+      case 'AUTHENTICATION_FAILED':
         return '无效的 API 密钥';
       case 'rate_limit_exceeded':
         return '请求过于频繁';
+      case 'TIMEOUT':
+        return '连接超时';
+      case 'NETWORK_ERROR':
+        return '网络连接失败';
+      case 'FORBIDDEN':
+        return '访问被拒绝';
+      case 'NOT_FOUND':
+        return '接口不存在';
+      case 'SERVER_ERROR':
+        return '服务器错误';
       default:
         return code;
     }
@@ -85,6 +97,12 @@ class DigitalplatDriver implements DriverInterface {
       _client = DigitalplatCore.createClient(apiToken);
 
       final response = await _client!.get('/me');
+      
+      if (response.statusCode == 401) {
+        _resetClient();
+        return {'success': false, 'error': 'Invalid API Token', 'errorCode': 'AUTHENTICATION_FAILED'};
+      }
+
       if (response.data == null) {
         _resetClient();
         return {'success': false, 'error': 'Empty response from server', 'errorCode': 'EMPTY_RESPONSE'};
@@ -94,15 +112,46 @@ class DigitalplatDriver implements DriverInterface {
       if (result['success'] == true) {
         _zone = DigitalplatZone(_client!);
         _dns = DigitalplatDns(_client!);
-        return {'success': true};
+        return {'success': true, 'errorCode': 'OK'};
       }
 
       _resetClient();
-      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
-    } catch (e) {
-      final result = DigitalplatParser.parseException(e, e is DioException ? e : null);
+      final errorMsg = result['error']?.toString() ?? 'Unknown error';
+      final errorCode = result['errorCode']?.toString() ?? 'UNKNOWN';
+      return {'success': false, 'error': errorMsg, 'errorCode': errorCode};
+    } on DioException catch (e) {
       _resetClient();
-      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
+      return _handleDioError(e);
+    } catch (e) {
+      _resetClient();
+      return {'success': false, 'error': e.toString(), 'errorCode': 'EXCEPTION'};
+    }
+  }
+
+  Map<String, dynamic> _handleDioError(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return {'success': false, 'error': 'Connection timeout', 'errorCode': 'TIMEOUT'};
+      case DioExceptionType.connectionError:
+        return {'success': false, 'error': 'Connection failed. Please check network.', 'errorCode': 'NETWORK_ERROR'};
+      case DioExceptionType.badResponse:
+        final statusCode = e.response?.statusCode;
+        if (statusCode == 401) {
+          return {'success': false, 'error': 'Invalid API Token', 'errorCode': 'AUTHENTICATION_FAILED'};
+        } else if (statusCode == 403) {
+          return {'success': false, 'error': 'Access forbidden', 'errorCode': 'FORBIDDEN'};
+        } else if (statusCode == 404) {
+          return {'success': false, 'error': 'API endpoint not found', 'errorCode': 'NOT_FOUND'};
+        } else if (statusCode != null && statusCode >= 500) {
+          return {'success': false, 'error': 'Server error', 'errorCode': 'SERVER_ERROR'};
+        }
+        return {'success': false, 'error': 'Request failed', 'errorCode': 'BAD_RESPONSE'};
+      case DioExceptionType.cancel:
+        return {'success': false, 'error': 'Request cancelled', 'errorCode': 'CANCELLED'};
+      default:
+        return {'success': false, 'error': e.message ?? 'Unknown error', 'errorCode': 'UNKNOWN'};
     }
   }
 
