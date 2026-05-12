@@ -8,3 +8,4 @@ export 'dnshe/index.dart';
 export 'dnspod/index.dart';
 export 'cloudns/index.dart';
 export 'rainyun/index.dart';
+export 'digitalplat/index.dart';

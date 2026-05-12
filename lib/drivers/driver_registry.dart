@@ -4,6 +4,7 @@ import 'dnshe/index.dart';
 import 'dnspod/index.dart';
 import 'cloudns/index.dart';
 import 'rainyun/index.dart';
+import 'digitalplat/index.dart';
 import 'dart:developer' as developer;
 
 class DriverRegistry {
@@ -40,6 +41,12 @@ class DriverRegistry {
       developer.log('RainyunDriver registered', name: 'DriverRegistry');
     } catch (e) {
       developer.log('RainyunDriver registration failed: $e', name: 'DriverRegistry', error: e);
+    }
+    try {
+      DriverFactory.register(DigitalplatDriver());
+      developer.log('DigitalplatDriver registered', name: 'DriverRegistry');
+    } catch (e) {
+      developer.log('DigitalplatDriver registration failed: $e', name: 'DriverRegistry', error: e);
     }
     _registered = true;
   }
