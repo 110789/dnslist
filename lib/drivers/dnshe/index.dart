@@ -290,7 +290,7 @@ class DnsheDriver implements DriverInterface {
   Map<String, String> getCredentialFields() => {'apiKey': 'API Key', 'apiSecret': 'API Secret'};
 
   @override
-  List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT'];
+  List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV', 'NS', 'CAA'];
 
   @override
   String getAddRecordTitle() => '添加DNS记录';
@@ -302,17 +302,27 @@ class DnsheDriver implements DriverInterface {
   bool supportsRecordLine() => false;
 
   @override
+  List<DnsRecordField> getEditRecordFields(Map<String, dynamic> recordData) {
+    final recordType = recordData['type']?.toString() ?? 'A';
+    return getEditRecordFieldsForType(recordData, recordType);
+  }
+
+  @override
   List<DnsRecordField> getAddRecordFields() {
-    return [
+    return getAddRecordFieldsForType('A');
+  }
+
+  List<DnsRecordField> getAddRecordFieldsForType(String recordType) {
+    final fields = <DnsRecordField>[
       const DnsRecordField(
         key: 'name',
         label: '记录名称',
         hintText: '例如: www 或留空',
       ),
-      const DnsRecordField(
+      DnsRecordField(
         key: 'content',
         label: '记录值',
-        hintText: '例如: 192.168.1.1',
+        hintText: _getContentHintForType(recordType),
       ),
       const DnsRecordField(
         key: 'ttl',
@@ -322,11 +332,39 @@ class DnsheDriver implements DriverInterface {
         initialValue: '600',
       ),
     ];
+
+    if (recordType == 'MX' || recordType == 'SRV') {
+      fields.insert(2, const DnsRecordField(
+        key: 'priority',
+        label: '优先级',
+        hintText: '数值越小优先级越高',
+        keyboardType: TextInputType.number,
+        initialValue: '10',
+      ));
+    }
+
+    if (recordType == 'SRV') {
+      fields.insert(3, const DnsRecordField(
+        key: 'port',
+        label: '端口',
+        hintText: '例如: 443',
+        keyboardType: TextInputType.number,
+        initialValue: '443',
+      ));
+      fields.insert(4, const DnsRecordField(
+        key: 'weight',
+        label: '权重',
+        hintText: '负载均衡权重',
+        keyboardType: TextInputType.number,
+        initialValue: '1',
+      ));
+    }
+
+    return fields;
   }
 
-  @override
-  List<DnsRecordField> getEditRecordFields(Map<String, dynamic> recordData) {
-    return [
+  List<DnsRecordField> getEditRecordFieldsForType(Map<String, dynamic> recordData, String recordType) {
+    final fields = <DnsRecordField>[
       DnsRecordField(
         key: 'name',
         label: '记录名称',
@@ -336,7 +374,7 @@ class DnsheDriver implements DriverInterface {
       DnsRecordField(
         key: 'content',
         label: '记录值',
-        hintText: '例如: 192.168.1.1',
+        hintText: _getContentHintForType(recordType),
         initialValue: recordData['content']?.toString() ?? '',
       ),
       DnsRecordField(
@@ -347,6 +385,58 @@ class DnsheDriver implements DriverInterface {
         initialValue: (recordData['ttl'] ?? 600).toString(),
       ),
     ];
+
+    if (recordType == 'MX' || recordType == 'SRV') {
+      fields.insert(2, DnsRecordField(
+        key: 'priority',
+        label: '优先级',
+        hintText: '数值越小优先级越高',
+        keyboardType: TextInputType.number,
+        initialValue: (recordData['priority'] ?? 10).toString(),
+      ));
+    }
+
+    if (recordType == 'SRV') {
+      fields.insert(3, DnsRecordField(
+        key: 'port',
+        label: '端口',
+        hintText: '例如: 443',
+        keyboardType: TextInputType.number,
+        initialValue: (recordData['port'] ?? 443).toString(),
+      ));
+      fields.insert(4, DnsRecordField(
+        key: 'weight',
+        label: '权重',
+        hintText: '负载均衡权重',
+        keyboardType: TextInputType.number,
+        initialValue: (recordData['weight'] ?? 1).toString(),
+      ));
+    }
+
+    return fields;
+  }
+
+  String _getContentHintForType(String recordType) {
+    switch (recordType) {
+      case 'A':
+        return '例如: 192.168.1.1';
+      case 'AAAA':
+        return '例如: 2001:0db8:85a3::8a2e:0370:7334';
+      case 'CNAME':
+        return '例如: example.com';
+      case 'MX':
+        return '例如: mail.example.com';
+      case 'TXT':
+        return '例如: v=spf1 include:_spf.example.com ~all';
+      case 'SRV':
+        return '例如: target.example.com';
+      case 'NS':
+        return '例如: ns1.example.com';
+      case 'CAA':
+        return '例如: 0 issue letsencrypt.org';
+      default:
+        return '记录值';
+    }
   }
 
   @override
@@ -366,6 +456,44 @@ class DnsheDriver implements DriverInterface {
       data['priority'] = int.tryParse(fieldValues['priority'] ?? '10') ?? 10;
     }
 
+    if (recordType == 'SRV') {
+      final port = int.tryParse(fieldValues['port'] ?? '443') ?? 443;
+      final weight = int.tryParse(fieldValues['weight'] ?? '1') ?? 1;
+      data['port'] = port;
+      data['weight'] = weight;
+      if (data['content'] != null && data['content'].toString().isNotEmpty) {
+        data['content'] = '${port} ${weight} 0 ${data['content']}';
+      }
+    }
+
+    return data;
+  }
+
+  Map<String, dynamic> prepareRecordDataForSubmit({
+    required Map<String, String> fieldValues,
+    required String recordType,
+  }) {
+    final data = <String, dynamic>{
+      'type': recordType,
+      'name': fieldValues['name'] ?? '',
+      'content': fieldValues['content'] ?? '',
+      'ttl': int.tryParse(fieldValues['ttl'] ?? '600') ?? 600,
+    };
+
+    if (recordType == 'MX' || recordType == 'SRV') {
+      data['priority'] = int.tryParse(fieldValues['priority'] ?? '10') ?? 10;
+    }
+
+    if (recordType == 'SRV') {
+      final port = int.tryParse(fieldValues['port'] ?? '443') ?? 443;
+      final weight = int.tryParse(fieldValues['weight'] ?? '1') ?? 1;
+      data['port'] = port;
+      data['weight'] = weight;
+      if (data['content'] != null && data['content'].toString().isNotEmpty) {
+        data['content'] = '${port} ${weight} 0 ${data['content']}';
+      }
+    }
+
     return data;
   }
 
@@ -377,25 +505,26 @@ class DnsheDriver implements DriverInterface {
     String selectedType = 'A';
     final fieldControllers = <String, TextEditingController>{};
     final fieldValues = <String, String>{};
-    String? priorityValue;
     bool isSubmitting = false;
     bool hasError = false;
     String? errorMessage;
 
-    void initControllers() {
-      for (final field in getAddRecordFields()) {
+    void initControllers(List<DnsRecordField> fields) {
+      fieldControllers.clear();
+      fieldValues.clear();
+      for (final field in fields) {
         fieldControllers[field.key] = TextEditingController(text: field.initialValue ?? '');
         fieldValues[field.key] = field.initialValue ?? '';
       }
     }
 
-    initControllers();
+    initControllers(getAddRecordFieldsForType(selectedType));
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          final fields = getAddRecordFields();
+          final fields = getAddRecordFieldsForType(selectedType);
           final colorScheme = Theme.of(dialogContext).colorScheme;
 
           return AlertDialog(
@@ -413,6 +542,7 @@ class DnsheDriver implements DriverInterface {
                     ).toList(),
                     onChanged: (v) {
                       if (v != null) {
+                        initControllers(getAddRecordFieldsForType(v));
                         setDialogState(() => selectedType = v);
                       }
                     },
@@ -432,18 +562,6 @@ class DnsheDriver implements DriverInterface {
                       ),
                     );
                   }),
-                  if (selectedType == 'MX' || selectedType == 'SRV') ...[
-                    const SizedBox(height: 8),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: selectedType == 'MX' ? '优先级' : '权重',
-                        hintText: '数值越小优先级越高',
-                      ),
-                      keyboardType: TextInputType.number,
-                      controller: TextEditingController(text: priorityValue ?? '10'),
-                      onChanged: (v) => priorityValue = v,
-                    ),
-                  ],
                   if (hasError && errorMessage != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -477,14 +595,9 @@ class DnsheDriver implements DriverInterface {
                     errorMessage = null;
                   });
 
-                  if (priorityValue != null) {
-                    fieldValues['priority'] = priorityValue!;
-                  }
-
-                  final recordData = prepareRecordData(
+                  final recordData = prepareRecordDataForSubmit(
                     fieldValues: fieldValues,
                     recordType: selectedType,
-                    isEdit: false,
                   );
 
                   final result = await onSubmit(recordData);
@@ -512,7 +625,7 @@ class DnsheDriver implements DriverInterface {
     );
   }
 
-  void showEditRecordDialog(
+void showEditRecordDialog(
     BuildContext context,
     Map<String, dynamic> record, {
     required Future<Map<String, dynamic>> Function(Map<String, dynamic> recordData) onSubmit,
@@ -520,26 +633,26 @@ class DnsheDriver implements DriverInterface {
     String selectedType = record['type']?.toString() ?? 'A';
     final fieldControllers = <String, TextEditingController>{};
     final fieldValues = <String, String>{};
-    String? priorityValue;
     bool isSubmitting = false;
     bool hasError = false;
     String? errorMessage;
 
-    void initControllers() {
-      for (final field in getEditRecordFields(record)) {
+    void initControllers(List<DnsRecordField> fields) {
+      fieldControllers.clear();
+      fieldValues.clear();
+      for (final field in fields) {
         fieldControllers[field.key] = TextEditingController(text: field.initialValue ?? '');
         fieldValues[field.key] = field.initialValue ?? '';
       }
-      priorityValue = record['priority']?.toString() ?? '10';
     }
 
-    initControllers();
+    initControllers(getEditRecordFieldsForType(record, selectedType));
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          final fields = getEditRecordFields(record);
+          final fields = getEditRecordFieldsForType(record, selectedType);
           final colorScheme = Theme.of(dialogContext).colorScheme;
 
           return AlertDialog(
@@ -557,6 +670,7 @@ class DnsheDriver implements DriverInterface {
                     ).toList(),
                     onChanged: (v) {
                       if (v != null) {
+                        initControllers(getEditRecordFieldsForType(record, v));
                         setDialogState(() => selectedType = v);
                       }
                     },
@@ -576,17 +690,6 @@ class DnsheDriver implements DriverInterface {
                       ),
                     );
                   }),
-                  if (selectedType == 'MX' || selectedType == 'SRV') ...[
-                    const SizedBox(height: 8),
-                    TextField(
-                      decoration: InputDecoration(
-                        labelText: selectedType == 'MX' ? '优先级' : '权重',
-                      ),
-                      keyboardType: TextInputType.number,
-                      controller: TextEditingController(text: priorityValue ?? '10'),
-                      onChanged: (v) => priorityValue = v,
-                    ),
-                  ],
                   if (hasError && errorMessage != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -620,14 +723,9 @@ class DnsheDriver implements DriverInterface {
                     errorMessage = null;
                   });
 
-                  if (priorityValue != null) {
-                    fieldValues['priority'] = priorityValue!;
-                  }
-
-                  final recordData = prepareRecordData(
+                  final recordData = prepareRecordDataForSubmit(
                     fieldValues: fieldValues,
                     recordType: selectedType,
-                    isEdit: true,
                   );
 
                   final result = await onSubmit(recordData);
@@ -652,7 +750,7 @@ class DnsheDriver implements DriverInterface {
           );
         },
       ),
-    );
+);
   }
 
   void showDeleteConfirmDialog(
