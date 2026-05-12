@@ -13,32 +13,6 @@ class CloudflareDriver implements DriverInterface {
   ApiClient? _client;
   String? _apiToken;
 
-  static const Map<int, String> _officialErrorCodeMap = {
-    0: 'Permission denied',
-    1000: 'Unknown error has occurred',
-    1001: 'Invalid request',
-    1002: 'Forbidden',
-    1003: 'Account/Zone not found',
-    1004: 'Invalid credentials',
-    1005: 'Missing required parameters',
-    1007: 'Invalid parameter value',
-    1009: 'Resource already exists',
-    1010: 'Resource not found',
-    1011: 'Operation not permitted',
-    1012: 'Rate limit exceeded',
-    1013: 'Service temporarily unavailable',
-    1018: 'Invalid API token',
-    7003: 'Could not route to the requested path, perhaps your object identifier is invalid',
-    9000: 'DNS name is invalid',
-    9002: 'DNS record type is invalid',
-    10000: 'Authentication required',
-    10001: 'Invalid API token',
-    10002: 'Token expired',
-    10003: 'Token revoked',
-    10004: 'Insufficient permissions',
-    10005: 'Account suspended',
-  };
-
   @override
   String get providerId => _providerId;
 
@@ -50,10 +24,6 @@ class CloudflareDriver implements DriverInterface {
 
   @override
   String mapErrorCode(String code) {
-    final intCode = int.tryParse(code);
-    if (intCode != null && _officialErrorCodeMap.containsKey(intCode)) {
-      return _officialErrorCodeMap[intCode]!;
-    }
     return code;
   }
 
@@ -88,12 +58,7 @@ class CloudflareDriver implements DriverInterface {
       if (errors != null && errors.isNotEmpty) {
         final error = errors[0] as Map?;
         if (error != null) {
-          final code = error['code'];
           final message = error['message']?.toString() ?? '';
-          final intCode = code is int ? code : int.tryParse(code?.toString() ?? '');
-          if (intCode != null && _officialErrorCodeMap.containsKey(intCode)) {
-            return _officialErrorCodeMap[intCode]!;
-          }
           if (message.isNotEmpty) {
             const maxLen = 200;
             return message.length > maxLen ? message.substring(0, maxLen) : message;
