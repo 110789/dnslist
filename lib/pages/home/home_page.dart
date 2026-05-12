@@ -237,8 +237,7 @@ class _HomePageState extends State<HomePage> {
                         );
                         if (dialogContext.mounted) {
                           final driver = DriverFactory.get(selected.providerId);
-                          final errCode = result['errorCode']?.toString();
-                          final errorMsg = errCode != null ? driver?.mapErrorCode(errCode) : result['error'];
+                          final errorMsg = result['error']?.toString() ?? '';
                           if (result['success'] == true) {
                             Navigator.pop(dialogContext);
                             ToastUtil.showSuccess(context, '域名已删除');
@@ -295,8 +294,7 @@ class _HomePageState extends State<HomePage> {
                             ToastUtil.showSuccess(context, msg);
                           } else {
                             final driver = DriverFactory.get(selected.providerId);
-                            final errCode = result['errorCode']?.toString() ?? '';
-                            final errorMsg = errCode.isNotEmpty ? driver?.mapErrorCode(errCode) : result['error'];
+                            final errorMsg = result['error']?.toString() ?? '';
                             ToastUtil.showError(context, errorMsg ?? '', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
                           }
                         }
@@ -406,8 +404,7 @@ class _HomePageState extends State<HomePage> {
                           context.read<CredentialState>().selectedCredential!.credentials,
                         );
                         if (dialogContext.mounted) {
-                          final errCode = result['errorCode']?.toString();
-                          final errorMsg = errCode != null ? driver.mapErrorCode(errCode) : result['error'];
+                          final errorMsg = result['error']?.toString() ?? '';
                           if (result['success'] == true) {
                             Navigator.pop(dialogContext);
                             ToastUtil.showSuccess(context, '域名添加成功');
@@ -1113,8 +1110,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
     if (!result['success']) {
       setState(() => _isValidating = false);
       if (mounted) {
-        final errCode = result['errorCode']?.toString();
-        final errorMsg = errCode != null ? driver.mapErrorCode(errCode) : result['error'];
+        final errorMsg = result['error']?.toString() ?? '';
         ToastUtil.showError(context, errorMsg ?? '', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
       }
       return;

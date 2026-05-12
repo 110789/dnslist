@@ -147,7 +147,7 @@ class CloudflareDriver implements DriverInterface {
       if (response.data == null) {
         _apiToken = null;
         _client = null;
-        return {'success': false, 'error': '', 'errorCode': 'EMPTY_RESPONSE'};
+        return {'success': false, 'error': 'Empty response from server', 'errorCode': 'EMPTY_RESPONSE'};
       }
       final data = response.data is Map ? response.data : <String, dynamic>{};
       if (data['success'] == true) return {'success': true};
@@ -155,7 +155,7 @@ class CloudflareDriver implements DriverInterface {
       if (err.isNotEmpty) {
         return {'success': false, 'error': err, 'errorCode': _extractErrorCode(data)};
       }
-      return {'success': false, 'error': '', 'errorCode': 'UNKNOWN'};
+      return {'success': false, 'error': 'Unknown error', 'errorCode': 'UNKNOWN'};
     } catch (e) {
       final result = _parseDioException(e);
       _apiToken = null;
