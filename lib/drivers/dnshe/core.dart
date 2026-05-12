@@ -12,7 +12,11 @@ class DnsheCore {
       baseUrl: baseUrl,
       connectTimeout: const Duration(milliseconds: DriverConstants.connectionTimeout),
       receiveTimeout: const Duration(milliseconds: DriverConstants.receiveTimeout),
-      headers: {'X-API-Key': apiKey, 'X-API-Secret': apiSecret},
+      headers: {
+        'X-API-Key': apiKey,
+        'X-API-Secret': apiSecret,
+        'Content-Type': 'application/json',
+      },
     ));
   }
 
