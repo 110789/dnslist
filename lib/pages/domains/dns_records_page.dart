@@ -147,15 +147,8 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   const SizedBox(height: 16),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('小黄云 (代理/CDN)'),
-                    subtitle: Text(
-                      proxied ? '已开启: 流量经过Cloudflare代理' : '已关闭: 仅DNS解析',
-                      style: Theme.of(dialogContext).textTheme.bodySmall,
-                    ),
-                    secondary: Icon(
-                      Icons.cloud_outlined,
-                      color: proxied ? Colors.orange : Theme.of(dialogContext).colorScheme.outline,
-                    ),
+                    title: const Text('代理（Proxied）'),
+                    subtitle: const Text('启用代理加速'),
                     value: proxied,
                     onChanged: (v) => setDialogState(() => proxied = v),
                   ),
@@ -289,15 +282,8 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   const SizedBox(height: 16),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('小黄云 (代理/CDN)'),
-                    subtitle: Text(
-                      proxied ? '已开启: 流量经过Cloudflare代理' : '已关闭: 仅DNS解析',
-                      style: Theme.of(dialogContext).textTheme.bodySmall,
-                    ),
-                    secondary: Icon(
-                      Icons.cloud_outlined,
-                      color: proxied ? Colors.orange : Theme.of(dialogContext).colorScheme.outline,
-                    ),
+                    title: const Text('代理（Proxied）'),
+                    subtitle: const Text('启用代理加速'),
                     value: proxied,
                     onChanged: (v) => setDialogState(() => proxied = v),
                   ),
