@@ -55,13 +55,13 @@ class DnsDesignTokens {
   static const lightOutline = Color(0xFFE0E0E0);
   static const lightOutlineVariant = Color(0xFFEEEEEE);
 
-  static const darkSurface = Color(0xFF121212);
-  static const darkSurfaceContainer = Color(0xFF1E1E1E);
-  static const darkSurfaceContainerHigh = Color(0xFF2A2A2A);
-  static const darkOnSurface = Color(0xFFF5F5F5);
-  static const darkOnSurfaceVariant = Color(0xFFB0B0B0);
-  static const darkOutline = Color(0xFF3A3A3A);
-  static const darkOutlineVariant = Color(0xFF2A2A2A);
+  static const darkSurface = Color(0xFF1A1C20);
+  static const darkSurfaceContainer = Color(0xFF22252A);
+  static const darkSurfaceContainerHigh = Color(0xFF2A2E35);
+  static const darkOnSurface = Color(0xFFE8EAED);
+  static const darkOnSurfaceVariant = Color(0xFF9AA0A6);
+  static const darkOutline = Color(0xFF3C4043);
+  static const darkOutlineVariant = Color(0xFF2F3338);
 
   static const double radiusSm = 8.0;
   static const double radiusMd = 12.0;
