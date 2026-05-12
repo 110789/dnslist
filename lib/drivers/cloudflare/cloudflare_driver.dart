@@ -31,6 +31,9 @@ class CloudflareDriver implements DriverInterface {
     9001: '账户已停用，请检查账户状态',
     9003: 'Token 已过期，请重新创建 API Token',
     9004: 'Token 未生效，请检查生效时间设置',
+    9109: 'Unauthorized to access requested resource',
+    9100: '权限不足，请在 Cloudflare 控制台为 Token 添加对应权限',
+    9101: '权限不足，无法访问此资源',
     9200: '账户被暂停，请联系 Cloudflare 客服',
     9201: '账户被锁定，请联系 Cloudflare 客服',
     9400: '请求内容无效，请检查输入格式',
@@ -40,10 +43,11 @@ class CloudflareDriver implements DriverInterface {
     9601: '请求被限制，请稍后重试',
   };
 
-  static const Map<String, String> _errorMessagePatterns = {
+  static const Map<String, String> _errorMessageKeywords = {
     'authentication error': 'API Token 无效或已过期，请检查凭证后重试',
     'authorization error': '权限不足，请在 Cloudflare 控制台为 Token 添加对应权限',
-    'forbidden': '无权限访问此资源',
+    'forbidden': '权限不足，无法访问此资源',
+    'unauthorized': 'Unauthorized to access requested resource',
     'not found': '请求的资源不存在',
     'zone not found': '域名/区域不存在，请检查域名是否正确',
     'dns_record not found': 'DNS 记录不存在',
@@ -52,6 +56,9 @@ class CloudflareDriver implements DriverInterface {
     'missing': '缺少必需参数',
     'expired': 'Token 已过期，请重新创建 API Token',
     'suspended': '账户已被暂停，请联系 Cloudflare 客服',
+    'duplicate': '资源已存在，无需重复创建',
+    'already exists': '资源已存在，无需重复创建',
+    'quota': '资源配额已达上限',
   };
 
   @override
@@ -69,17 +76,8 @@ class CloudflareDriver implements DriverInterface {
     if (intCode != null && _errorCodeMap.containsKey(intCode)) {
       return _errorCodeMap[intCode]!;
     }
-    return _getGenericErrorMessage(code);
-  }
-
-  String _getGenericErrorMessage(String code) {
-    final lowerCode = code.toLowerCase();
-    for (final entry in _errorMessagePatterns.entries) {
-      if (lowerCode.contains(entry.key.toLowerCase())) {
-        return entry.value;
-      }
-    }
-    return code;
+    final result = _getGenericErrorMessage(code);
+    return result['error'] as String;
   }
 
   @override
@@ -101,6 +99,21 @@ class CloudflareDriver implements DriverInterface {
     return {
       'name': input['name'] ?? input['rootdomain'] ?? '',
       'type': 'full',
+    };
+  }
+
+  Map<String, dynamic> _getGenericErrorMessage(String code) {
+    if (code.isNotEmpty && code != '0') {
+      return {
+        'error': '操作失败，请稍后重试',
+        'errorCode': code,
+        'success': false
+      };
+    }
+    return {
+      'error': '未知错误，请稍后重试',
+      'errorCode': 'UNKNOWN',
+      'success': false
     };
   }
 
@@ -159,77 +172,104 @@ class CloudflareDriver implements DriverInterface {
     };
   }
 
-  String _mapMessageToHint(String message) {
-    if (message.isEmpty) return '操作失败，请稍后重试';
-
-    final lowerMsg = message.toLowerCase();
-
-    if (lowerMsg.contains('authentication') || lowerMsg.contains('auth') && lowerMsg.contains('error')) {
-      return 'API Token 无效或已过期，请检查凭证后重试';
+  Map<String, dynamic> _parseDioException(dynamic e) {
+    if (e is! DioException) {
+      return {
+        'error': '操作失败，请稍后重试',
+        'errorCode': 'UNKNOWN',
+        'success': false
+      };
     }
-    if (lowerMsg.contains('forbidden') || lowerMsg.contains('permission') && lowerMsg.contains('denied')) {
-      return '权限不足，请在 Cloudflare 控制台为 Token 添加对应权限';
-    }
-    if (lowerMsg.contains('not found') || lowerMsg.contains('does not exist')) {
-      if (lowerMsg.contains('zone') || lowerMsg.contains('domain')) {
-        return '域名/区域不存在，请检查域名是否正确';
+
+    final response = e.response;
+    if (response?.data != null) {
+      final bodyResult = _parseError(response!.data);
+      if (bodyResult['error'] != null) {
+        return bodyResult;
       }
-      if (lowerMsg.contains('dns') || lowerMsg.contains('record')) {
-        return 'DNS 记录不存在';
-      }
-      return '请求的资源不存在';
-    }
-    if (lowerMsg.contains('already exists') || lowerMsg.contains('duplicate')) {
-      return '资源已存在，无需重复创建';
-    }
-    if (lowerMsg.contains('rate limit') || lowerMsg.contains('too many request')) {
-      return '请求频率超限，请稍后重试';
-    }
-    if (lowerMsg.contains('invalid') || lowerMsg.contains('malformed')) {
-      return '请求参数无效，请检查输入格式';
-    }
-    if (lowerMsg.contains('suspended') || lowerMsg.contains('paused')) {
-      return '账户已被暂停，请联系 Cloudflare 客服';
-    }
-    if (lowerMsg.contains('expired')) {
-      return 'Token 已过期，请重新创建 API Token';
     }
 
-    final maxLen = 50;
-    if (message.length > maxLen) {
-      return message.substring(0, maxLen);
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+        return {
+          'error': '连接超时，请检查网络后重试',
+          'errorCode': 'NETWORK_ERROR',
+          'success': false
+        };
+      case DioExceptionType.receiveTimeout:
+        return {
+          'error': '服务器响应超时，请稍后重试',
+          'errorCode': 'NETWORK_ERROR',
+          'success': false
+        };
+      case DioExceptionType.connectionError:
+        return {
+          'error': '网络连接失败，请检查网络设置',
+          'errorCode': 'NETWORK_ERROR',
+          'success': false
+        };
+      case DioExceptionType.cancel:
+        return {
+          'error': '请求被取消',
+          'errorCode': 'CANCELLED',
+          'success': false
+        };
+      default:
+        final statusCode = response?.statusCode;
+        if (statusCode == 401) {
+          return {
+            'error': 'API Token 无效，请检查凭证',
+            'errorCode': 'UNAUTHORIZED',
+            'success': false
+          };
+        }
+        if (statusCode == 403) {
+          return {
+            'error': '权限不足，无法访问此资源',
+            'errorCode': 'FORBIDDEN',
+            'success': false
+          };
+        }
+        if (statusCode == 404) {
+          return {
+            'error': '请求的资源不存在',
+            'errorCode': 'NOT_FOUND',
+            'success': false
+          };
+        }
+        if (statusCode == 429) {
+          return {
+            'error': '请求频率超限，请稍后重试',
+            'errorCode': 'RATE_LIMIT',
+            'success': false
+          };
+        }
+        if (statusCode != null && statusCode >= 500) {
+          return {
+            'error': 'Cloudflare 服务器异常，请稍后重试',
+            'errorCode': 'SERVER_ERROR',
+            'success': false
+          };
+        }
+        return {
+          'error': '网络请求失败，请稍后重试',
+          'errorCode': 'NETWORK_ERROR',
+          'success': false
+        };
     }
-    return message;
   }
 
-  String _handleException(dynamic e) {
-    if (e is DioException) {
-      switch (e.type) {
-        case DioExceptionType.connectionTimeout:
-        case DioExceptionType.sendTimeout:
-          return '连接超时，请检查网络后重试';
-        case DioExceptionType.receiveTimeout:
-          return '服务器响应超时，请稍后重试';
-        case DioExceptionType.connectionError:
-          return '网络连接失败，请检查网络设置';
-        case DioExceptionType.cancel:
-          return '请求被取消';
-        default:
-          final response = e.response;
-          if (response != null) {
-            final statusCode = response.statusCode;
-            if (statusCode == 401) return 'API Token 无效，请检查凭证';
-            if (statusCode == 403) return '权限不足，无法访问此资源';
-            if (statusCode == 404) return '请求的资源不存在';
-            if (statusCode == 429) return '请求频率超限，请稍后重试';
-            if (statusCode != null && statusCode >= 500) {
-              return 'Cloudflare 服务器异常，请稍后重试';
-            }
-          }
-          return '网络请求失败，请稍后重试';
+  String _mapMessageToHint(String message) {
+    if (message.isEmpty) return message;
+    final lowerMsg = message.toLowerCase();
+    for (final entry in _errorMessageKeywords.entries) {
+      if (lowerMsg.contains(entry.key)) {
+        return entry.value;
       }
     }
-    return '操作失败，请稍后重试';
+    const maxLen = 100;
+    return message.length > maxLen ? message.substring(0, maxLen) : message;
   }
 
   ApiClient _getClient() {
@@ -348,13 +388,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return {
-        'domains': [],
-        'pagination': {},
-        'error': _handleException(e),
-        'errorCode': 'NETWORK_ERROR',
-        'success': false
-      };
+      return _parseDioException(e as dynamic);
     }
   }
 
@@ -429,9 +463,7 @@ class CloudflareDriver implements DriverInterface {
       return {
         'records': [],
         'pagination': {},
-        'error': _handleException(e),
-        'errorCode': 'NETWORK_ERROR',
-        'success': false
+        ..._parseDioException(e as dynamic),
       };
     }
   }
@@ -471,11 +503,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return {
-        'error': _handleException(e),
-        'errorCode': 'NETWORK_ERROR',
-        'success': false
-      };
+      return _parseDioException(e as dynamic);
     }
   }
 
@@ -515,11 +543,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return {
-        'error': _handleException(e),
-        'errorCode': 'NETWORK_ERROR',
-        'success': false
-      };
+      return _parseDioException(e as dynamic);
     }
   }
 
@@ -563,11 +587,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return {
-        'error': _handleException(e),
-        'errorCode': 'NETWORK_ERROR',
-        'success': false
-      };
+      return _parseDioException(e as dynamic);
     }
   }
 
@@ -614,11 +634,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return {
-        'error': _handleException(e),
-        'errorCode': 'NETWORK_ERROR',
-        'success': false
-      };
+      return _parseDioException(e as dynamic);
     }
   }
 
@@ -653,11 +669,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(data);
     } catch (e) {
-      return {
-        'error': _handleException(e),
-        'errorCode': 'NETWORK_ERROR',
-        'success': false
-      };
+      return _parseDioException(e as dynamic);
     }
   }
 
