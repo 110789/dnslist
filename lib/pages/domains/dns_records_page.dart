@@ -4,6 +4,7 @@ import '../../services/credential_state.dart';
 import '../../services/new_domain_state.dart';
 import '../../services/refresh_helper.dart';
 import '../../drivers/driver_factory.dart';
+import '../../drivers/dnshe/index.dart' as dnshe_driver;
 import '../../utils/toast_util.dart';
 import '../../core/ui/md3_widgets.dart';
 import '../../core/theme/design_system.dart';
@@ -60,6 +61,34 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   void _showAddRecordDialog(BuildContext context, String providerId) {
     final driver = DriverFactory.get(providerId);
     if (driver == null) return;
+
+    if (providerId == 'dnshe' && driver is dnshe_driver.DnsheDriver) {
+      final domainState = context.read<NewDomainState>();
+      final credentialState = context.read<CredentialState>();
+      final credentials = credentialState.selectedCredential?.credentials ?? {};
+
+      driver.showAddRecordDialog(
+        context,
+        domainId: widget.domainId,
+        onSubmit: (recordData) async {
+          final result = await domainState.createDnsRecord(
+            providerId,
+            widget.domainId,
+            recordData,
+            credentials,
+          );
+
+          if (result['success'] == true) {
+            if (context.mounted) {
+              ToastUtil.showSuccess(context, '记录添加成功');
+            }
+          }
+
+          return result;
+        },
+      );
+      return;
+    }
 
     final domainState = context.read<NewDomainState>();
     final credentialState = context.read<CredentialState>();
@@ -249,6 +278,35 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   void _showEditRecordDialog(BuildContext context, String providerId, Map<String, dynamic> record) {
     final driver = DriverFactory.get(providerId);
     if (driver == null) return;
+
+    if (providerId == 'dnshe' && driver is dnshe_driver.DnsheDriver) {
+      final domainState = context.read<NewDomainState>();
+      final credentialState = context.read<CredentialState>();
+      final credentials = credentialState.selectedCredential?.credentials ?? {};
+
+      driver.showEditRecordDialog(
+        context,
+        record,
+        onSubmit: (recordData) async {
+          final result = await domainState.updateDnsRecord(
+            providerId,
+            widget.domainId,
+            record['id'].toString(),
+            recordData,
+            credentials,
+          );
+
+          if (result['success'] == true) {
+            if (context.mounted) {
+              ToastUtil.showSuccess(context, '记录已更新');
+            }
+          }
+
+          return result;
+        },
+      );
+      return;
+    }
 
     final domainState = context.read<NewDomainState>();
     final credentialState = context.read<CredentialState>();

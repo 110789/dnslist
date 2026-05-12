@@ -14,7 +14,9 @@ import 'dns.dart';
 
 class DnsheDriver implements DriverInterface {
   Dio? _client;
+  // ignore: unused_field
   String? _apiKey;
+  // ignore: unused_field
   String? _apiSecret;
   DnsheZone? _zone;
   DnsheDns? _dns;
@@ -75,7 +77,7 @@ class DnsheDriver implements DriverInterface {
 
       return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
     } catch (e) {
-      final result = DnsheParser.parseException(e, e is DioException ? e : null);
+      final result = DnsheParser.parseException(e is DioException ? e : DioException(requestOptions: RequestOptions(path: '')));
       _resetClient();
       return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
     }
@@ -105,13 +107,14 @@ class DnsheDriver implements DriverInterface {
   Future<Map<String, dynamic>> getDnsRecords(
     String domainId, {
     int page = 1,
-    int pageSize = 20,
+    int pageSize = 100,
     Map<String, String>? filters,
   }) async {
     if (_dns == null) {
       return {'records': [], 'pagination': {}, 'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
     }
-    return _dns!.getRecords(domainId, page: page, pageSize: pageSize, filters: filters);
+    final subdomainId = int.tryParse(domainId) ?? 0;
+    return _dns!.getRecords(subdomainId: subdomainId, page: page, pageSize: pageSize);
   }
 
   @override
@@ -122,7 +125,10 @@ class DnsheDriver implements DriverInterface {
     if (_dns == null) {
       return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
     }
-    return _dns!.createRecord(domainId, recordData);
+    final subdomainId = int.tryParse(domainId) ?? 0;
+    final dataWithSubdomainId = Map<String, dynamic>.from(recordData);
+    dataWithSubdomainId['subdomain_id'] = subdomainId;
+    return _dns!.createRecord(dataWithSubdomainId);
   }
 
   @override
@@ -134,7 +140,14 @@ class DnsheDriver implements DriverInterface {
     if (_dns == null) {
       return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
     }
-    return _dns!.updateRecord(domainId, recordId, recordData);
+    final dataWithId = Map<String, dynamic>.from(recordData);
+    final recordIdInt = int.tryParse(recordId);
+    if (recordIdInt != null) {
+      dataWithId['id'] = recordIdInt;
+    } else {
+      dataWithId['record_id'] = recordId;
+    }
+    return _dns!.updateRecord(dataWithId);
   }
 
   @override
@@ -142,7 +155,14 @@ class DnsheDriver implements DriverInterface {
     if (_dns == null) {
       return {'success': false, 'error': '', 'errorCode': 'NOT_INITIALIZED'};
     }
-    return _dns!.deleteRecord(domainId, recordId);
+    final data = <String, dynamic>{};
+    final recordIdInt = int.tryParse(recordId);
+    if (recordIdInt != null) {
+      data['id'] = recordIdInt;
+    } else {
+      data['record_id'] = recordId;
+    }
+    return _dns!.deleteRecord(data);
   }
 
   @override
@@ -199,8 +219,7 @@ class DnsheDriver implements DriverInterface {
     final name = recordData['name']?.toString() ?? '';
     final type = recordData['type']?.toString() ?? 'A';
     final content = recordData['content']?.toString() ?? '';
-    final ttl = recordData['ttl'] as int? ?? 3600;
-    final proxied = recordData['proxied'] == true;
+    final ttl = recordData['ttl'] as int? ?? 600;
     final priority = recordData['priority'];
     final typeColor = DriverColorTokens.getDnsTypeColor(type);
 
@@ -217,7 +236,7 @@ class DnsheDriver implements DriverInterface {
               children: [
                 Row(
                   children: [
-                    Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                    Flexible(child: Text(name.isEmpty ? '@' : name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     if (priority != null) ...[
                       const SizedBox(width: 4),
                       DriverUiTokens.buildPriorityTag(priority as int),
@@ -231,10 +250,6 @@ class DnsheDriver implements DriverInterface {
           ),
           const SizedBox(width: DriverUiTokens.spacing8),
           DriverTtlTokens.buildTtlTag(ttl),
-          if (proxied) ...[
-            const SizedBox(width: 4),
-            DriverUiTokens.buildProxiedIcon(),
-          ],
         ],
       ),
     );
@@ -292,7 +307,7 @@ class DnsheDriver implements DriverInterface {
       const DnsRecordField(
         key: 'name',
         label: '记录名称',
-        hintText: '例如: www 或 @',
+        hintText: '例如: www 或留空',
       ),
       const DnsRecordField(
         key: 'content',
@@ -302,9 +317,9 @@ class DnsheDriver implements DriverInterface {
       const DnsRecordField(
         key: 'ttl',
         label: 'TTL (秒)',
-        hintText: '3600 = 1小时',
+        hintText: '600 = 10分钟 (默认600)',
         keyboardType: TextInputType.number,
-        initialValue: '3600',
+        initialValue: '600',
       ),
     ];
   }
@@ -315,7 +330,7 @@ class DnsheDriver implements DriverInterface {
       DnsRecordField(
         key: 'name',
         label: '记录名称',
-        hintText: '例如: www 或 @',
+        hintText: '例如: www 或留空',
         initialValue: recordData['name']?.toString() ?? '',
       ),
       DnsRecordField(
@@ -327,9 +342,9 @@ class DnsheDriver implements DriverInterface {
       DnsRecordField(
         key: 'ttl',
         label: 'TTL (秒)',
-        hintText: '3600 = 1小时',
+        hintText: '600 = 10分钟 (默认600)',
         keyboardType: TextInputType.number,
-        initialValue: (recordData['ttl'] ?? 3600).toString(),
+        initialValue: (recordData['ttl'] ?? 600).toString(),
       ),
     ];
   }
@@ -344,7 +359,7 @@ class DnsheDriver implements DriverInterface {
       'type': recordType,
       'name': fieldValues['name'] ?? '',
       'content': fieldValues['content'] ?? '',
-      'ttl': int.tryParse(fieldValues['ttl'] ?? '3600') ?? 3600,
+      'ttl': int.tryParse(fieldValues['ttl'] ?? '600') ?? 600,
     };
 
     if (recordType == 'MX' || recordType == 'SRV') {
@@ -352,5 +367,365 @@ class DnsheDriver implements DriverInterface {
     }
 
     return data;
+  }
+
+  void showAddRecordDialog(
+    BuildContext context, {
+    required String domainId,
+    required Future<Map<String, dynamic>> Function(Map<String, dynamic> recordData) onSubmit,
+  }) {
+    String selectedType = 'A';
+    final fieldControllers = <String, TextEditingController>{};
+    final fieldValues = <String, String>{};
+    String? priorityValue;
+    bool isSubmitting = false;
+    bool hasError = false;
+    String? errorMessage;
+
+    void initControllers() {
+      for (final field in getAddRecordFields()) {
+        fieldControllers[field.key] = TextEditingController(text: field.initialValue ?? '');
+        fieldValues[field.key] = field.initialValue ?? '';
+      }
+    }
+
+    initControllers();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final fields = getAddRecordFields();
+          final colorScheme = Theme.of(dialogContext).colorScheme;
+
+          return AlertDialog(
+            title: Text(getAddRecordTitle()),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedType,
+                    decoration: const InputDecoration(labelText: '记录类型'),
+                    items: getSupportedRecordTypes().map((t) =>
+                      DropdownMenuItem(value: t, child: Text(t))
+                    ).toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setDialogState(() => selectedType = v);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  ...fields.map((field) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: TextField(
+                        controller: fieldControllers[field.key],
+                        decoration: InputDecoration(
+                          labelText: field.label,
+                          hintText: field.hintText,
+                        ),
+                        keyboardType: field.keyboardType,
+                        onChanged: (v) => fieldValues[field.key] = v,
+                      ),
+                    );
+                  }),
+                  if (selectedType == 'MX' || selectedType == 'SRV') ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: selectedType == 'MX' ? '优先级' : '权重',
+                        hintText: '数值越小优先级越高',
+                      ),
+                      keyboardType: TextInputType.number,
+                      controller: TextEditingController(text: priorityValue ?? '10'),
+                      onChanged: (v) => priorityValue = v,
+                    ),
+                  ],
+                  if (hasError && errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        errorMessage!,
+                        style: TextStyle(color: colorScheme.error, fontSize: 12),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: isSubmitting ? null : () async {
+                  final content = fieldValues['content'] ?? '';
+                  if (content.isEmpty) {
+                    setDialogState(() {
+                      hasError = true;
+                      errorMessage = '记录值不能为空';
+                    });
+                    return;
+                  }
+
+                  setDialogState(() {
+                    isSubmitting = true;
+                    hasError = false;
+                    errorMessage = null;
+                  });
+
+                  if (priorityValue != null) {
+                    fieldValues['priority'] = priorityValue!;
+                  }
+
+                  final recordData = prepareRecordData(
+                    fieldValues: fieldValues,
+                    recordType: selectedType,
+                    isEdit: false,
+                  );
+
+                  final result = await onSubmit(recordData);
+
+                  if (dialogContext.mounted) {
+                    if (result['success'] == true) {
+                      Navigator.pop(dialogContext);
+                    } else {
+                      setDialogState(() {
+                        isSubmitting = false;
+                        hasError = true;
+                        errorMessage = result['error']?.toString() ?? '添加失败';
+                      });
+                    }
+                  }
+                },
+                child: isSubmitting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('添加'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void showEditRecordDialog(
+    BuildContext context,
+    Map<String, dynamic> record, {
+    required Future<Map<String, dynamic>> Function(Map<String, dynamic> recordData) onSubmit,
+  }) {
+    String selectedType = record['type']?.toString() ?? 'A';
+    final fieldControllers = <String, TextEditingController>{};
+    final fieldValues = <String, String>{};
+    String? priorityValue;
+    bool isSubmitting = false;
+    bool hasError = false;
+    String? errorMessage;
+
+    void initControllers() {
+      for (final field in getEditRecordFields(record)) {
+        fieldControllers[field.key] = TextEditingController(text: field.initialValue ?? '');
+        fieldValues[field.key] = field.initialValue ?? '';
+      }
+      priorityValue = record['priority']?.toString() ?? '10';
+    }
+
+    initControllers();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final fields = getEditRecordFields(record);
+          final colorScheme = Theme.of(dialogContext).colorScheme;
+
+          return AlertDialog(
+            title: Text(getEditRecordTitle()),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedType,
+                    decoration: const InputDecoration(labelText: '记录类型'),
+                    items: getSupportedRecordTypes().map((t) =>
+                      DropdownMenuItem(value: t, child: Text(t))
+                    ).toList(),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setDialogState(() => selectedType = v);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  ...fields.where((f) => f.key != 'line').map((field) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: TextField(
+                        controller: fieldControllers[field.key],
+                        decoration: InputDecoration(
+                          labelText: field.label,
+                          hintText: field.hintText,
+                        ),
+                        keyboardType: field.keyboardType,
+                        onChanged: (v) => fieldValues[field.key] = v,
+                      ),
+                    );
+                  }),
+                  if (selectedType == 'MX' || selectedType == 'SRV') ...[
+                    const SizedBox(height: 8),
+                    TextField(
+                      decoration: InputDecoration(
+                        labelText: selectedType == 'MX' ? '优先级' : '权重',
+                      ),
+                      keyboardType: TextInputType.number,
+                      controller: TextEditingController(text: priorityValue ?? '10'),
+                      onChanged: (v) => priorityValue = v,
+                    ),
+                  ],
+                  if (hasError && errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(
+                        errorMessage!,
+                        style: TextStyle(color: colorScheme.error, fontSize: 12),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: isSubmitting ? null : () async {
+                  final content = fieldValues['content'] ?? '';
+                  if (content.isEmpty) {
+                    setDialogState(() {
+                      hasError = true;
+                      errorMessage = '记录值不能为空';
+                    });
+                    return;
+                  }
+
+                  setDialogState(() {
+                    isSubmitting = true;
+                    hasError = false;
+                    errorMessage = null;
+                  });
+
+                  if (priorityValue != null) {
+                    fieldValues['priority'] = priorityValue!;
+                  }
+
+                  final recordData = prepareRecordData(
+                    fieldValues: fieldValues,
+                    recordType: selectedType,
+                    isEdit: true,
+                  );
+
+                  final result = await onSubmit(recordData);
+
+                  if (dialogContext.mounted) {
+                    if (result['success'] == true) {
+                      Navigator.pop(dialogContext);
+                    } else {
+                      setDialogState(() {
+                        isSubmitting = false;
+                        hasError = true;
+                        errorMessage = result['error']?.toString() ?? '保存失败';
+                      });
+                    }
+                  }
+                },
+                child: isSubmitting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('保存'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void showDeleteConfirmDialog(
+    BuildContext context,
+    Map<String, dynamic> record, {
+    required Future<Map<String, dynamic>> Function() onConfirm,
+  }) {
+    final name = record['name']?.toString() ?? '';
+    bool isDeleting = false;
+    bool hasError = false;
+    String? errorMessage;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) {
+          final colorScheme = Theme.of(dialogContext).colorScheme;
+
+          return AlertDialog(
+            title: const Text('删除记录'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('确定要删除 "$name" 吗？此操作无法撤销。'),
+                if (hasError && errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    errorMessage!,
+                    style: TextStyle(color: colorScheme.error, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: colorScheme.error,
+                  foregroundColor: colorScheme.onError,
+                ),
+                onPressed: isDeleting ? null : () async {
+                  setDialogState(() {
+                    isDeleting = true;
+                    hasError = false;
+                    errorMessage = null;
+                  });
+
+                  final result = await onConfirm();
+
+                  if (dialogContext.mounted) {
+                    if (result['success'] == true) {
+                      Navigator.pop(dialogContext);
+                    } else {
+                      setDialogState(() {
+                        isDeleting = false;
+                        hasError = true;
+                        errorMessage = result['error']?.toString() ?? '删除失败';
+                      });
+                    }
+                  }
+                },
+                child: isDeleting
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('删除'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
