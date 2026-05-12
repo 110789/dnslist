@@ -139,13 +139,9 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.xl)),
         backgroundColor: colorScheme.surface,
       ),
-      bottomSheetTheme: BottomSheetThemeData(
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(DnsRadius.xl)),
-        ),
-        showDragHandle: true,
-        dragHandleColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-        backgroundColor: colorScheme.surface,
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.transparent,
+        modalBackgroundColor: Colors.transparent,
       ),
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,
@@ -302,13 +298,9 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DnsRadius.xl)),
         backgroundColor: colorScheme.surface,
       ),
-      bottomSheetTheme: BottomSheetThemeData(
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(DnsRadius.xl)),
-        ),
-        showDragHandle: true,
-        dragHandleColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-        backgroundColor: colorScheme.surface,
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: Colors.transparent,
+        modalBackgroundColor: Colors.transparent,
       ),
       navigationBarTheme: NavigationBarThemeData(
         elevation: 0,

@@ -1106,12 +1106,14 @@ class DnsBottomSheet extends StatelessWidget {
   final String? title;
   final List<Widget> children;
   final Widget? footer;
+  final bool showCloseButton;
 
   const DnsBottomSheet({
     super.key,
     this.title,
     required this.children,
     this.footer,
+    this.showCloseButton = true,
   });
 
   static Future<T?> show<T>({
@@ -1119,15 +1121,17 @@ class DnsBottomSheet extends StatelessWidget {
     String? title,
     required List<Widget> children,
     Widget? footer,
+    bool showCloseButton = true,
   }) {
     return showModalBottomSheet<T>(
       context: context,
-      backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) => DnsBottomSheet(
         title: title,
         children: children,
         footer: footer,
+        showCloseButton: showCloseButton,
       ),
     );
   }
@@ -1135,35 +1139,122 @@ class DnsBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Container(
-      color: colorScheme.surface,
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (title != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  DnsSpacing.md,
-                  DnsSpacing.sm,
-                  DnsSpacing.md,
-                  DnsSpacing.sm,
-                ),
-                child: Text(
-                  title!,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ...children,
-            if (footer != null)
-              footer!
-            else
-              const SizedBox(height: DnsSpacing.md),
-          ],
+      margin: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(DnsRadius.xl),
         ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _DragHandle(color: colorScheme.onSurfaceVariant),
+          if (title != null)
+            _TitleRow(
+              title: title!,
+              showCloseButton: showCloseButton,
+              onClose: () => Navigator.pop(context),
+            ),
+          Flexible(
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: EdgeInsets.only(
+                bottom: footer != null ? 0 : (bottomPadding + DnsSpacing.md),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: children,
+              ),
+            ),
+          ),
+          if (footer != null)
+            Padding(
+              padding: EdgeInsets.only(bottom: bottomPadding),
+              child: footer,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DragHandle extends StatelessWidget {
+  final Color color;
+
+  const _DragHandle({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: DnsSpacing.sm, bottom: DnsSpacing.xs),
+      child: Center(
+        child: Container(
+          width: 32,
+          height: 4,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TitleRow extends StatelessWidget {
+  final String title;
+  final bool showCloseButton;
+  final VoidCallback onClose;
+
+  const _TitleRow({
+    required this.title,
+    required this.showCloseButton,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(
+        DnsSpacing.md,
+        DnsSpacing.xs,
+        DnsSpacing.xs,
+        DnsSpacing.sm,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: colorScheme.onSurface,
+              ),
+            ),
+          ),
+          if (showCloseButton)
+            IconButton(
+              onPressed: onClose,
+              icon: Icon(
+                Icons.close,
+                size: 20,
+                color: colorScheme.onSurfaceVariant,
+              ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 32,
+                minHeight: 32,
+              ),
+            ),
+        ],
       ),
     );
   }
