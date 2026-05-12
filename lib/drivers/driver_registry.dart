@@ -1,9 +1,9 @@
 import 'driver_factory.dart';
-import 'cloudflare/cloudflare_driver.dart';
-import 'dnshe/dnshe_driver.dart';
-import 'dnspod/dnspod_driver.dart';
-import 'cloudns/cloudns_driver.dart';
-import 'rainyun/rainyun_driver.dart';
+import 'cloudflare/index.dart';
+import 'dnshe/index.dart';
+import 'dnspod/index.dart';
+import 'cloudns/index.dart';
+import 'rainyun/index.dart';
 import 'dart:developer' as developer;
 
 class DriverRegistry {
