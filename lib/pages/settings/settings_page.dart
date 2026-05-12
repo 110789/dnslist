@@ -28,6 +28,13 @@ class SettingsPage extends StatelessWidget {
               _SettingsGroup(
                 children: [
                   _SettingsTile(
+                    icon: Icons.dark_mode_outlined,
+                    title: '外观模式',
+                    subtitle: _getDarkModeLabel(themeProvider.darkMode),
+                    onTap: () => _showDarkModeSheet(context, themeProvider),
+                    showDivider: true,
+                  ),
+                  _SettingsTile(
                     icon: Icons.palette_outlined,
                     title: '主题颜色',
                     subtitle: '默认',
@@ -101,6 +108,82 @@ class SettingsPage extends StatelessWidget {
       case DarkModeOption.dark: return '深色';
       case DarkModeOption.system: return '跟随系统';
     }
+  }
+
+  void _showDarkModeSheet(BuildContext context, ThemeProvider themeProvider) {
+    DnsBottomSheet.show(
+      context: context,
+      title: '外观模式',
+      children: DarkModeOption.values.map((mode) {
+        final isSelected = themeProvider.darkMode == mode;
+        return _DarkModeOption(
+          mode: mode,
+          label: _getDarkModeLabel(mode),
+          isSelected: isSelected,
+          onTap: () {
+            themeProvider.setDarkMode(mode);
+            Navigator.pop(context);
+          },
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _DarkModeOption extends StatelessWidget {
+  final DarkModeOption mode;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _DarkModeOption({
+    required this.mode,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  IconData get _icon {
+    switch (mode) {
+      case DarkModeOption.light: return Icons.light_mode_outlined;
+      case DarkModeOption.dark: return Icons.dark_mode_outlined;
+      case DarkModeOption.system: return Icons.settings_suggest_outlined;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(DnsRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: DnsSpacing.md,
+            vertical: DnsSpacing.sm + 2,
+          ),
+          child: Row(
+            children: [
+              Icon(_icon, size: 22, color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant),
+              const SizedBox(width: DnsSpacing.md),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Icon(Icons.check, size: 20, color: colorScheme.primary),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
