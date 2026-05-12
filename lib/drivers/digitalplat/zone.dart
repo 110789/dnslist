@@ -1,6 +1,19 @@
 import 'package:dio/dio.dart';
 import 'parser.dart';
 
+String _formatDigitalplatDate(String? rawDate) {
+  if (rawDate == null || rawDate.isEmpty) return '';
+  if (rawDate.length >= 8) {
+    try {
+      final year = rawDate.substring(0, 4);
+      final month = rawDate.substring(4, 6);
+      final day = rawDate.substring(6, 8);
+      return '$year-$month-$day';
+    } catch (_) {}
+  }
+  return rawDate;
+}
+
 class DigitalplatZone {
   final Dio _client;
 
@@ -179,9 +192,9 @@ class DigitalplatZone {
       'status': domain['status']?.toString() ?? 'unknown',
       'slot_type': domain['slot_type']?.toString() ?? '',
       'lifecycle_type': domain['lifecycle_type']?.toString() ?? '',
-      'expires_at': domain['expires_at']?.toString() ?? '',
-      'created_at': domain['created_at']?.toString() ?? '',
-      'nameservers': domain['nameservers'] as List? ?? [],
+      'expires_at': _formatDigitalplatDate(domain['expires_at']?.toString()),
+      'created_at': _formatDigitalplatDate(domain['created_at']?.toString()),
+      'nameservers': (domain['nameservers'] as List?)?.map((e) => e.toString()).toList() ?? [],
       'registrant': domain['registrant']?.toString() ?? '',
       'registrar': domain['registrar']?.toString() ?? '',
       'dns_server': domain['dns_server']?.toString() ?? '',

@@ -17,6 +17,7 @@ class DigitalplatDriver implements DriverInterface {
   // ignore: unused_field
   String? _apiToken;
   DigitalplatZone? _zone;
+  // ignore: unused_field
   DigitalplatDns? _dns;
 
   @override
@@ -181,10 +182,13 @@ class DigitalplatDriver implements DriverInterface {
     int pageSize = 20,
     Map<String, String>? filters,
   }) async {
-    if (_dns == null) {
-      return {'records': [], 'pagination': {}, 'error': 'Not initialized', 'errorCode': 'NOT_INITIALIZED', 'success': false};
-    }
-    return _dns!.getRecords(domainId, page: page, pageSize: pageSize, filters: filters);
+    return {
+      'records': [],
+      'pagination': {},
+      'error': 'DigitalPlat 不支持 DNS 记录管理',
+      'errorCode': 'NOT_SUPPORTED',
+      'success': false,
+    };
   }
 
   @override
@@ -192,10 +196,7 @@ class DigitalplatDriver implements DriverInterface {
     String domainId,
     Map<String, dynamic> recordData,
   ) async {
-    if (_dns == null) {
-      return {'error': 'Not initialized', 'errorCode': 'NOT_INITIALIZED', 'success': false};
-    }
-    return _dns!.createRecord(domainId, recordData);
+    return {'error': 'DigitalPlat 不支持 DNS 记录管理', 'errorCode': 'NOT_SUPPORTED', 'success': false};
   }
 
   @override
@@ -204,18 +205,12 @@ class DigitalplatDriver implements DriverInterface {
     String recordId,
     Map<String, dynamic> recordData,
   ) async {
-    if (_dns == null) {
-      return {'error': 'Not initialized', 'errorCode': 'NOT_INITIALIZED', 'success': false};
-    }
-    return _dns!.updateRecord(domainId, recordId, recordData);
+    return {'error': 'DigitalPlat 不支持 DNS 记录管理', 'errorCode': 'NOT_SUPPORTED', 'success': false};
   }
 
   @override
   Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId) async {
-    if (_dns == null) {
-      return {'success': false, 'error': 'Not initialized', 'errorCode': 'NOT_INITIALIZED'};
-    }
-    return _dns!.deleteRecord(domainId, recordId);
+    return {'success': false, 'error': 'DigitalPlat 不支持 DNS 记录管理', 'errorCode': 'NOT_SUPPORTED'};
   }
 
   @override
