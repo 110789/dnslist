@@ -15,36 +15,14 @@ class CloudflareDriver implements DriverInterface {
 
   static const Map<String, String> _errorCodeMap = {
     '1000': '认证失败，请检查 API Token 是否正确',
-    '1001': '资源不存在',
-    '1002': '请求参数验证失败',
-    '1003': '操作失败，请稍后重试',
-    '1004': '请求频率超限，请稍后重试',
-    '1005': '资源已存在',
     '7000': '区域不存在',
     '7001': '区域已存在',
-    '7003': '区域不可用',
-    '7004': '区域正在删除中',
-    '7005': '无法删除区域，域名可能仍在使用中',
-    '7006': '域名已暂停，请先恢复后再试',
     '9100': '权限不足，缺少必要权限',
     '9101': '权限不足，无法访问此资源',
     '9109': '未授权访问请求的资源',
     '9200': '账户被暂停',
-    '9203': '账户余额不足',
-    '9204': '账户存在未完成订单',
-    '9206': '账户已被冻结',
     '10000': 'DNS 记录已存在',
     '10001': 'DNS 记录不存在',
-    '10002': 'DNS 记录类型不匹配',
-    '10003': 'CNAME 记录冲突，A/AAAA 记录无法与 CNAME 共存',
-    '10004': 'NS 记录不能与其他记录类型共存',
-    '10005': '记录名称格式不正确',
-    '10006': '记录内容格式不正确',
-    '10200': '账户问题导致操作被阻止',
-    '10201': '此操作需要付费升级后才能使用',
-    '10202': '域名已被其他账户认领',
-    '20000': '分页参数超出范围',
-    '20001': '每页数量超出限制',
   };
 
   @override
@@ -85,36 +63,45 @@ class CloudflareDriver implements DriverInterface {
 
   Map<String, dynamic> _parseError(dynamic responseData) {
     if (responseData == null) {
-      return {'error': '接口无响应，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
+      return {'error': '操作失败请稍后尝试', 'errorCode': 'UNKNOWN', 'success': false};
     }
     final data = responseData is Map ? responseData : {};
     final errors = data['errors'] as List?;
     if (errors != null && errors.isNotEmpty) {
       final error = errors[0] as Map?;
-      final code = error?['code']?.toString();
-      final rawMessage = error?['message']?.toString() ?? '';
-      if (code != null && _errorCodeMap.containsKey(code)) {
-        return {'error': _errorCodeMap[code], 'errorCode': code, 'success': false};
-      }
-      if (rawMessage.isNotEmpty) {
-        return {'error': rawMessage, 'errorCode': code ?? 'UNKNOWN', 'success': false};
-      }
+      final code = error?['code']?.toString() ?? 'UNKNOWN';
+      final message = error?['message']?.toString() ?? '';
+      return {
+        'error': message.isNotEmpty ? message : '操作失败请稍后尝试',
+        'errorCode': code,
+        'success': false,
+      };
     }
     final messages = data['messages'] as List?;
     if (messages != null && messages.isNotEmpty) {
-      final message = (messages[0] as Map?)?['message']?.toString();
-      if (message != null && message.isNotEmpty) {
-        return {'error': message, 'errorCode': 'API_MESSAGE', 'success': false};
-      }
+      final message = (messages[0] as Map?)?['message']?.toString() ?? '';
+      return {
+        'error': message.isNotEmpty ? message : '操作失败请稍后尝试',
+        'errorCode': 'API_MESSAGE',
+        'success': false
+      };
     }
-    return {'error': '请求处理异常，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
+    return {'error': '操作失败请稍后尝试', 'errorCode': 'UNKNOWN', 'success': false};
   }
 
   String _handleException(dynamic e) {
     if (e is DioException) {
-      return '网络连接异常，请检查网络后重试';
+      switch (e.type) {
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.receiveTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.connectionError:
+          return '操作失败请稍后尝试';
+        default:
+          return '操作失败请稍后尝试';
+      }
     }
-    return '请求处理异常，请稍后重试';
+    return '操作失败请稍后尝试';
   }
 
   ApiClient _getClient() {
