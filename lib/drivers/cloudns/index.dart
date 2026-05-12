@@ -262,4 +262,81 @@ class ClouDNSDriver implements DriverInterface {
 
   @override
   List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'SPF', 'CAA'];
+
+  @override
+  String getAddRecordTitle() => '添加DNS记录';
+
+  @override
+  String getEditRecordTitle() => '编辑DNS记录';
+
+  @override
+  bool supportsRecordLine() => false;
+
+  @override
+  List<DnsRecordField> getAddRecordFields() {
+    return [
+      const DnsRecordField(
+        key: 'host',
+        label: '主机记录',
+        hintText: '例如: www 或 @',
+      ),
+      const DnsRecordField(
+        key: 'record',
+        label: '记录值',
+        hintText: '例如: 192.168.1.1',
+      ),
+      const DnsRecordField(
+        key: 'ttl',
+        label: 'TTL (秒)',
+        hintText: '3600 = 1小时',
+        keyboardType: TextInputType.number,
+        initialValue: '3600',
+      ),
+    ];
+  }
+
+  @override
+  List<DnsRecordField> getEditRecordFields(Map<String, dynamic> recordData) {
+    return [
+      DnsRecordField(
+        key: 'host',
+        label: '主机记录',
+        hintText: '例如: www 或 @',
+        initialValue: recordData['host']?.toString() ?? '',
+      ),
+      DnsRecordField(
+        key: 'record',
+        label: '记录值',
+        hintText: '例如: 192.168.1.1',
+        initialValue: recordData['record']?.toString() ?? recordData['content']?.toString() ?? '',
+      ),
+      DnsRecordField(
+        key: 'ttl',
+        label: 'TTL (秒)',
+        hintText: '3600 = 1小时',
+        keyboardType: TextInputType.number,
+        initialValue: (recordData['ttl'] ?? 3600).toString(),
+      ),
+    ];
+  }
+
+  @override
+  Map<String, dynamic> prepareRecordData({
+    required Map<String, String> fieldValues,
+    required String recordType,
+    bool isEdit = false,
+  }) {
+    final data = <String, dynamic>{
+      'type': recordType,
+      'host': fieldValues['host'] ?? '',
+      'record': fieldValues['record'] ?? '',
+      'ttl': int.tryParse(fieldValues['ttl'] ?? '3600') ?? 3600,
+    };
+
+    if (recordType == 'MX' || recordType == 'SRV') {
+      data['priority'] = int.tryParse(fieldValues['priority'] ?? '10') ?? 10;
+    }
+
+    return data;
+  }
 }

@@ -324,4 +324,94 @@ class DnspodDriver implements DriverInterface {
 
   @override
   List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA', 'URL', 'SPF'];
+
+  @override
+  String getAddRecordTitle() => '添加DNS记录';
+
+  @override
+  String getEditRecordTitle() => '编辑DNS记录';
+
+  @override
+  bool supportsRecordLine() => false;
+
+  @override
+  List<DnsRecordField> getAddRecordFields() {
+    return [
+      const DnsRecordField(
+        key: 'sub_domain',
+        label: '主机记录',
+        hintText: '例如: www 或 @',
+      ),
+      const DnsRecordField(
+        key: 'record_line',
+        label: '记录线路',
+        hintText: '默认',
+        initialValue: '默认',
+      ),
+      const DnsRecordField(
+        key: 'value',
+        label: '记录值',
+        hintText: '例如: 192.168.1.1',
+      ),
+      const DnsRecordField(
+        key: 'ttl',
+        label: 'TTL (秒)',
+        hintText: '600 = 10分钟',
+        keyboardType: TextInputType.number,
+        initialValue: '600',
+      ),
+    ];
+  }
+
+  @override
+  List<DnsRecordField> getEditRecordFields(Map<String, dynamic> recordData) {
+    return [
+      DnsRecordField(
+        key: 'sub_domain',
+        label: '主机记录',
+        hintText: '例如: www 或 @',
+        initialValue: recordData['name']?.toString() ?? recordData['sub_domain']?.toString() ?? '',
+      ),
+      DnsRecordField(
+        key: 'record_line',
+        label: '记录线路',
+        hintText: '默认',
+        initialValue: recordData['record_line']?.toString() ?? '默认',
+      ),
+      DnsRecordField(
+        key: 'value',
+        label: '记录值',
+        hintText: '例如: 192.168.1.1',
+        initialValue: recordData['value']?.toString() ?? recordData['content']?.toString() ?? '',
+      ),
+      DnsRecordField(
+        key: 'ttl',
+        label: 'TTL (秒)',
+        hintText: '600 = 10分钟',
+        keyboardType: TextInputType.number,
+        initialValue: (recordData['ttl'] ?? 600).toString(),
+      ),
+    ];
+  }
+
+  @override
+  Map<String, dynamic> prepareRecordData({
+    required Map<String, String> fieldValues,
+    required String recordType,
+    bool isEdit = false,
+  }) {
+    final data = <String, dynamic>{
+      'sub_domain': fieldValues['sub_domain'] ?? '',
+      'record_type': recordType,
+      'record_line': fieldValues['record_line'] ?? '默认',
+      'value': fieldValues['value'] ?? '',
+      'ttl': int.tryParse(fieldValues['ttl'] ?? '600') ?? 600,
+    };
+
+    if (recordType == 'MX' || recordType == 'SRV') {
+      data['mx'] = int.tryParse(fieldValues['priority'] ?? fieldValues['mx'] ?? '10') ?? 10;
+    }
+
+    return data;
+  }
 }

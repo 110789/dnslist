@@ -60,25 +60,39 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   void _showAddRecordDialog(BuildContext context, String providerId) {
     final driver = DriverFactory.get(providerId);
     if (driver == null) return;
-    final domainState = context.read<NewDomainState>();
 
-    final nameController = TextEditingController();
-    final contentController = TextEditingController();
-    final priorityController = TextEditingController(text: '10');
-    String selectedType = 'A';
-    int ttl = 3600;
+    final domainState = context.read<NewDomainState>();
+    final credentialState = context.read<CredentialState>();
+    final credentials = credentialState.selectedCredential?.credentials ?? {};
+
+    String selectedType = driver.getSupportedRecordTypes().first;
+    final fieldControllers = <String, TextEditingController>{};
+    final fieldValues = <String, String>{};
     bool proxied = false;
+    String? priorityValue;
     bool isSubmitting = false;
     bool hasError = false;
+
+    void initControllers() {
+      for (final field in driver.getAddRecordFields()) {
+        fieldControllers[field.key] = TextEditingController(text: field.initialValue ?? '');
+        fieldValues[field.key] = field.initialValue ?? '';
+      }
+      if (driver.supportsProxy) {
+        proxied = false;
+      }
+    }
+
+    initControllers();
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          final bool canSubmit = !isSubmitting && !hasError;
+          final fields = driver.getAddRecordFields();
 
           return AlertDialog(
-            title: const Text('添加DNS记录'),
+            title: Text(driver.getAddRecordTitle()),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -90,61 +104,39 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     items: driver.getSupportedRecordTypes().map((t) =>
                       DropdownMenuItem(value: t, child: Text(t))
                     ).toList(),
-                    onChanged: (v) => setDialogState(() => selectedType = v!),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      labelText: '记录名称',
-                      hintText: selectedType == 'MX' || selectedType == 'SRV'
-                          ? '例如: mail' : '例如: www 或 @',
-                    ),
-                    onChanged: (_) {
-                      if (hasError) setDialogState(() => hasError = false);
+                    onChanged: (v) {
+                      if (v != null) {
+                        setDialogState(() => selectedType = v);
+                      }
                     },
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: contentController,
-                    decoration: InputDecoration(
-                      labelText: _getContentLabel(selectedType),
-                      hintText: _getContentHint(selectedType),
-                    ),
-                    keyboardType: _getContentKeyboardType(selectedType),
-                    onChanged: (_) {
-                      if (hasError) setDialogState(() => hasError = false);
-                    },
-                  ),
+                  ...fields.map((field) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: TextField(
+                        controller: fieldControllers[field.key],
+                        decoration: InputDecoration(
+                          labelText: field.label,
+                          hintText: field.hintText,
+                        ),
+                        keyboardType: field.keyboardType,
+                        onChanged: (v) => fieldValues[field.key] = v,
+                      ),
+                    );
+                  }),
                   if (selectedType == 'MX' || selectedType == 'SRV') ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
                     TextField(
-                      controller: priorityController,
                       decoration: InputDecoration(
                         labelText: selectedType == 'MX' ? '优先级' : '权重',
                         hintText: '数值越小优先级越高',
                       ),
                       keyboardType: TextInputType.number,
+                      onChanged: (v) => priorityValue = v,
                     ),
                   ],
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: TextEditingController(text: ttl.toString()),
-                    decoration: const InputDecoration(
-                      labelText: 'TTL (秒)',
-                      hintText: '3600 = 1小时',
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) => ttl = int.tryParse(v) ?? 3600,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'TTL: 3600建议用于频繁变更的记录',
-                    style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  if (driver.supportsProxy) ...[
+                  if (driver.supportsProxy && (selectedType == 'A' || selectedType == 'AAAA' || selectedType == 'CNAME')) ...[
                     const SizedBox(height: 16),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -154,10 +146,28 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                       onChanged: (v) => setDialogState(() => proxied = v),
                     ),
                   ],
+                  if (driver.supportsRecordLine()) ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: fieldValues['line'] ?? 'DEFAULT',
+                      decoration: const InputDecoration(labelText: '记录线路'),
+                      items: const [
+                        DropdownMenuItem(value: 'DEFAULT', child: Text('默认')),
+                        DropdownMenuItem(value: 'LTEL', child: Text('电信')),
+                        DropdownMenuItem(value: 'LCNC', child: Text('联通')),
+                        DropdownMenuItem(value: 'LMOB', child: Text('移动')),
+                      ],
+                      onChanged: (v) {
+                        if (v != null) {
+                          setDialogState(() => fieldValues['line'] = v);
+                        }
+                      },
+                    ),
+                  ],
                   if (hasError)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text('请填写记录值', style: TextStyle(color: Theme.of(dialogContext).colorScheme.error, fontSize: 12)),
+                      child: Text('请填写必填项', style: TextStyle(color: Theme.of(dialogContext).colorScheme.error, fontSize: 12)),
                     ),
                 ],
               ),
@@ -168,32 +178,49 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 child: const Text('取消'),
               ),
               FilledButton(
-                onPressed: canSubmit ? () async {
-                  if (contentController.text.isEmpty) {
+                onPressed: isSubmitting ? null : () async {
+                  bool hasEmpty = false;
+                  for (final field in fields) {
+                    if (field.required && (fieldValues[field.key]?.isEmpty ?? true)) {
+                      hasEmpty = true;
+                      break;
+                    }
+                  }
+
+                  final contentKey = providerId == 'cloudns' ? 'record' :
+                                   providerId == 'dnshe' ? 'record' :
+                                   providerId == 'rainyun' ? 'value' : 'content';
+                  if (fieldValues[contentKey]?.isEmpty ?? true) {
+                    hasEmpty = true;
+                  }
+
+                  if (hasEmpty) {
                     setDialogState(() => hasError = true);
                     return;
                   }
 
                   setDialogState(() { isSubmitting = true; hasError = false; });
 
-                  final recordData = <String, dynamic>{
-                    'type': selectedType,
-                    'name': nameController.text,
-                    'content': contentController.text,
-                    'ttl': ttl,
-                    'proxied': proxied,
-                  };
-
-                  if (selectedType == 'MX' || selectedType == 'SRV') {
-                    recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
+                  if (driver.supportsProxy) {
+                    fieldValues['proxied'] = proxied.toString();
                   }
+                  if (priorityValue != null) {
+                    fieldValues['priority'] = priorityValue!;
+                  }
+
+                  final recordData = driver.prepareRecordData(
+                    fieldValues: fieldValues,
+                    recordType: selectedType,
+                    isEdit: false,
+                  );
 
                   final result = await domainState.createDnsRecord(
                     providerId,
                     widget.domainId,
                     recordData,
-                    context.read<CredentialState>().selectedCredential!.credentials,
+                    credentials,
                   );
+
                   if (dialogContext.mounted) {
                     if (result['success']) {
                       Navigator.pop(dialogContext);
@@ -207,7 +234,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                       );
                     }
                   }
-                } : null,
+                },
                 child: isSubmitting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Text('添加'),
@@ -220,23 +247,39 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   }
 
   void _showEditRecordDialog(BuildContext context, String providerId, Map<String, dynamic> record) {
-    final domainState = context.read<NewDomainState>();
     final driver = DriverFactory.get(providerId);
-    final bool supportsProxy = driver?.supportsProxy ?? false;
-    final nameController = TextEditingController(text: record['name'] ?? '');
-    final contentController = TextEditingController(text: record['content'] ?? '');
-    final priorityController = TextEditingController(text: (record['priority'] ?? 10).toString());
-    String selectedType = record['type'] ?? 'A';
-    int ttl = record['ttl'] ?? 3600;
-    bool proxied = record['proxied'] ?? false;
+    if (driver == null) return;
+
+    final domainState = context.read<NewDomainState>();
+    final credentialState = context.read<CredentialState>();
+    final credentials = credentialState.selectedCredential?.credentials ?? {};
+
+    String selectedType = record['type']?.toString() ?? 'A';
+    final fieldControllers = <String, TextEditingController>{};
+    final fieldValues = <String, String>{};
+    bool proxied = record['proxied'] == true;
     bool isSubmitting = false;
+
+    void initControllers() {
+      for (final field in driver.getEditRecordFields(record)) {
+        fieldControllers[field.key] = TextEditingController(text: field.initialValue ?? '');
+        fieldValues[field.key] = field.initialValue ?? '';
+      }
+      if (driver.supportsProxy) {
+        proxied = record['proxied'] == true;
+      }
+    }
+
+    initControllers();
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
+          final fields = driver.getEditRecordFields(record);
+
           return AlertDialog(
-            title: const Text('编辑DNS记录'),
+            title: Text(driver.getEditRecordTitle()),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -245,45 +288,46 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   DropdownButtonFormField<String>(
                     value: selectedType,
                     decoration: const InputDecoration(labelText: '记录类型'),
-                    items: ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV'].map((t) =>
+                    items: driver.getSupportedRecordTypes().map((t) =>
                       DropdownMenuItem(value: t, child: Text(t))
                     ).toList(),
-                    onChanged: (v) => setDialogState(() => selectedType = v!),
+                    onChanged: (v) {
+                      if (v != null) {
+                        setDialogState(() => selectedType = v);
+                      }
+                    },
                   ),
                   const SizedBox(height: 16),
-                  TextField(
-                    controller: nameController,
-                    decoration: const InputDecoration(labelText: '记录名称'),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: contentController,
-                    decoration: InputDecoration(
-                      labelText: _getContentLabel(selectedType),
-                      hintText: _getContentHint(selectedType),
-                    ),
-                    keyboardType: _getContentKeyboardType(selectedType),
-                  ),
+                  ...fields.where((f) => f.key != 'line').map((field) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: TextField(
+                        controller: fieldControllers[field.key],
+                        decoration: InputDecoration(
+                          labelText: field.label,
+                          hintText: field.hintText,
+                        ),
+                        keyboardType: field.keyboardType,
+                        onChanged: (v) => fieldValues[field.key] = v,
+                      ),
+                    );
+                  }),
                   if (selectedType == 'MX' || selectedType == 'SRV') ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 8),
                     TextField(
-                      controller: priorityController,
                       decoration: InputDecoration(
                         labelText: selectedType == 'MX' ? '优先级' : '权重',
                       ),
                       keyboardType: TextInputType.number,
+                      controller: TextEditingController(
+                        text: record['priority']?.toString() ??
+                              record['mx']?.toString() ??
+                              '10',
+                      ),
+                      onChanged: (v) => fieldValues['priority'] = v,
                     ),
                   ],
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: TextEditingController(text: ttl.toString()),
-                    decoration: const InputDecoration(
-                      labelText: 'TTL (秒)',
-                    ),
-                    keyboardType: TextInputType.number,
-                    onChanged: (v) => ttl = int.tryParse(v) ?? 3600,
-                  ),
-                  if (supportsProxy) ...[
+                  if (driver.supportsProxy && (selectedType == 'A' || selectedType == 'AAAA' || selectedType == 'CNAME')) ...[
                     const SizedBox(height: 16),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -291,6 +335,24 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                       subtitle: const Text('启用代理加速'),
                       value: proxied,
                       onChanged: (v) => setDialogState(() => proxied = v),
+                    ),
+                  ],
+                  if (driver.supportsRecordLine()) ...[
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: fieldValues['line'] ?? record['line']?.toString() ?? 'DEFAULT',
+                      decoration: const InputDecoration(labelText: '记录线路'),
+                      items: const [
+                        DropdownMenuItem(value: 'DEFAULT', child: Text('默认')),
+                        DropdownMenuItem(value: 'LTEL', child: Text('电信')),
+                        DropdownMenuItem(value: 'LCNC', child: Text('联通')),
+                        DropdownMenuItem(value: 'LMOB', child: Text('移动')),
+                      ],
+                      onChanged: (v) {
+                        if (v != null) {
+                          setDialogState(() => fieldValues['line'] = v);
+                        }
+                      },
                     ),
                   ],
                 ],
@@ -305,25 +367,24 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 onPressed: isSubmitting ? null : () async {
                   setDialogState(() => isSubmitting = true);
 
-                  final recordData = <String, dynamic>{
-                    'type': selectedType,
-                    'name': nameController.text,
-                    'content': contentController.text,
-                    'ttl': ttl,
-                    'proxied': proxied,
-                  };
-
-                  if (selectedType == 'MX' || selectedType == 'SRV') {
-                    recordData['priority'] = int.tryParse(priorityController.text) ?? 10;
+                  if (driver.supportsProxy) {
+                    fieldValues['proxied'] = proxied.toString();
                   }
+
+                  final recordData = driver.prepareRecordData(
+                    fieldValues: fieldValues,
+                    recordType: selectedType,
+                    isEdit: true,
+                  );
 
                   final result = await domainState.updateDnsRecord(
                     providerId,
                     widget.domainId,
                     record['id'].toString(),
                     recordData,
-                    context.read<CredentialState>().selectedCredential!.credentials,
+                    credentials,
                   );
+
                   if (dialogContext.mounted) {
                     if (result['success']) {
                       Navigator.pop(dialogContext);
@@ -402,35 +463,6 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
         },
       ),
     );
-  }
-
-  String _getContentLabel(String type) {
-    switch (type) {
-      case 'A': return 'IPv4地址';
-      case 'AAAA': return 'IPv6地址';
-      case 'CNAME': return '目标域名';
-      case 'MX': return '邮件服务器';
-      case 'TXT': return '记录值';
-      default: return '记录值';
-    }
-  }
-
-  String _getContentHint(String type) {
-    switch (type) {
-      case 'A': return '例如: 192.168.1.1';
-      case 'AAAA': return '例如: 2001:db8::1';
-      case 'CNAME': return '例如: example.com';
-      case 'MX': return '例如: mail.example.com';
-      case 'TXT': return '例如: v=spf1 include:_spf.example.com ~all';
-      default: return '';
-    }
-  }
-
-  TextInputType _getContentKeyboardType(String type) {
-    switch (type) {
-      case 'A': return TextInputType.number;
-      default: return TextInputType.text;
-    }
   }
 
   @override

@@ -295,4 +295,86 @@ class CloudflareDriver implements DriverInterface {
 
   @override
   List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA'];
+
+  @override
+  String getAddRecordTitle() => '添加DNS记录';
+
+  @override
+  String getEditRecordTitle() => '编辑DNS记录';
+
+  @override
+  bool supportsRecordLine() => false;
+
+  @override
+  List<DnsRecordField> getAddRecordFields() {
+    return [
+      const DnsRecordField(
+        key: 'name',
+        label: '记录名称',
+        hintText: '例如: www 或 @',
+      ),
+      const DnsRecordField(
+        key: 'content',
+        label: '记录值',
+        hintText: '例如: 192.168.1.1',
+        keyboardType: TextInputType.number,
+      ),
+      const DnsRecordField(
+        key: 'ttl',
+        label: 'TTL (秒)',
+        hintText: '3600 = 1小时',
+        keyboardType: TextInputType.number,
+        initialValue: '3600',
+      ),
+    ];
+  }
+
+  @override
+  List<DnsRecordField> getEditRecordFields(Map<String, dynamic> recordData) {
+    return [
+      DnsRecordField(
+        key: 'name',
+        label: '记录名称',
+        hintText: '例如: www 或 @',
+        initialValue: recordData['name']?.toString() ?? '',
+      ),
+      DnsRecordField(
+        key: 'content',
+        label: '记录值',
+        hintText: '例如: 192.168.1.1',
+        initialValue: recordData['content']?.toString() ?? '',
+      ),
+      DnsRecordField(
+        key: 'ttl',
+        label: 'TTL (秒)',
+        hintText: '3600 = 1小时',
+        keyboardType: TextInputType.number,
+        initialValue: (recordData['ttl'] ?? 3600).toString(),
+      ),
+    ];
+  }
+
+  @override
+  Map<String, dynamic> prepareRecordData({
+    required Map<String, String> fieldValues,
+    required String recordType,
+    bool isEdit = false,
+  }) {
+    final data = <String, dynamic>{
+      'type': recordType,
+      'name': fieldValues['name'] ?? '',
+      'content': fieldValues['content'] ?? '',
+      'ttl': int.tryParse(fieldValues['ttl'] ?? '3600') ?? 3600,
+    };
+
+    if (recordType == 'MX' || recordType == 'SRV') {
+      data['priority'] = int.tryParse(fieldValues['priority'] ?? '10') ?? 10;
+    }
+
+    if (supportsProxy) {
+      data['proxied'] = fieldValues['proxied'] == 'true';
+    }
+
+    return data;
+  }
 }

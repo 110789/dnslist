@@ -268,4 +268,91 @@ class RainyunDriver implements DriverInterface {
 
   @override
   List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV'];
+
+  @override
+  String getAddRecordTitle() => '添加DNS记录';
+
+  @override
+  String getEditRecordTitle() => '编辑DNS记录';
+
+  @override
+  bool supportsRecordLine() => true;
+
+  @override
+  List<DnsRecordField> getAddRecordFields() {
+    return [
+      const DnsRecordField(
+        key: 'host',
+        label: '主机记录',
+        hintText: '例如: www 或 @',
+      ),
+      const DnsRecordField(
+        key: 'value',
+        label: '记录值',
+        hintText: '例如: 192.168.1.1',
+      ),
+      const DnsRecordField(
+        key: 'ttl',
+        label: 'TTL (秒)',
+        hintText: '600 = 10分钟',
+        keyboardType: TextInputType.number,
+        initialValue: '600',
+      ),
+    ];
+  }
+
+  @override
+  List<DnsRecordField> getEditRecordFields(Map<String, dynamic> recordData) {
+    return [
+      DnsRecordField(
+        key: 'host',
+        label: '主机记录',
+        hintText: '例如: www 或 @',
+        initialValue: recordData['host']?.toString() ?? recordData['name']?.toString() ?? '',
+      ),
+      DnsRecordField(
+        key: 'value',
+        label: '记录值',
+        hintText: '例如: 192.168.1.1',
+        initialValue: recordData['value']?.toString() ?? recordData['content']?.toString() ?? '',
+      ),
+      DnsRecordField(
+        key: 'ttl',
+        label: 'TTL (秒)',
+        hintText: '600 = 10分钟',
+        keyboardType: TextInputType.number,
+        initialValue: (recordData['ttl'] ?? 600).toString(),
+      ),
+      DnsRecordField(
+        key: 'line',
+        label: '记录线路',
+        hintText: 'DEFAULT',
+        initialValue: recordData['line']?.toString() ?? 'DEFAULT',
+      ),
+    ];
+  }
+
+  @override
+  Map<String, dynamic> prepareRecordData({
+    required Map<String, String> fieldValues,
+    required String recordType,
+    bool isEdit = false,
+  }) {
+    final data = <String, dynamic>{
+      'type': recordType,
+      'host': fieldValues['host'] ?? '',
+      'value': fieldValues['value'] ?? '',
+      'ttl': int.tryParse(fieldValues['ttl'] ?? '600') ?? 600,
+    };
+
+    if (recordType == 'MX' || recordType == 'SRV') {
+      data['priority'] = int.tryParse(fieldValues['priority'] ?? '10') ?? 10;
+    }
+
+    if (supportsRecordLine()) {
+      data['line'] = fieldValues['line'] ?? 'DEFAULT';
+    }
+
+    return data;
+  }
 }

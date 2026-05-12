@@ -17,6 +17,26 @@ class AddDomainField {
   });
 }
 
+class DnsRecordField {
+  final String key;
+  final String label;
+  final String hintText;
+  final String? description;
+  final bool required;
+  final TextInputType keyboardType;
+  final String? initialValue;
+
+  const DnsRecordField({
+    required this.key,
+    required this.label,
+    required this.hintText,
+    this.description,
+    this.required = true,
+    this.keyboardType = TextInputType.text,
+    this.initialValue,
+  });
+}
+
 abstract class DriverInterface {
   String get providerId;
   String get providerName;
@@ -99,4 +119,20 @@ abstract class DriverInterface {
     required bool supportsRenew,
     required bool supportsShowNameServers,
   });
+
+  List<DnsRecordField> getAddRecordFields();
+
+  List<DnsRecordField> getEditRecordFields(Map<String, dynamic> recordData);
+
+  Map<String, dynamic> prepareRecordData({
+    required Map<String, String> fieldValues,
+    required String recordType,
+    bool isEdit = false,
+  });
+
+  String getAddRecordTitle();
+
+  String getEditRecordTitle();
+
+  bool supportsRecordLine();
 }
