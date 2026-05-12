@@ -1148,13 +1148,16 @@ class DnsBottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _DragHandle(color: colorScheme.onSurfaceVariant),
           if (title != null)
-            _TitleRow(title: title!),
+            Padding(
+              padding: const EdgeInsets.only(top: DnsSpacing.md),
+              child: _TitleRow(title: title!),
+            ),
           Flexible(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
               padding: EdgeInsets.only(
+                top: title == null ? DnsSpacing.md : DnsSpacing.sm,
                 bottom: footer != null ? 0 : (bottomPadding + DnsSpacing.md),
               ),
               child: Column(
@@ -1174,30 +1177,6 @@ class DnsBottomSheet extends StatelessWidget {
   }
 }
 
-class _DragHandle extends StatelessWidget {
-  final Color color;
-
-  const _DragHandle({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.only(top: DnsSpacing.sm, bottom: DnsSpacing.sm),
-      child: Center(
-        child: Container(
-          width: 32,
-          height: 4,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _TitleRow extends StatelessWidget {
   final String title;
 
@@ -1209,12 +1188,7 @@ class _TitleRow extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(
-        DnsSpacing.md,
-        DnsSpacing.md,
-        DnsSpacing.md,
-        DnsSpacing.sm,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: DnsSpacing.md),
       child: Text(
         title,
         textAlign: TextAlign.center,
