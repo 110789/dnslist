@@ -19,22 +19,21 @@ class DigitalplatZone {
 
       final result = DigitalplatParser.parseResponse(response.data);
       if (result['success'] == true) {
-        final data = result['data'];
-        final domainList = data is List ? data : [];
-        final meta = response.data is Map ? response.data['meta'] as Map? : {};
-        final pagination = meta?['pagination'] as Map? ?? {};
-        final total = pagination['total'] ?? domainList.length;
+        final responseData = response.data as Map<String, dynamic>;
+        final dataList = responseData['data'] as List<dynamic>? ?? [];
+        final meta = responseData['meta'] as Map<String, dynamic>? ?? {};
+        final count = meta['count'] as int? ?? dataList.length;
 
         return {
-          'domains': domainList.map(_parseDomain).toList(),
+          'domains': dataList.map((item) => _parseDomain(item as Map<String, dynamic>)).toList(),
           'pagination': {
-            'total': total,
+            'total': count,
             'page': page,
             'per_page': pageSize,
           },
           'success': true,
           'statusCode': 'OK',
-          'total': total,
+          'total': count,
           'page': page,
           'pageSize': pageSize,
         };
@@ -173,14 +172,14 @@ class DigitalplatZone {
     }
 
     return {
-      'id': domain['name']?.toString() ?? '',
-      'domain_id': domain['name']?.toString() ?? '',
-      'name': domain['name']?.toString() ?? '',
-      'domain': domain['name']?.toString() ?? '',
+      'id': domain['domain']?.toString() ?? '',
+      'domain_id': domain['domain']?.toString() ?? '',
+      'name': domain['domain']?.toString() ?? '',
+      'domain': domain['domain']?.toString() ?? '',
       'status': domain['status']?.toString() ?? 'unknown',
       'slot_type': domain['slot_type']?.toString() ?? '',
       'lifecycle_type': domain['lifecycle_type']?.toString() ?? '',
-      'expires_at': domain['expiry_date']?.toString() ?? '',
+      'expires_at': domain['expires_at']?.toString() ?? '',
       'created_at': domain['created_at']?.toString() ?? '',
       'nameservers': domain['nameservers'] as List? ?? [],
       'registrant': domain['registrant']?.toString() ?? '',
