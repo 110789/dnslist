@@ -14,6 +14,9 @@ import 'services/credential_storage.dart';
 import 'services/credential_state.dart';
 import 'services/new_domain_state.dart';
 import 'utils/storage/local_storage.dart';
+import 'database/database.dart';
+import 'database/repositories/credential_repository.dart';
+import 'database/repositories/user_preferences_repository.dart';
 
 void _globalErrorHandler(FlutterErrorDetails details) {
   developer.log(
@@ -61,6 +64,15 @@ Future<void> _safeDriverInit() async {
   }
 }
 
+Future<void> _initDatabase() async {
+  await DatabaseInitService.initialize();
+  final storage = LocalStorage.instance;
+  final needsMigration = storage.getString('_db_version') == null;
+  if (needsMigration) {
+    await DatabaseInitService.runMigration();
+  }
+}
+
 Future<void> _initServiceRegistry() async {
   final localStorage = LocalStorage.instance;
   await localStorage.init();
@@ -103,6 +115,8 @@ void main() async {
     await LocalStorage.instance.init();
   });
 
+  await _safeInit('Database', _initDatabase);
+
   await _safeInit('ServiceRegistry', _initServiceRegistry);
 
   await _safeDriverInit();
@@ -120,10 +134,15 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final credentialStorage = CredentialStorage(LocalStorage.instance);
+    final credentialRepository = CredentialRepository();
+    final userPrefsRepository = UserPreferencesRepository();
+    final credentialStorage = CredentialStorage(
+      LocalStorage.instance,
+      repository: credentialRepository,
+    );
     final credentialState = CredentialState(credentialStorage);
     final domainState = NewDomainState();
-    final themeProvider = ThemeProvider();
+    final themeProvider = ThemeProvider(repository: userPrefsRepository);
 
     credentialState.loadCredentials();
 

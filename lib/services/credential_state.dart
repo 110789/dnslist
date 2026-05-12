@@ -27,7 +27,7 @@ class CredentialState extends ChangeNotifier {
 
   Future<void> loadCredentials() async {
     _credentials = await _storage.loadAll();
-    _selectedCredentialId = _storage.getSelectedId();
+    _selectedCredentialId = await _storage.getSelectedIdAsync();
     if (_credentials.isNotEmpty && _selectedCredentialId == null) {
       final sorted = List<CredentialModel>.from(_credentials);
       sorted.sort((a, b) => a.order.compareTo(b.order));

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import '../theme/app_theme.dart';
 import '../../utils/storage/local_storage.dart';
+import '../../database/repositories/user_preferences_repository.dart';
 
 enum UIStyle { md3, cupertino }
 
@@ -11,8 +12,10 @@ class ThemeProvider extends ChangeNotifier {
   static const _keyUIStyle = 'ui_style';
   static const _keyDarkMode = 'app_dark_mode';
 
+  final UserPreferencesRepository? _repository;
   UIStyle _uiStyle = UIStyle.md3;
   DarkModeOption _darkMode = DarkModeOption.system;
+  bool _useSQLite = false;
 
   UIStyle get uiStyle => _uiStyle;
   DarkModeOption get darkMode => _darkMode;
@@ -28,31 +31,54 @@ class ThemeProvider extends ChangeNotifier {
     }
   }
 
-  ThemeProvider() {
+  ThemeProvider({UserPreferencesRepository? repository}) : _repository = repository {
+    _useSQLite = _repository != null;
     _loadSettings();
   }
 
   Future<void> _loadSettings() async {
-    final storage = LocalStorage.instance;
-    final styleStr = storage.getString(_keyUIStyle);
-    final darkStr = storage.getString(_keyDarkMode);
+    if (_useSQLite && _repository != null) {
+      final styleStr = await _repository!.getString(_keyUIStyle);
+      final darkStr = await _repository!.getString(_keyDarkMode);
 
-    if (styleStr != null) {
-      _uiStyle = styleStr == 'cupertino' ? UIStyle.cupertino : UIStyle.md3;
-    }
-    if (darkStr != null) {
-      _darkMode = darkStr == 'dark'
-          ? DarkModeOption.dark
-          : darkStr == 'light'
-              ? DarkModeOption.light
-              : DarkModeOption.system;
+      if (styleStr != null) {
+        _uiStyle = styleStr == 'cupertino' ? UIStyle.cupertino : UIStyle.md3;
+      }
+      if (darkStr != null) {
+        _darkMode = darkStr == 'dark'
+            ? DarkModeOption.dark
+            : darkStr == 'light'
+                ? DarkModeOption.light
+                : DarkModeOption.system;
+      }
+    } else {
+      final storage = LocalStorage.instance;
+      final styleStr = storage.getString(_keyUIStyle);
+      final darkStr = storage.getString(_keyDarkMode);
+
+      if (styleStr != null) {
+        _uiStyle = styleStr == 'cupertino' ? UIStyle.cupertino : UIStyle.md3;
+      }
+      if (darkStr != null) {
+        _darkMode = darkStr == 'dark'
+            ? DarkModeOption.dark
+            : darkStr == 'light'
+                ? DarkModeOption.light
+                : DarkModeOption.system;
+      }
     }
     notifyListeners();
   }
 
   Future<void> setUIStyle(UIStyle style) async {
     _uiStyle = style;
-    await LocalStorage.instance.setString(_keyUIStyle, style == UIStyle.cupertino ? 'cupertino' : 'md3');
+    final value = style == UIStyle.cupertino ? 'cupertino' : 'md3';
+
+    if (_useSQLite && _repository != null) {
+      await _repository!.setString(_keyUIStyle, value);
+    } else {
+      await LocalStorage.instance.setString(_keyUIStyle, value);
+    }
     notifyListeners();
   }
 
@@ -64,7 +90,12 @@ class ThemeProvider extends ChangeNotifier {
       case DarkModeOption.dark: modeStr = 'dark'; break;
       case DarkModeOption.system: modeStr = 'system'; break;
     }
-    await LocalStorage.instance.setString(_keyDarkMode, modeStr);
+
+    if (_useSQLite && _repository != null) {
+      await _repository!.setString(_keyDarkMode, modeStr);
+    } else {
+      await LocalStorage.instance.setString(_keyDarkMode, modeStr);
+    }
     notifyListeners();
   }
 
