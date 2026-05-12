@@ -1123,6 +1123,7 @@ class DnsBottomSheet extends StatelessWidget {
     return showModalBottomSheet<T>(
       context: context,
       backgroundColor: Colors.transparent,
+      isScrollControlled: true,
       builder: (ctx) => DnsBottomSheet(
         title: title,
         children: children,
@@ -1135,28 +1136,36 @@ class DnsBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (title != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                DnsSpacing.md,
-                DnsSpacing.sm,
-                DnsSpacing.md,
-                DnsSpacing.sm,
-              ),
-              child: Text(
-                title!,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+    return Container(
+      decoration: BoxDecoration(
+        color: colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(DnsRadius.xl),
+        ),
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (title != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  DnsSpacing.md,
+                  DnsSpacing.sm,
+                  DnsSpacing.md,
+                  DnsSpacing.sm,
+                ),
+                child: Text(
+                  title!,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-          ...children,
-          if (footer != null) footer!,
-        ],
+            ...children,
+            if (footer != null) footer!,
+          ],
+        ),
       ),
     );
   }
