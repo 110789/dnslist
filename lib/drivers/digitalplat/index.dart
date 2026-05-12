@@ -260,7 +260,55 @@ class DigitalplatDriver implements DriverInterface {
     required VoidCallback onRenew,
     required bool supportsDelete,
     required bool supportsRenew,
-  }) => const SizedBox.shrink();
+  }) {
+    final nameservers = domainData['nameservers'] as List? ?? [];
+    final nameserversStr = nameservers.isNotEmpty 
+        ? nameservers.join(', ') 
+        : '无';
+
+    return InkWell(
+      onTap: () {},
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: DriverUiTokens.horizontalPadding,
+          vertical: DriverUiTokens.verticalPadding,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    domainData['domain']?.toString() ?? '',
+                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                  ),
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      Text(
+                        'DNS: ',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                      Expanded(
+                        child: Text(
+                          nameserversStr,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget buildDnsRecordListItem(Map<String, dynamic> recordData) {
