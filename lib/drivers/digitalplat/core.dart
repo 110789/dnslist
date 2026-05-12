@@ -34,9 +34,9 @@ class DigitalplatCore {
     return null;
   }
 
-  static Map<String, dynamic>? extractData(Map<String, dynamic> data) {
+  static dynamic extractData(Map<String, dynamic> data) {
     if (data.containsKey('data')) {
-      return Map<String, dynamic>.from(data['data']);
+      return data['data'];
     }
     return null;
   }
