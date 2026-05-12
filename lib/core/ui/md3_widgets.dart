@@ -1148,11 +1148,9 @@ class DnsBottomSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          _DragHandle(color: colorScheme.onSurfaceVariant),
           if (title != null)
-            Padding(
-              padding: const EdgeInsets.only(top: DnsSpacing.md),
-              child: _TitleRow(title: title!),
-            ),
+            _TitleRow(title: title!),
           Flexible(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),
@@ -1172,6 +1170,30 @@ class DnsBottomSheet extends StatelessWidget {
               child: footer,
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _DragHandle extends StatelessWidget {
+  final Color color;
+
+  const _DragHandle({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(top: DnsSpacing.sm, bottom: DnsSpacing.md),
+      child: Center(
+        child: Container(
+          width: 32,
+          height: 4,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
       ),
     );
   }
