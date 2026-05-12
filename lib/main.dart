@@ -143,10 +143,9 @@ class MyApp extends StatelessWidget {
       repository: credentialRepository,
     );
     final credentialState = CredentialState(credentialStorage);
+    credentialState.init();
     final domainState = NewDomainState();
     final themeProvider = ThemeProvider(repository: userPrefsRepository);
-
-    credentialState.loadCredentials();
 
     return MultiProvider(
       providers: [
