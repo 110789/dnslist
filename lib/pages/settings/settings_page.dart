@@ -104,8 +104,8 @@ class SettingsPage extends StatelessWidget {
 
   String _getDarkModeLabel(DarkModeOption mode) {
     switch (mode) {
-      case DarkModeOption.light: return '浅色';
-      case DarkModeOption.dark: return '深色';
+      case DarkModeOption.light: return '日间模式';
+      case DarkModeOption.dark: return '夜间模式';
       case DarkModeOption.system: return '跟随系统';
     }
   }

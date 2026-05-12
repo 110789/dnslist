@@ -1012,18 +1012,19 @@ class _CredentialDialogState extends State<_CredentialDialog> {
               const SizedBox(height: 12),
             ],
             if (isEditing) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(DnsRadius.md),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.cloud, size: 20, color: colorScheme.primary),
-                    const SizedBox(width: 8),
-                    Text(widget.credential!.providerName),
-                  ],
+              IgnorePointer(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedProviderId,
+                  decoration: InputDecoration(
+                    labelText: '选择服务商',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(DnsRadius.md),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                  isExpanded: true,
+                  items: drivers.map((d) => DropdownMenuItem(value: d.providerId, child: Text(d.providerName))).toList(),
+                  onChanged: null,
                 ),
               ),
               const SizedBox(height: 12),
