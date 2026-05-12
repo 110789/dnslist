@@ -111,7 +111,7 @@ class NewDomainState extends ChangeNotifier {
       final valid = await driver.validateCredential(credentials);
       if (!valid) {
         return RefreshResult.fail(
-          error: driver.mapErrorCode('AUTH_FAILED'),
+          error: '凭证验证失败，请检查 Token 是否正确',
           errorCode: 'AUTH_FAILED',
         );
       }
