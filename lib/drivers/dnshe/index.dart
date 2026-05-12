@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
 import '../../utils/driver/driver_utils.dart';
+import '../../utils/toast_util.dart';
 import 'core.dart';
 import 'parser.dart';
 import 'zone.dart';
@@ -506,8 +507,6 @@ class DnsheDriver implements DriverInterface {
     final fieldControllers = <String, TextEditingController>{};
     final fieldValues = <String, String>{};
     bool isSubmitting = false;
-    bool hasError = false;
-    String? errorMessage;
 
     void initControllers(List<DnsRecordField> fields) {
       fieldControllers.clear();
@@ -525,7 +524,6 @@ class DnsheDriver implements DriverInterface {
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           final fields = getAddRecordFieldsForType(selectedType);
-          final colorScheme = Theme.of(dialogContext).colorScheme;
 
           return AlertDialog(
             title: Text(getAddRecordTitle()),
@@ -557,19 +555,11 @@ class DnsheDriver implements DriverInterface {
                           labelText: field.label,
                           hintText: field.hintText,
                         ),
-                        keyboardType: field.keyboardType,
+keyboardType: field.keyboardType,
                         onChanged: (v) => fieldValues[field.key] = v,
                       ),
                     );
                   }),
-                  if (hasError && errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        errorMessage!,
-                        style: TextStyle(color: colorScheme.error, fontSize: 12),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -582,17 +572,12 @@ class DnsheDriver implements DriverInterface {
                 onPressed: isSubmitting ? null : () async {
                   final content = fieldValues['content'] ?? '';
                   if (content.isEmpty) {
-                    setDialogState(() {
-                      hasError = true;
-                      errorMessage = '记录值不能为空';
-                    });
+                    ToastUtil.showError(dialogContext, '记录值不能为空');
                     return;
                   }
 
                   setDialogState(() {
                     isSubmitting = true;
-                    hasError = false;
-                    errorMessage = null;
                   });
 
                   final recordData = prepareRecordDataForSubmit(
@@ -608,9 +593,14 @@ class DnsheDriver implements DriverInterface {
                     } else {
                       setDialogState(() {
                         isSubmitting = false;
-                        hasError = true;
-                        errorMessage = result['error']?.toString() ?? '添加失败';
                       });
+                      if (dialogContext.mounted) {
+                        ToastUtil.showError(
+                          dialogContext,
+                          result['error']?.toString() ?? '添加失败',
+                          errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null,
+                        );
+                      }
                     }
                   }
                 },
@@ -625,7 +615,7 @@ class DnsheDriver implements DriverInterface {
     );
   }
 
-void showEditRecordDialog(
+  void showEditRecordDialog(
     BuildContext context,
     Map<String, dynamic> record, {
     required Future<Map<String, dynamic>> Function(Map<String, dynamic> recordData) onSubmit,
@@ -634,8 +624,6 @@ void showEditRecordDialog(
     final fieldControllers = <String, TextEditingController>{};
     final fieldValues = <String, String>{};
     bool isSubmitting = false;
-    bool hasError = false;
-    String? errorMessage;
 
     void initControllers(List<DnsRecordField> fields) {
       fieldControllers.clear();
@@ -653,7 +641,6 @@ void showEditRecordDialog(
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           final fields = getEditRecordFieldsForType(record, selectedType);
-          final colorScheme = Theme.of(dialogContext).colorScheme;
 
           return AlertDialog(
             title: Text(getEditRecordTitle()),
@@ -690,14 +677,6 @@ void showEditRecordDialog(
                       ),
                     );
                   }),
-                  if (hasError && errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        errorMessage!,
-                        style: TextStyle(color: colorScheme.error, fontSize: 12),
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -710,17 +689,12 @@ void showEditRecordDialog(
                 onPressed: isSubmitting ? null : () async {
                   final content = fieldValues['content'] ?? '';
                   if (content.isEmpty) {
-                    setDialogState(() {
-                      hasError = true;
-                      errorMessage = '记录值不能为空';
-                    });
+                    ToastUtil.showError(dialogContext, '记录值不能为空');
                     return;
                   }
 
                   setDialogState(() {
                     isSubmitting = true;
-                    hasError = false;
-                    errorMessage = null;
                   });
 
                   final recordData = prepareRecordDataForSubmit(
@@ -736,9 +710,14 @@ void showEditRecordDialog(
                     } else {
                       setDialogState(() {
                         isSubmitting = false;
-                        hasError = true;
-                        errorMessage = result['error']?.toString() ?? '保存失败';
                       });
+                      if (dialogContext.mounted) {
+                        ToastUtil.showError(
+                          dialogContext,
+                          result['error']?.toString() ?? '保存失败',
+                          errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null,
+                        );
+                      }
                     }
                   }
                 },
@@ -750,7 +729,7 @@ void showEditRecordDialog(
           );
         },
       ),
-);
+    );
   }
 
   void showDeleteConfirmDialog(
@@ -760,8 +739,6 @@ void showEditRecordDialog(
   }) {
     final name = record['name']?.toString() ?? '';
     bool isDeleting = false;
-    bool hasError = false;
-    String? errorMessage;
 
     showDialog(
       context: context,
@@ -771,20 +748,7 @@ void showEditRecordDialog(
 
           return AlertDialog(
             title: const Text('删除记录'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('确定要删除 "$name" 吗？此操作无法撤销。'),
-                if (hasError && errorMessage != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    errorMessage!,
-                    style: TextStyle(color: colorScheme.error, fontSize: 12),
-                  ),
-                ],
-              ],
-            ),
+            content: Text('确定要删除 "$name" 吗？此操作无法撤销。'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
@@ -798,8 +762,6 @@ void showEditRecordDialog(
                 onPressed: isDeleting ? null : () async {
                   setDialogState(() {
                     isDeleting = true;
-                    hasError = false;
-                    errorMessage = null;
                   });
 
                   final result = await onConfirm();
@@ -810,9 +772,14 @@ void showEditRecordDialog(
                     } else {
                       setDialogState(() {
                         isDeleting = false;
-                        hasError = true;
-                        errorMessage = result['error']?.toString() ?? '删除失败';
                       });
+                      if (dialogContext.mounted) {
+                        ToastUtil.showError(
+                          dialogContext,
+                          result['error']?.toString() ?? '删除失败',
+                          errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null,
+                        );
+                      }
                     }
                   }
                 },

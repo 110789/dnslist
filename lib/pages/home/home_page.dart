@@ -362,12 +362,18 @@ class _HomePageState extends State<HomePage> {
                   if (hasError)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        '请填写所有必填项',
-                        style: TextStyle(
-                          color: Theme.of(dialogContext).colorScheme.error,
-                          fontSize: 12,
-                        ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.warning_amber, size: 16, color: Theme.of(dialogContext).colorScheme.error),
+                          const SizedBox(width: 4),
+                          Text(
+                            '请填写所有必填项',
+                            style: TextStyle(
+                              color: Theme.of(dialogContext).colorScheme.error,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                 ],
@@ -606,17 +612,18 @@ class _HomePageState extends State<HomePage> {
         onSave: (credential) async {
           final credentialState = context.read<CredentialState>();
           await credentialState.addCredential(credential);
+          ToastUtil.showSuccess(context, '添加凭证成功');
+          Navigator.pop(ctx);
+          await Future.delayed(const Duration(milliseconds: 300));
           if (context.mounted) {
             final newSelected = credentialState.selectedCredential;
             if (newSelected != null) {
-              await RefreshHelper.refreshDomainListPassiveWithCredential(
+              RefreshHelper.refreshDomainListPassiveWithCredential(
                 context,
                 providerId: newSelected.providerId,
                 credentials: newSelected.credentials,
               );
             }
-            ToastUtil.showSuccess(context, '添加凭证成功');
-            Navigator.pop(ctx);
           }
         },
       ),
@@ -633,16 +640,15 @@ class _HomePageState extends State<HomePage> {
           final credentialState = context.read<CredentialState>();
           final selected = credentialState.selectedCredential;
           await credentialState.updateCredential(updatedCredential);
-          if (context.mounted) {
-            if (selected != null && selected.id == updatedCredential.id) {
-              await RefreshHelper.refreshDomainListPassiveWithCredential(
-                context,
-                providerId: updatedCredential.providerId,
-                credentials: updatedCredential.credentials,
-              );
-            }
-            ToastUtil.showSuccess(context, '更新凭证成功');
-            Navigator.pop(ctx);
+          ToastUtil.showSuccess(context, '更新凭证成功');
+          Navigator.pop(ctx);
+          await Future.delayed(const Duration(milliseconds: 300));
+          if (context.mounted && selected != null && selected.id == updatedCredential.id) {
+            RefreshHelper.refreshDomainListPassiveWithCredential(
+              context,
+              providerId: updatedCredential.providerId,
+              credentials: updatedCredential.credentials,
+            );
           }
         },
       ),
