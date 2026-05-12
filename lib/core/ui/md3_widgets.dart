@@ -1163,7 +1163,10 @@ class DnsBottomSheet extends StatelessWidget {
                 ),
               ),
             ...children,
-            if (footer != null) footer!,
+            if (footer != null)
+              footer!
+            else
+              const SizedBox(height: DnsSpacing.md),
           ],
         ),
       ),

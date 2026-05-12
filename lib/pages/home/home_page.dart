@@ -561,52 +561,40 @@ class _HomePageState extends State<HomePage> {
     CredentialState credentialState,
     NewDomainState domainState,
   ) {
-    showModalBottomSheet(
+    DnsBottomSheet.show(
       context: ctx,
-      builder: (sheetCtx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(DnsSpacing.md, DnsSpacing.sm, DnsSpacing.md, DnsSpacing.sm),
-              child: Text(
-                credential.providerName,
-                style: Theme.of(sheetCtx).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-            ListTile(
-              leading: Icon(Icons.check_circle, color: Theme.of(sheetCtx).colorScheme.primary),
-              title: const Text('选择此凭证'),
-              onTap: () async {
-                Navigator.pop(sheetCtx);
-                credentialState.selectCredential(credential.id);
-                await RefreshHelper.refreshDomainListPassiveWithCredential(
-                  context,
-                  providerId: credential.providerId,
-                  credentials: credential.credentials,
-                );
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.edit, color: Theme.of(sheetCtx).colorScheme.primary),
-              title: const Text('编辑凭证'),
-              onTap: () {
-                Navigator.pop(sheetCtx);
-                _showEditCredentialDialog(context, credential);
-              },
-            ),
-            ListTile(
-              leading: Icon(Icons.delete, color: Theme.of(sheetCtx).colorScheme.error),
-              title: Text('删除凭证', style: TextStyle(color: Theme.of(sheetCtx).colorScheme.error)),
-              onTap: () {
-                Navigator.pop(sheetCtx);
-                _showDeleteCredentialDialog(context, credential, credentialState);
-              },
-            ),
-            const SizedBox(height: DnsSpacing.md),
-          ],
+      title: credential.providerName,
+      children: [
+        ListTile(
+          leading: Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary),
+          title: const Text('选择此凭证'),
+          onTap: () async {
+            Navigator.pop(ctx);
+            credentialState.selectCredential(credential.id);
+            await RefreshHelper.refreshDomainListPassiveWithCredential(
+              context,
+              providerId: credential.providerId,
+              credentials: credential.credentials,
+            );
+          },
         ),
-      ),
+        ListTile(
+          leading: Icon(Icons.edit, color: Theme.of(ctx).colorScheme.primary),
+          title: const Text('编辑凭证'),
+          onTap: () {
+            Navigator.pop(ctx);
+            _showEditCredentialDialog(context, credential);
+          },
+        ),
+        ListTile(
+          leading: Icon(Icons.delete, color: Theme.of(ctx).colorScheme.error),
+          title: Text('删除凭证', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+          onTap: () {
+            Navigator.pop(ctx);
+            _showDeleteCredentialDialog(context, credential, credentialState);
+          },
+        ),
+      ],
     );
   }
 
