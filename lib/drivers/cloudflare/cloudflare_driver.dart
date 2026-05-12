@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
 import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
@@ -9,43 +8,10 @@ class CloudflareDriver implements DriverInterface {
   static const String _providerId = 'cloudflare';
   static const String _providerName = 'Cloudflare';
   static const String _providerIcon = 'assets/icons/cloudflare.svg';
+  static const String _genericErrorMessage = '操作失败请稍后尝试';
 
   ApiClient? _client;
   String? _apiToken;
-
-  static const Map<String, String> _errorCodeMap = {
-    '1000': '认证失败，请检查 API Token 是否正确',
-    '1001': '资源不存在',
-    '1002': '请求参数验证失败',
-    '1003': '操作失败，请稍后重试',
-    '1004': '请求频率超限，请稍后重试',
-    '1005': '资源已存在',
-    '7000': '区域不存在',
-    '7001': '区域已存在',
-    '7003': '区域不可用',
-    '7004': '区域正在删除中',
-    '7005': '无法删除区域，域名可能仍在使用中',
-    '7006': '域名已暂停，请先恢复后再试',
-    '9100': '权限不足，缺少必要权限',
-    '9101': '权限不足，无法访问此资源',
-    '9109': '未授权访问请求的资源',
-    '9200': '账户被暂停',
-    '9203': '账户余额不足',
-    '9204': '账户存在未完成订单',
-    '9206': '账户已被冻结',
-    '10000': 'DNS 记录已存在',
-    '10001': 'DNS 记录不存在',
-    '10002': 'DNS 记录类型不匹配',
-    '10003': 'CNAME 记录冲突，A/AAAA 记录无法与 CNAME 共存',
-    '10004': 'NS 记录不能与其他记录类型共存',
-    '10005': '记录名称格式不正确',
-    '10006': '记录内容格式不正确',
-    '10200': '账户问题导致操作被阻止',
-    '10201': '此操作需要付费升级后才能使用',
-    '10202': '域名已被其他账户认领',
-    '20000': '分页参数超出范围',
-    '20001': '每页数量超出限制',
-  };
 
   @override
   String get providerId => _providerId;
@@ -58,30 +24,7 @@ class CloudflareDriver implements DriverInterface {
 
   @override
   String mapErrorCode(String code) {
-    return _errorCodeMap[code] ?? _getGenericErrorMessage(code);
-  }
-
-  String _getGenericErrorMessage(String code) {
-    final codeInt = int.tryParse(code) ?? 0;
-    if (codeInt >= 1000 && codeInt < 2000) {
-      return '认证或权限相关错误，请检查 API Token 权限设置';
-    }
-    if (codeInt >= 7000 && codeInt < 8000) {
-      return '域名区域相关错误，请检查域名状态';
-    }
-    if (codeInt >= 9100 && codeInt < 9200) {
-      return '权限不足，请联系账户管理员授权';
-    }
-    if (codeInt >= 9200 && codeInt < 9300) {
-      return '账户状态异常，请检查账户信息';
-    }
-    if (codeInt >= 10000 && codeInt < 10100) {
-      return 'DNS 记录相关错误，请检查记录配置';
-    }
-    if (codeInt >= 20000) {
-      return '分页或查询参数错误';
-    }
-    return '操作失败，请稍后重试';
+    return _genericErrorMessage;
   }
 
   @override
@@ -107,27 +50,7 @@ class CloudflareDriver implements DriverInterface {
   }
 
   Map<String, dynamic> _parseError(dynamic responseData) {
-    if (responseData == null) {
-      return {'error': '服务器无响应，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
-    }
-    final data = responseData is Map ? responseData : {};
-    final errors = data['errors'] as List?;
-    if (errors != null && errors.isNotEmpty) {
-      final error = errors[0] as Map?;
-      final code = error?['code']?.toString() ?? 'UNKNOWN';
-      final rawMessage = error?['message']?.toString() ?? '';
-      final mappedMessage = _errorCodeMap[code];
-      if (mappedMessage != null) {
-        return {'error': mappedMessage, 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
-      }
-      return {'error': rawMessage.isNotEmpty ? rawMessage : '操作失败，请稍后重试', 'errorCode': code, 'success': false, 'rawMessage': rawMessage};
-    }
-    final messages = data['messages'] as List?;
-    if (messages != null && messages.isNotEmpty) {
-      final message = (messages[0] as Map?)?['message']?.toString() ?? '操作失败';
-      return {'error': message, 'errorCode': 'API_MESSAGE', 'success': false};
-    }
-    return {'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN', 'success': false};
+    return {'error': _genericErrorMessage, 'errorCode': 'CLOUDFLARE_ERROR', 'success': false};
   }
 
   ApiClient _getClient() {
@@ -158,7 +81,6 @@ class CloudflareDriver implements DriverInterface {
       );
       final response = await _client!.get('/user/tokens/verify');
       if (response.data['success'] == true) return true;
-      _parseError(response.data);
       return false;
     } catch (e) {
       _apiToken = null;
@@ -173,7 +95,7 @@ class CloudflareDriver implements DriverInterface {
     Map<String, String>? filters,
   }) async {
     if (_apiToken == null) {
-      return {'domains': [], 'pagination': {}, 'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+      return {'domains': [], 'pagination': {}, 'error': _genericErrorMessage, 'errorCode': 'AUTH_REQUIRED', 'success': false};
     }
     try {
       final queryParams = <String, dynamic>{
@@ -225,7 +147,7 @@ class CloudflareDriver implements DriverInterface {
       return {
         'domains': [],
         'pagination': {},
-        'error': _handleException(e),
+        'error': _genericErrorMessage,
         'errorCode': 'NETWORK_ERROR',
         'success': false
       };
@@ -240,7 +162,7 @@ class CloudflareDriver implements DriverInterface {
     Map<String, String>? filters,
   }) async {
     if (_client == null) {
-      return {'records': [], 'pagination': {}, 'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+      return {'records': [], 'pagination': {}, 'error': _genericErrorMessage, 'errorCode': 'AUTH_REQUIRED', 'success': false};
     }
     try {
       final queryParams = <String, dynamic>{
@@ -284,7 +206,7 @@ class CloudflareDriver implements DriverInterface {
       return {
         'records': [],
         'pagination': {},
-        'error': _handleException(e),
+        'error': _genericErrorMessage,
         'errorCode': 'NETWORK_ERROR',
         'success': false
       };
@@ -296,7 +218,7 @@ class CloudflareDriver implements DriverInterface {
     String domainId,
     Map<String, dynamic> recordData,
   ) async {
-    if (_client == null) return {'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+    if (_client == null) return {'error': _genericErrorMessage, 'errorCode': 'AUTH_REQUIRED', 'success': false};
     try {
       final preparedData = _prepareDnsRecordData(recordData);
       final response = await _getClient().post('/zones/$domainId/dns_records', data: preparedData);
@@ -305,7 +227,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(response.data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {'error': _genericErrorMessage, 'errorCode': 'NETWORK_ERROR', 'success': false};
     }
   }
 
@@ -315,7 +237,7 @@ class CloudflareDriver implements DriverInterface {
     String recordId,
     Map<String, dynamic> recordData,
   ) async {
-    if (_client == null) return {'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+    if (_client == null) return {'error': _genericErrorMessage, 'errorCode': 'AUTH_REQUIRED', 'success': false};
     try {
       final preparedData = _prepareDnsRecordData(recordData);
       final response = await _getClient().put('/zones/$domainId/dns_records/$recordId', data: preparedData);
@@ -324,7 +246,7 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(response.data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {'error': _genericErrorMessage, 'errorCode': 'NETWORK_ERROR', 'success': false};
     }
   }
 
@@ -344,28 +266,10 @@ class CloudflareDriver implements DriverInterface {
     return data;
   }
 
-  String _handleException(dynamic e) {
-    if (e is DioException) {
-      switch (e.type) {
-        case DioExceptionType.connectionTimeout:
-          return '连接超时，请检查网络后重试';
-        case DioExceptionType.receiveTimeout:
-          return '服务器响应超时，请稍后重试';
-        case DioExceptionType.sendTimeout:
-          return '请求发送超时，请稍后重试';
-        case DioExceptionType.connectionError:
-          return '网络连接失败，请检查网络设置';
-        default:
-          return '网络请求失败，请稍后重试';
-      }
-    }
-    return '操作失败，请稍后重试';
-  }
-
   @override
   Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId) async {
     if (_client == null) {
-      return {'success': false, 'error': '未初始化认证', 'errorCode': 'AUTH_REQUIRED'};
+      return {'success': false, 'error': _genericErrorMessage, 'errorCode': 'AUTH_REQUIRED'};
     }
     try {
       final response = await _getClient().delete('/zones/$domainId/dns_records/$recordId');
@@ -374,13 +278,13 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(response.data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {'error': _genericErrorMessage, 'errorCode': 'NETWORK_ERROR', 'success': false};
     }
   }
 
   @override
   Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData) async {
-    if (_client == null) return {'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+    if (_client == null) return {'error': _genericErrorMessage, 'errorCode': 'AUTH_REQUIRED', 'success': false};
     try {
       final preparedData = {
         'name': domainData['name']?.toString() ?? '',
@@ -407,17 +311,17 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(response.data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {'error': _genericErrorMessage, 'errorCode': 'NETWORK_ERROR', 'success': false};
     }
   }
 
   @override
   Future<Map<String, dynamic>> deleteDomain(String domainId) async {
     if (_client == null) {
-      return {'error': '未初始化认证，请先添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+      return {'error': _genericErrorMessage, 'errorCode': 'AUTH_REQUIRED', 'success': false};
     }
     if (domainId.isEmpty) {
-      return {'error': '域名标识无效', 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
+      return {'error': _genericErrorMessage, 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
     }
     try {
       final response = await _getClient().delete('/zones/$domainId');
@@ -426,13 +330,13 @@ class CloudflareDriver implements DriverInterface {
       }
       return _parseError(response.data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {'error': _genericErrorMessage, 'errorCode': 'NETWORK_ERROR', 'success': false};
     }
   }
 
   @override
   Future<Map<String, dynamic>> renewDomain(String domainId) async {
-    return {'error': 'Cloudflare domains are managed via account subscription, not API renewal', 'errorCode': 'NOT_SUPPORTED'};
+    return {'error': _genericErrorMessage, 'errorCode': 'NOT_SUPPORTED', 'success': false};
   }
 
   @override
