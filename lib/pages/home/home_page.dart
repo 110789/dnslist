@@ -1016,7 +1016,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
                 child: DropdownButtonFormField<String>(
                   value: _selectedProviderId,
                   decoration: InputDecoration(
-                    labelText: '选择服务商',
+                    labelText: '服务商',
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(DnsRadius.md),
                     ),
