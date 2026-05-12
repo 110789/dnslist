@@ -64,6 +64,8 @@ abstract class DriverInterface {
 
   bool get supportsShowNameServers;
 
+  bool get supportsProxy;
+
   Widget buildDomainListItem(
     Map<String, dynamic> domainData, {
     required VoidCallback onTap,

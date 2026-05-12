@@ -144,14 +144,16 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                       color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('代理（Proxied）'),
-                    subtitle: const Text('启用代理加速'),
-                    value: proxied,
-                    onChanged: (v) => setDialogState(() => proxied = v),
-                  ),
+                  if (driver.supportsProxy) ...[
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('代理（Proxied）'),
+                      subtitle: const Text('启用代理加速'),
+                      value: proxied,
+                      onChanged: (v) => setDialogState(() => proxied = v),
+                    ),
+                  ],
                   if (hasError)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
@@ -219,6 +221,8 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
 
   void _showEditRecordDialog(BuildContext context, String providerId, Map<String, dynamic> record) {
     final domainState = context.read<NewDomainState>();
+    final driver = DriverFactory.get(providerId);
+    final bool supportsProxy = driver?.supportsProxy ?? false;
     final nameController = TextEditingController(text: record['name'] ?? '');
     final contentController = TextEditingController(text: record['content'] ?? '');
     final priorityController = TextEditingController(text: (record['priority'] ?? 10).toString());
@@ -279,14 +283,16 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     keyboardType: TextInputType.number,
                     onChanged: (v) => ttl = int.tryParse(v) ?? 3600,
                   ),
-                  const SizedBox(height: 16),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('代理（Proxied）'),
-                    subtitle: const Text('启用代理加速'),
-                    value: proxied,
-                    onChanged: (v) => setDialogState(() => proxied = v),
-                  ),
+                  if (supportsProxy) ...[
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('代理（Proxied）'),
+                      subtitle: const Text('启用代理加速'),
+                      value: proxied,
+                      onChanged: (v) => setDialogState(() => proxied = v),
+                    ),
+                  ],
                 ],
               ),
             ),

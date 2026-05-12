@@ -232,6 +232,9 @@ class DnspodDriver implements DriverInterface {
   bool get supportsShowNameServers => false;
 
   @override
+  bool get supportsProxy => false;
+
+  @override
   Widget buildDomainListItem(
     Map<String, dynamic> domainData, {
     required VoidCallback onTap,

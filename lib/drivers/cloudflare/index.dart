@@ -176,6 +176,9 @@ class CloudflareDriver implements DriverInterface {
   bool get supportsShowNameServers => true;
 
   @override
+  bool get supportsProxy => true;
+
+  @override
   Widget buildDomainListItem(
     Map<String, dynamic> domainData, {
     required VoidCallback onTap,

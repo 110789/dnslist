@@ -182,6 +182,9 @@ class DnsheDriver implements DriverInterface {
   bool get supportsShowNameServers => false;
 
   @override
+  bool get supportsProxy => true;
+
+  @override
   Widget buildDomainListItem(
     Map<String, dynamic> domainData, {
     required VoidCallback onTap,
