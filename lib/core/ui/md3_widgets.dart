@@ -1183,7 +1183,7 @@ class _DragHandle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(top: DnsSpacing.sm, bottom: DnsSpacing.xs),
+      padding: const EdgeInsets.only(top: DnsSpacing.sm, bottom: DnsSpacing.sm),
       child: Center(
         child: Container(
           width: 32,
@@ -1211,7 +1211,7 @@ class _TitleRow extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(
         DnsSpacing.md,
-        DnsSpacing.xs,
+        DnsSpacing.md,
         DnsSpacing.md,
         DnsSpacing.sm,
       ),
