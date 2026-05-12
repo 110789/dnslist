@@ -213,26 +213,26 @@ class DnspodDriver implements DriverInterface {
   }
 
   @override
-  Future<bool> validateCredential(Map<String, String> credentials) async {
+  Future<Map<String, dynamic>> validateCredential(Map<String, String> credentials) async {
     final secretId = credentials['secretId'];
     final secretKey = credentials['secretKey'];
     if (secretId == null || secretId.isEmpty || secretKey == null || secretKey.isEmpty) {
-      return false;
+      return {'success': false, 'error': 'SecretId 或 SecretKey 不能为空', 'errorCode': 'INVALID_CREDENTIAL'};
     }
     try {
       _secretId = secretId;
       _secretKey = secretKey;
       final result = await _callApi('DescribeUserDetail', {});
       if (result['success'] == true) {
-        return true;
+        return {'success': true};
       }
       _secretId = null;
       _secretKey = null;
-      return false;
+      return result;
     } catch (e) {
       _secretId = null;
       _secretKey = null;
-      return false;
+      return {'success': false, 'error': _handleException(e), 'errorCode': 'NETWORK_ERROR'};
     }
   }
 

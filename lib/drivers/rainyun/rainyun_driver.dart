@@ -179,9 +179,11 @@ class RainyunDriver implements DriverInterface {
   }
 
   @override
-  Future<bool> validateCredential(Map<String, String> credentials) async {
+  Future<Map<String, dynamic>> validateCredential(Map<String, String> credentials) async {
     final apiKey = credentials['apiKey'];
-    if (apiKey == null || apiKey.isEmpty) return false;
+    if (apiKey == null || apiKey.isEmpty) {
+      return {'success': false, 'error': 'API Key 不能为空', 'errorCode': 'INVALID_CREDENTIAL'};
+    }
 
     developer.log(
       'Rainyun validateCredential: starting validation',
@@ -205,7 +207,7 @@ class RainyunDriver implements DriverInterface {
 
       if (response.data == null) {
         developer.log('Rainyun: response data is null', name: 'RainyunDriver');
-        return false;
+        return {'success': false, 'error': '服务器无响应', 'errorCode': 'UNKNOWN'};
       }
 
       var data = response.data;
@@ -215,7 +217,7 @@ class RainyunDriver implements DriverInterface {
           data = jsonDecode(data);
         } catch (e) {
           developer.log('Rainyun: JSON parse failed: $e', name: 'RainyunDriver');
-          return false;
+          return {'success': false, 'error': '响应解析失败', 'errorCode': 'PARSE_ERROR'};
         }
       }
 
@@ -236,30 +238,25 @@ class RainyunDriver implements DriverInterface {
               'Content-Type': 'application/json',
             },
           );
-          return true;
+          return {'success': true};
         }
 
-        final errorCode = data['error_code']?.toString() ?? '';
-        final errorMessage = data['message']?.toString() ?? '';
-        developer.log(
-          'Rainyun: auth failed - code=$code, error_code=$errorCode, message=$errorMessage',
-          name: 'RainyunDriver',
-        );
+        return _parseError(data);
       }
 
-      return false;
+      return {'success': false, 'error': '响应数据格式异常', 'errorCode': 'PARSE_ERROR'};
     } on DioException catch (e) {
       developer.log(
         'Rainyun DioException: type=${e.type}, message=${e.message}, response=${e.response?.data}',
         name: 'RainyunDriver',
       );
-      return false;
+      return {'success': false, 'error': _handleException(e), 'errorCode': 'NETWORK_ERROR'};
     } catch (e) {
       developer.log(
         'Rainyun Exception: $e',
         name: 'RainyunDriver',
       );
-      return false;
+      return {'success': false, 'error': '操作失败，请稍后重试', 'errorCode': 'UNKNOWN'};
     }
   }
 

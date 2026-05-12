@@ -193,14 +193,16 @@ class ClouDNSDriver implements DriverInterface {
   }
 
   @override
-  Future<bool> validateCredential(Map<String, String> credentials) async {
+  Future<Map<String, dynamic>> validateCredential(Map<String, String> credentials) async {
     final authId = credentials['authId'];
     final authPassword = credentials['authPassword'];
     if (authId == null || authId.isEmpty || authPassword == null || authPassword.isEmpty) {
-      return false;
+      return {'success': false, 'error': 'Auth ID 或 Auth Password 不能为空', 'errorCode': 'INVALID_CREDENTIAL'};
     }
     final authIdInt = int.tryParse(authId);
-    if (authIdInt == null) return false;
+    if (authIdInt == null) {
+      return {'success': false, 'error': 'Auth ID 必须是数字', 'errorCode': 'INVALID_CREDENTIAL'};
+    }
     try {
       final dio = Dio(BaseOptions(
         baseUrl: AppConfig.cloudnsBaseUrl,
@@ -215,14 +217,14 @@ class ClouDNSDriver implements DriverInterface {
         },
       );
       if (response.data == null) {
-        return false;
+        return {'success': false, 'error': '服务器无响应', 'errorCode': 'UNKNOWN'};
       }
       var data = response.data;
       if (data is String) {
         try {
           data = jsonDecode(data);
         } catch (_) {
-          return false;
+          return {'success': false, 'error': '响应解析失败', 'errorCode': 'PARSE_ERROR'};
         }
       }
       if (data is Map) {
@@ -234,12 +236,13 @@ class ClouDNSDriver implements DriverInterface {
             baseUrl: AppConfig.cloudnsBaseUrl,
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
           );
-          return true;
+          return {'success': true};
         }
+        return _parseError(data);
       }
-      return false;
+      return {'success': false, 'error': '响应数据格式异常', 'errorCode': 'PARSE_ERROR'};
     } catch (e) {
-      return false;
+      return {'success': false, 'error': _handleException(e), 'errorCode': 'NETWORK_ERROR'};
     }
   }
 

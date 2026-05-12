@@ -206,10 +206,12 @@ class DnsheDriver implements DriverInterface {
   }
 
   @override
-  Future<bool> validateCredential(Map<String, String> credentials) async {
+  Future<Map<String, dynamic>> validateCredential(Map<String, String> credentials) async {
     final apiKey = credentials['apiKey'];
     final apiSecret = credentials['apiSecret'];
-    if (apiKey == null || apiKey.isEmpty || apiSecret == null || apiSecret.isEmpty) return false;
+    if (apiKey == null || apiKey.isEmpty || apiSecret == null || apiSecret.isEmpty) {
+      return {'success': false, 'error': 'API Key 或 API Secret 不能为空', 'errorCode': 'INVALID_CREDENTIAL'};
+    }
     try {
       _apiKey = apiKey;
       _apiSecret = apiSecret;
@@ -218,12 +220,18 @@ class DnsheDriver implements DriverInterface {
         headers: {'X-API-Key': apiKey, 'X-API-Secret': apiSecret},
       );
       final response = await _client!.get('', queryParameters: {'m': 'domain_hub', 'endpoint': 'quota'});
-      return response.data['success'] == true;
+      if (response.data['success'] == true) {
+        return {'success': true};
+      }
+      _apiKey = null;
+      _apiSecret = null;
+      _client = null;
+      return _parseError(response.data);
     } catch (e) {
       _apiKey = null;
       _apiSecret = null;
       _client = null;
-      return false;
+      return {'success': false, 'error': _handleException(e), 'errorCode': 'NETWORK_ERROR'};
     }
   }
 
