@@ -4,7 +4,7 @@ import '../../../utils/driver/driver_utils.dart';
 class CloudnsCore {
   static const String providerId = 'cloudns';
   static const String providerName = 'ClouDNS';
-  static const String providerIcon = 'assets/icons/cloudns.svg';
+  static const String providerIcon = 'assets/icons/cloudns.jpg';
   static const String baseUrl = 'https://api.cloudns.net';
 
   static Dio createClient() {

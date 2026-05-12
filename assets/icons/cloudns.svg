@@ -1,8 +1,0 @@
-<svg width="32" height="32" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-<title>ClouDNS</title>
-<circle cx="12" cy="12" r="10" fill="#4A90D9"/>
-<path d="M8 14c0-2.2 1.8-4 4-4s4 1.8 4 4" stroke="white" stroke-width="2" fill="none"/>
-<path d="M8 10c0-1.1.9-2 2-2s2 .9 2 2" stroke="white" stroke-width="1.5" fill="none"/>
-<circle cx="8" cy="8" r="1.5" fill="white"/>
-<circle cx="16" cy="8" r="1.5" fill="white"/>
-</svg>
