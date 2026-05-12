@@ -7,8 +7,15 @@ class CredentialState extends ChangeNotifier {
   String? _selectedCredentialId;
   List<CredentialModel>? _sortedCredentials;
   bool _dirty = true;
+  bool _isInitialized = false;
 
   CredentialState(this._storage);
+
+  Future<void> init() async {
+    if (_isInitialized) return;
+    await loadCredentials();
+    _isInitialized = true;
+  }
 
   List<CredentialModel> get credentials {
     if (_sortedCredentials == null || _dirty) {
