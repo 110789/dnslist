@@ -84,29 +84,19 @@ class CloudflareDriver implements DriverInterface {
       final bodyResult = _parseError(response!.data);
       if (bodyResult.isNotEmpty) return bodyResult;
     }
-    final statusCode = response?.statusCode;
-    if (statusCode == null) {
-      switch (e.type) {
-        case DioExceptionType.connectionTimeout:
-        case DioExceptionType.sendTimeout:
-          return 'Connection timeout';
-        case DioExceptionType.receiveTimeout:
-          return 'Response timeout';
-        case DioExceptionType.connectionError:
-          return 'Connection failed';
-        case DioExceptionType.cancel:
-          return 'Request cancelled';
-        default:
-          return 'Request failed';
-      }
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+        return 'Connection timeout';
+      case DioExceptionType.receiveTimeout:
+        return 'Response timeout';
+      case DioExceptionType.connectionError:
+        return 'Connection failed';
+      case DioExceptionType.cancel:
+        return 'Request cancelled';
+      default:
+        return 'Request failed';
     }
-    if (statusCode == 401) return 'Unauthorized';
-    if (statusCode == 403) return 'Permission denied';
-    if (statusCode == 404) return 'Resource not found';
-    if (statusCode == 405) return 'Method not allowed';
-    if (statusCode == 429) return 'Rate limit exceeded';
-    if (statusCode >= 500) return 'Server error ($statusCode)';
-    return 'Request failed ($statusCode)';
   }
 
   ApiClient _getClient() {
@@ -176,8 +166,15 @@ class CloudflareDriver implements DriverInterface {
 
   String _extractErrorCodeFromException(Object e) {
     if (e is DioException) {
-      final code = e.response?.statusCode;
-      if (code != null) return code.toString();
+      final responseData = e.response?.data;
+      if (responseData != null) {
+        final data = responseData is Map ? responseData : <String, dynamic>{};
+        final errors = data['errors'] as List?;
+        if (errors != null && errors.isNotEmpty) {
+          final code = errors[0]['code'];
+          if (code != null) return code.toString();
+        }
+      }
     }
     return 'UNKNOWN';
   }
