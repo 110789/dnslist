@@ -143,7 +143,8 @@ class AppTheme {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(DnsRadius.xl)),
         ),
-        showDragHandle: false,
+        showDragHandle: true,
+        dragHandleColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
         backgroundColor: colorScheme.surface,
       ),
       navigationBarTheme: NavigationBarThemeData(
@@ -305,7 +306,8 @@ class AppTheme {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(DnsRadius.xl)),
         ),
-        showDragHandle: false,
+        showDragHandle: true,
+        dragHandleColor: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
         backgroundColor: colorScheme.surface,
       ),
       navigationBarTheme: NavigationBarThemeData(
