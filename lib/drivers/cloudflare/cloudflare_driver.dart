@@ -9,6 +9,8 @@ class CloudflareDriver implements DriverInterface {
   static const String _providerId = 'cloudflare';
   static const String _providerName = 'Cloudflare';
   static const String _providerIcon = 'assets/icons/cloudflare.svg';
+  static const String _baseUrl = AppConfig.cloudflareBaseUrl;
+  static const int _maxMessageLen = 200;
 
   ApiClient? _client;
   String? _apiToken;
@@ -23,97 +25,98 @@ class CloudflareDriver implements DriverInterface {
   String get providerIcon => _providerIcon;
 
   @override
-  String mapErrorCode(String code) {
-    return '';
-  }
+  String mapErrorCode(String code) => '';
 
   @override
   String getAddDomainTitle() => '添加域名';
 
   @override
-  List<AddDomainField> getAddDomainFields() {
-    return [
-      const AddDomainField(
-        key: 'name',
-        label: '域名',
-        hintText: '例如: example.com',
-      ),
-    ];
-  }
+  List<AddDomainField> getAddDomainFields() => [
+    const AddDomainField(key: 'name', label: '域名', hintText: '例如: example.com'),
+  ];
 
   @override
-  Map<String, dynamic> prepareDomainData(Map<String, dynamic> input) {
-    return {
-      'name': input['name'] ?? input['rootdomain'] ?? '',
-      'type': 'full',
-    };
-  }
-
-  String _parseError(dynamic responseData) {
-    if (responseData == null) return '';
-    final data = responseData is Map ? responseData : <String, dynamic>{};
-    final success = data['success'];
-    if (success != true) {
-      final errors = data['errors'] as List?;
-      if (errors != null && errors.isNotEmpty) {
-        final error = errors[0] as Map?;
-        if (error != null) {
-          final message = error['message']?.toString() ?? '';
-          if (message.isNotEmpty) {
-            const maxLen = 200;
-            return message.length > maxLen ? message.substring(0, maxLen) : message;
-          }
-        }
-      }
-      final messages = data['messages'] as List?;
-      if (messages != null && messages.isNotEmpty) {
-        final msg = (messages[0] as Map?)?['message']?.toString() ?? '';
-        if (msg.isNotEmpty) {
-          const maxLen = 200;
-          return msg.length > maxLen ? msg.substring(0, maxLen) : msg;
-        }
-      }
-    }
-    return '';
-  }
-
-  String _parseDioException(Object e) {
-    if (e is! DioException) return '';
-    final response = e.response;
-    if (response?.data != null) {
-      final bodyResult = _parseError(response!.data);
-      if (bodyResult.isNotEmpty) return bodyResult;
-    }
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-        return 'Connection timeout';
-      case DioExceptionType.receiveTimeout:
-        return 'Response timeout';
-      case DioExceptionType.connectionError:
-        return 'Connection failed';
-      case DioExceptionType.cancel:
-        return 'Request cancelled';
-      default:
-        return 'Request failed';
-    }
-  }
+  Map<String, dynamic> prepareDomainData(Map<String, dynamic> input) => {
+    'name': input['name'] ?? input['rootdomain'] ?? '',
+    'type': 'full',
+  };
 
   ApiClient _getClient() {
     if (_client != null) return _client!;
     if (_apiToken == null) {
-      throw StateError('Driver not initialized. Call validateCredential first.');
+      throw StateError('Driver not initialized');
     }
-    _client = ApiClient(
-      baseUrl: AppConfig.cloudflareBaseUrl,
+    _client = _createClient();
+    return _client!;
+  }
+
+  ApiClient _createClient() {
+    return ApiClient(
+      baseUrl: _baseUrl,
       headers: {
         'Authorization': 'Bearer $_apiToken',
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       connectTimeout: AppConfig.connectionTimeout,
       receiveTimeout: AppConfig.receiveTimeout,
     );
-    return _client!;
+  }
+
+  Map<String, dynamic> _parseResponse(dynamic data) {
+    if (data == null) return {'error': 'Empty response', 'errorCode': 'EMPTY'};
+    if (data is! Map) return {'error': 'Invalid response', 'errorCode': 'INVALID'};
+
+    if (data['success'] == true) return {'success': true};
+
+    final errors = data['errors'] as List?;
+    if (errors != null && errors.isNotEmpty) {
+      final error = errors[0] as Map?;
+      if (error != null) {
+        final code = error['code']?.toString() ?? 'UNKNOWN';
+        final message = error['message']?.toString() ?? '';
+        final truncated = message.length > _maxMessageLen
+            ? message.substring(0, _maxMessageLen)
+            : message;
+        return {'error': truncated, 'errorCode': code};
+      }
+    }
+
+    final messages = data['messages'] as List?;
+    if (messages != null && messages.isNotEmpty) {
+      final msg = (messages[0] as Map?)?['message']?.toString() ?? '';
+      if (msg.isNotEmpty) {
+        final truncated = msg.length > _maxMessageLen
+            ? msg.substring(0, _maxMessageLen)
+            : msg;
+        return {'error': truncated, 'errorCode': 'UNKNOWN'};
+      }
+    }
+
+    return {'error': 'Unknown error', 'errorCode': 'UNKNOWN'};
+  }
+
+  Map<String, dynamic> _parseException(Object e) {
+    if (e is! DioException) return {'error': 'Request failed', 'errorCode': 'UNKNOWN'};
+
+    final responseData = e.response?.data;
+    if (responseData != null) {
+      final result = _parseResponse(responseData);
+      if (result['error'] != 'Unknown error') return result;
+    }
+
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+        return {'error': 'Connection timeout', 'errorCode': 'TIMEOUT'};
+      case DioExceptionType.receiveTimeout:
+        return {'error': 'Response timeout', 'errorCode': 'TIMEOUT'};
+      case DioExceptionType.connectionError:
+        return {'error': 'Connection failed', 'errorCode': 'NETWORK'};
+      case DioExceptionType.cancel:
+        return {'error': 'Request cancelled', 'errorCode': 'CANCELLED'};
+      default:
+        return {'error': 'Request failed', 'errorCode': 'UNKNOWN'};
+    }
   }
 
   @override
@@ -122,61 +125,31 @@ class CloudflareDriver implements DriverInterface {
     if (apiToken == null || apiToken.isEmpty) {
       return {'success': false, 'error': 'API Token cannot be empty', 'errorCode': 'EMPTY_TOKEN'};
     }
+
     try {
       _apiToken = apiToken;
-      _client = ApiClient(
-        baseUrl: AppConfig.cloudflareBaseUrl,
-        headers: {
-          'Authorization': 'Bearer $apiToken',
-          'Content-Type': 'application/json'
-        },
-        connectTimeout: AppConfig.connectionTimeout,
-        receiveTimeout: AppConfig.receiveTimeout,
-      );
+      _client = _createClient();
       final response = await _client!.get('/user/tokens/verify');
+
       if (response.data == null) {
-        _apiToken = null;
-        _client = null;
+        _resetClient();
         return {'success': false, 'error': 'Empty response from server', 'errorCode': 'EMPTY_RESPONSE'};
       }
-      final data = response.data is Map ? response.data : <String, dynamic>{};
-      if (data['success'] == true) return {'success': true};
-      final err = _parseError(data);
-      if (err.isNotEmpty) {
-        return {'success': false, 'error': err, 'errorCode': _extractErrorCode(data)};
-      }
-      return {'success': false, 'error': 'Unknown error', 'errorCode': 'UNKNOWN'};
+
+      final result = _parseResponse(response.data);
+      if (result['success'] == true) return {'success': true};
+
+      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
     } catch (e) {
-      final result = _parseDioException(e);
-      _apiToken = null;
-      _client = null;
-      return {'success': false, 'error': result, 'errorCode': _extractErrorCodeFromException(e)};
+      final result = _parseException(e);
+      _resetClient();
+      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
     }
   }
 
-  String _extractErrorCode(dynamic data) {
-    if (data == null || data is! Map) return 'UNKNOWN';
-    final errors = data['errors'] as List?;
-    if (errors != null && errors.isNotEmpty) {
-      final code = errors[0]['code'];
-      if (code != null) return code.toString();
-    }
-    return 'UNKNOWN';
-  }
-
-  String _extractErrorCodeFromException(Object e) {
-    if (e is DioException) {
-      final responseData = e.response?.data;
-      if (responseData != null) {
-        final data = responseData is Map ? responseData : <String, dynamic>{};
-        final errors = data['errors'] as List?;
-        if (errors != null && errors.isNotEmpty) {
-          final code = errors[0]['code'];
-          if (code != null) return code.toString();
-        }
-      }
-    }
-    return 'UNKNOWN';
+  void _resetClient() {
+    _apiToken = null;
+    _client = null;
   }
 
   @override
@@ -186,276 +159,184 @@ class CloudflareDriver implements DriverInterface {
     Map<String, String>? filters,
   }) async {
     if (_apiToken == null) {
-      return {
-        'domains': [],
-        'pagination': {},
-        'error': '',
-        'errorCode': 'NOT_INITIALIZED'
-      };
+      return {'domains': [], 'pagination': {}, 'error': '', 'errorCode': 'NOT_INITIALIZED'};
     }
+
     try {
-      final queryParams = <String, dynamic>{
-        'page': page,
-        'per_page': pageSize,
-      };
-      if (filters != null) {
-        queryParams.addAll(filters);
-      }
+      final queryParams = <String, dynamic>{'page': page, 'per_page': pageSize};
+      if (filters != null) queryParams.addAll(filters);
+
       final response = await _getClient().get('/zones', queryParameters: queryParams);
-      if (response.data == null) {
-        return {
-          'domains': [],
-          'pagination': {},
-          'error': '',
-          'errorCode': 'EMPTY_RESPONSE'
-        };
-      }
-      final data = response.data is Map ? response.data : <String, dynamic>{};
-      if (data['success'] == true) {
-        final result = data['result'] as List? ?? [];
-        final domains = result.map((zone) {
-          String? registrar;
-          final owner = zone['owner'];
-          if (owner != null) {
-            final ownerType = owner['type']?.toString();
-            if (ownerType != null && ownerType.isNotEmpty) {
-              registrar = _parseRegistrarType(ownerType);
-            }
-          }
-          return {
-            'id': zone['id']?.toString() ?? '',
-            'name': zone['name']?.toString() ?? '',
-            'status': zone['status']?.toString() ?? 'unknown',
-            'type': zone['type']?.toString() ?? 'full',
-            'paused': zone['paused'] ?? false,
-            'created_on': zone['created_on'],
-            'modified_on': zone['modified_on'],
-            'name_servers': zone['name_servers'] as List? ?? [],
-            'owner': zone['owner'],
-            'plan': zone['plan'],
-            'registrar': registrar,
-          };
-        }).toList();
-        final pagination = data['result_info'] ?? <String, dynamic>{};
-        return {
-          'domains': domains,
-          'pagination': pagination,
-          'success': true,
-          'statusCode': 'OK',
-          'total': pagination['total_count'] ?? result.length,
-          'page': page,
-          'pageSize': pageSize,
-        };
-      }
-      final err = _parseError(data);
-      return {
-        'domains': [],
-        'pagination': {},
-        'error': err,
-        'errorCode': _extractErrorCode(data),
-        'success': false
-      };
-    } catch (e) {
-      return {
-        'domains': [],
-        'pagination': {},
-        'error': _parseDioException(e),
-        'errorCode': _extractErrorCodeFromException(e),
-        'success': false
-      };
-    }
-  }
 
-  @override
-  Future<Map<String, dynamic>> getDnsRecords(
-    String domainId, {
-    int page = 1,
-    int pageSize = 20,
-    Map<String, String>? filters,
-  }) async {
-    if (_client == null) {
+      if (response.data == null) {
+        return {'domains': [], 'pagination': {}, 'error': 'Empty response', 'errorCode': 'EMPTY_RESPONSE'};
+      }
+
+      final data = response.data as Map;
+      if (data['success'] != true) {
+        final result = _parseResponse(data);
+        return {'domains': [], 'pagination': {}, 'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+      }
+
+      final result = data['result'] as List? ?? [];
+      final domains = result.map(_parseZone).toList();
+      final pagination = data['result_info'] ?? {};
+
       return {
-        'records': [],
-        'pagination': {},
-        'error': '',
-        'errorCode': 'NOT_INITIALIZED',
-        'success': false
-      };
-    }
-    try {
-      final queryParams = <String, dynamic>{
+        'domains': domains,
+        'pagination': pagination,
+        'success': true,
+        'statusCode': 'OK',
+        'total': pagination['total_count'] ?? result.length,
         'page': page,
-        'per_page': pageSize,
-      };
-      if (filters != null) {
-        queryParams.addAll(filters);
-      }
-      final response = await _getClient().get(
-        '/zones/$domainId/dns_records',
-        queryParameters: queryParams,
-      );
-      if (response.data == null) {
-        return {
-          'records': [],
-          'pagination': {},
-          'error': '',
-          'errorCode': 'EMPTY_RESPONSE',
-          'success': false
-        };
-      }
-      final data = response.data is Map ? response.data : <String, dynamic>{};
-      if (data['success'] == true) {
-        final result = data['result'] as List? ?? [];
-        final records = result.map((record) {
-          return {
-            'id': record['id']?.toString() ?? '',
-            'name': record['name']?.toString() ?? '',
-            'type': record['type']?.toString() ?? 'A',
-            'content': record['content']?.toString() ?? '',
-            'ttl': record['ttl'] ?? 1,
-            'proxied': record['proxied'] ?? false,
-            'proxiable': record['proxiable'] ?? false,
-            'created_on': record['created_on'],
-            'modified_on': record['modified_on'],
-            'comment': record['comment'],
-            'tags': record['tags'] as List? ?? [],
-          };
-        }).toList();
-        final pagination = data['result_info'] ?? <String, dynamic>{};
-        return {
-          'records': records,
-          'pagination': pagination,
-          'success': true,
-          'statusCode': 'OK',
-          'total': pagination['total_count'] ?? result.length,
-          'page': page,
-          'pageSize': pageSize,
-        };
-      }
-      final err = _parseError(data);
-      return {
-        'records': [],
-        'pagination': {},
-        'error': err,
-        'errorCode': _extractErrorCode(data),
-        'success': false
+        'pageSize': pageSize,
       };
     } catch (e) {
+      final result = _parseException(e);
+      return {'domains': [], 'pagination': {}, 'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+    }
+  }
+
+  Map<String, dynamic> _parseZone(dynamic zone) {
+    String? registrar;
+    final owner = zone['owner'];
+    if (owner != null) {
+      final ownerType = owner['type']?.toString();
+      if (ownerType != null && ownerType.isNotEmpty) {
+        registrar = _parseRegistrarType(ownerType);
+      }
+    }
+    return {
+      'id': zone['id']?.toString() ?? '',
+      'name': zone['name']?.toString() ?? '',
+      'status': zone['status']?.toString() ?? 'unknown',
+      'type': zone['type']?.toString() ?? 'full',
+      'paused': zone['paused'] ?? false,
+      'created_on': zone['created_on'],
+      'modified_on': zone['modified_on'],
+      'name_servers': zone['name_servers'] as List? ?? [],
+      'owner': zone['owner'],
+      'plan': zone['plan'],
+      'registrar': registrar,
+    };
+  }
+
+  @override
+  Future<Map<String, dynamic>> getDnsRecords(String domainId, {int page = 1, int pageSize = 20, Map<String, String>? filters}) async {
+    if (_client == null) {
+      return {'records': [], 'pagination': {}, 'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
+    }
+
+    try {
+      final queryParams = <String, dynamic>{'page': page, 'per_page': pageSize};
+      if (filters != null) queryParams.addAll(filters);
+
+      final response = await _getClient().get('/zones/$domainId/dns_records', queryParameters: queryParams);
+
+      if (response.data == null) {
+        return {'records': [], 'pagination': {}, 'error': 'Empty response', 'errorCode': 'EMPTY_RESPONSE', 'success': false};
+      }
+
+      final data = response.data as Map;
+      if (data['success'] != true) {
+        final result = _parseResponse(data);
+        return {'records': [], 'pagination': {}, 'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+      }
+
+      final result = data['result'] as List? ?? [];
+      final records = result.map(_parseRecord).toList();
+      final pagination = data['result_info'] ?? {};
+
       return {
-        'records': [],
-        'pagination': {},
-        'error': _parseDioException(e),
-        'errorCode': _extractErrorCodeFromException(e),
-        'success': false
+        'records': records,
+        'pagination': pagination,
+        'success': true,
+        'statusCode': 'OK',
+        'total': pagination['total_count'] ?? result.length,
+        'page': page,
+        'pageSize': pageSize,
       };
+    } catch (e) {
+      final result = _parseException(e);
+      return {'records': [], 'pagination': {}, 'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+    }
+  }
+
+  Map<String, dynamic> _parseRecord(dynamic record) => {
+    'id': record['id']?.toString() ?? '',
+    'name': record['name']?.toString() ?? '',
+    'type': record['type']?.toString() ?? 'A',
+    'content': record['content']?.toString() ?? '',
+    'ttl': record['ttl'] ?? 1,
+    'proxied': record['proxied'] ?? false,
+    'proxiable': record['proxiable'] ?? false,
+    'created_on': record['created_on'],
+    'modified_on': record['modified_on'],
+    'comment': record['comment'],
+    'tags': record['tags'] as List? ?? [],
+  };
+
+  @override
+  Future<Map<String, dynamic>> createDnsRecord(String domainId, Map<String, dynamic> recordData) async {
+    if (_client == null) {
+      return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
+    }
+
+    try {
+      final preparedData = _prepareDnsRecordData(recordData);
+      final response = await _getClient().post('/zones/$domainId/dns_records', data: preparedData);
+
+      if (response.data == null) {
+        return {'error': 'Empty response', 'errorCode': 'EMPTY_RESPONSE', 'success': false};
+      }
+
+      final data = response.data as Map;
+      if (data['success'] == true) {
+        return {'success': true, 'statusCode': 'OK', 'data': data['result']};
+      }
+
+      final result = _parseResponse(data);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
+    } catch (e) {
+      final result = _parseException(e);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     }
   }
 
   @override
-  Future<Map<String, dynamic>> createDnsRecord(
-    String domainId,
-    Map<String, dynamic> recordData,
-  ) async {
+  Future<Map<String, dynamic>> updateDnsRecord(String domainId, String recordId, Map<String, dynamic> recordData) async {
     if (_client == null) {
-      return {
-        'error': '',
-        'errorCode': 'NOT_INITIALIZED',
-        'success': false
-      };
+      return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
     }
-    try {
-      final preparedData = _prepareDnsRecordData(recordData);
-      final response = await _getClient().post(
-        '/zones/$domainId/dns_records',
-        data: preparedData,
-      );
-      if (response.data == null) {
-        return {
-          'error': '',
-          'errorCode': 'EMPTY_RESPONSE',
-          'success': false
-        };
-      }
-      final data = response.data is Map ? response.data : <String, dynamic>{};
-      if (data['success'] == true) {
-        return {
-          'success': true,
-          'statusCode': 'OK',
-          'data': data['result']
-        };
-      }
-      final err = _parseError(data);
-      return {
-        'error': err,
-        'errorCode': _extractErrorCode(data),
-        'success': false
-      };
-    } catch (e) {
-      return {
-        'error': _parseDioException(e),
-        'errorCode': _extractErrorCodeFromException(e),
-        'success': false
-      };
-    }
-  }
 
-  @override
-  Future<Map<String, dynamic>> updateDnsRecord(
-    String domainId,
-    String recordId,
-    Map<String, dynamic> recordData,
-  ) async {
-    if (_client == null) {
-      return {
-        'error': '',
-        'errorCode': 'NOT_INITIALIZED',
-        'success': false
-      };
-    }
     try {
       final preparedData = _prepareDnsRecordData(recordData);
-      final response = await _getClient().put(
-        '/zones/$domainId/dns_records/$recordId',
-        data: preparedData,
-      );
+      final response = await _getClient().put('/zones/$domainId/dns_records/$recordId', data: preparedData);
+
       if (response.data == null) {
-        return {
-          'error': '',
-          'errorCode': 'EMPTY_RESPONSE',
-          'success': false
-        };
+        return {'error': 'Empty response', 'errorCode': 'EMPTY_RESPONSE', 'success': false};
       }
-      final data = response.data is Map ? response.data : <String, dynamic>{};
+
+      final data = response.data as Map;
       if (data['success'] == true) {
-        return {
-          'success': true,
-          'statusCode': 'OK',
-          'data': data['result']
-        };
+        return {'success': true, 'statusCode': 'OK', 'data': data['result']};
       }
-      final err = _parseError(data);
-      return {
-        'error': err,
-        'errorCode': _extractErrorCode(data),
-        'success': false
-      };
+
+      final result = _parseResponse(data);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     } catch (e) {
-      return {
-        'error': _parseDioException(e),
-        'errorCode': _extractErrorCodeFromException(e),
-        'success': false
-      };
+      final result = _parseException(e);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     }
   }
 
   Map<String, dynamic> _prepareDnsRecordData(Map<String, dynamic> recordData) {
     final data = Map<String, dynamic>.from(recordData);
-    if (data.containsKey('priority') && (data['priority'] == null || data['priority'] == 0)) {
-      data.remove('priority');
-    }
-    if (data.containsKey('proxied') && data['proxied'] == null) {
-      data.remove('proxied');
-    }
+    final removeIfNull = (String key) {
+      if (data.containsKey(key) && data[key] == null) data.remove(key);
+    };
+    removeIfNull('priority');
+    removeIfNull('proxied');
     if (data.containsKey('ttl') && (data['ttl'] == null || data['ttl'] == 0)) {
       data.remove('ttl');
     } else if (data['ttl'] == 1) {
@@ -467,49 +348,35 @@ class CloudflareDriver implements DriverInterface {
   @override
   Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId) async {
     if (_client == null) {
-      return {
-        'success': false,
-        'error': '',
-        'errorCode': 'NOT_INITIALIZED'
-      };
+      return {'success': false, 'error': '', 'errorCode': 'NOT_INITIALIZED'};
     }
+
     try {
       final response = await _getClient().delete('/zones/$domainId/dns_records/$recordId');
+
       if (response.data == null) {
-        return {
-          'success': false,
-          'error': '',
-          'errorCode': 'EMPTY_RESPONSE'
-        };
+        return {'success': false, 'error': 'Empty response', 'errorCode': 'EMPTY_RESPONSE'};
       }
-      final data = response.data is Map ? response.data : <String, dynamic>{};
+
+      final data = response.data as Map;
       if (data['success'] == true) {
         return {'success': true, 'statusCode': 'OK'};
       }
-      final err = _parseError(data);
-      return {
-        'success': false,
-        'error': err,
-        'errorCode': _extractErrorCode(data)
-      };
+
+      final result = _parseResponse(data);
+      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
     } catch (e) {
-      return {
-        'success': false,
-        'error': _parseDioException(e),
-        'errorCode': _extractErrorCodeFromException(e)
-      };
+      final result = _parseException(e);
+      return {'success': false, 'error': result['error'], 'errorCode': result['errorCode']};
     }
   }
 
   @override
   Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData) async {
     if (_client == null) {
-      return {
-        'error': '',
-        'errorCode': 'NOT_INITIALIZED',
-        'success': false
-      };
+      return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
     }
+
     try {
       final preparedData = {
         'name': domainData['name']?.toString() ?? '',
@@ -518,15 +385,14 @@ class CloudflareDriver implements DriverInterface {
       if (domainData.containsKey('account') && domainData['account'] != null) {
         preparedData['account'] = domainData['account'];
       }
+
       final response = await _getClient().post('/zones', data: preparedData);
+
       if (response.data == null) {
-        return {
-          'error': '',
-          'errorCode': 'EMPTY_RESPONSE',
-          'success': false
-        };
+        return {'error': 'Empty response', 'errorCode': 'EMPTY_RESPONSE', 'success': false};
       }
-      final data = response.data is Map ? response.data : <String, dynamic>{};
+
+      final data = response.data as Map;
       if (data['success'] == true) {
         final result = data['result'];
         return {
@@ -539,76 +405,51 @@ class CloudflareDriver implements DriverInterface {
             'type': result['type']?.toString() ?? 'full',
             'name_servers': result['name_servers'] as List? ?? [],
           },
-          'message': '域名添加成功'
+          'message': '域名添加成功',
         };
       }
-      final err = _parseError(data);
-      return {
-        'error': err,
-        'errorCode': _extractErrorCode(data),
-        'success': false
-      };
+
+      final result = _parseResponse(data);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     } catch (e) {
-      return {
-        'error': _parseDioException(e),
-        'errorCode': _extractErrorCodeFromException(e),
-        'success': false
-      };
+      final result = _parseException(e);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     }
   }
 
   @override
   Future<Map<String, dynamic>> deleteDomain(String domainId) async {
     if (_client == null) {
-      return {
-        'error': '',
-        'errorCode': 'NOT_INITIALIZED',
-        'success': false
-      };
+      return {'error': '', 'errorCode': 'NOT_INITIALIZED', 'success': false};
     }
+
     if (domainId.isEmpty) {
-      return {
-        'error': 'Invalid domain identifier',
-        'errorCode': 'INVALID_ID',
-        'success': false
-      };
+      return {'error': 'Invalid domain identifier', 'errorCode': 'INVALID_ID', 'success': false};
     }
+
     try {
       final response = await _getClient().delete('/zones/$domainId');
+
       if (response.data == null) {
-        return {
-          'error': '',
-          'errorCode': 'EMPTY_RESPONSE',
-          'success': false
-        };
+        return {'error': 'Empty response', 'errorCode': 'EMPTY_RESPONSE', 'success': false};
       }
-      final data = response.data is Map ? response.data : <String, dynamic>{};
+
+      final data = response.data as Map;
       if (data['success'] == true) {
         return {'success': true, 'statusCode': 'OK', 'message': '域名已删除'};
       }
-      final err = _parseError(data);
-      return {
-        'error': err,
-        'errorCode': _extractErrorCode(data),
-        'success': false
-      };
+
+      final result = _parseResponse(data);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     } catch (e) {
-      return {
-        'error': _parseDioException(e),
-        'errorCode': _extractErrorCodeFromException(e),
-        'success': false
-      };
+      final result = _parseException(e);
+      return {'error': result['error'], 'errorCode': result['errorCode'], 'success': false};
     }
   }
 
   @override
-  Future<Map<String, dynamic>> renewDomain(String domainId) async {
-    return {
-      'error': 'Renewal not supported for Cloudflare zones',
-      'errorCode': 'NOT_SUPPORTED',
-      'success': false
-    };
-  }
+  Future<Map<String, dynamic>> renewDomain(String domainId) async => 
+    {'error': 'Renewal not supported for Cloudflare zones', 'errorCode': 'NOT_SUPPORTED', 'success': false};
 
   @override
   bool get supportsAddDomain => true;
@@ -630,9 +471,7 @@ class CloudflareDriver implements DriverInterface {
     required VoidCallback onRenew,
     required bool supportsDelete,
     required bool supportsRenew,
-  }) {
-    return const SizedBox.shrink();
-  }
+  }) => const SizedBox.shrink();
 
   @override
   void showDomainListItemMenu(
@@ -645,7 +484,7 @@ class CloudflareDriver implements DriverInterface {
     required bool supportsRenew,
     required bool supportsShowNameServers,
   }) {
-    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final renderBox = context.findRenderObject() as RenderBox;
     final offset = renderBox.localToGlobal(Offset.zero);
     showMenu<String>(
       context: context,
@@ -658,7 +497,7 @@ class CloudflareDriver implements DriverInterface {
       items: [
         if (supportsShowNameServers) const PopupMenuItem(value: 'nameservers', child: Text('NS节点')),
         if (supportsRenew) const PopupMenuItem(value: 'renew', child: Text('续期')),
-        if (supportsDelete) PopupMenuItem(value: 'delete', child: const Text('删除', style: TextStyle(color: Color(0xFFEF4444)))),
+        if (supportsDelete) const PopupMenuItem(value: 'delete', child: Text('删除', style: TextStyle(color: Color(0xFFEF4444)))),
       ],
     ).then((value) {
       if (value == 'delete') onDelete();
@@ -688,15 +527,13 @@ class CloudflareDriver implements DriverInterface {
                 Text('无', style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant))
               else
                 ...nameServers.map((ns) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(ns.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
-                    )),
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(ns.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
+                )),
             ],
           ),
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
-        ],
+        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭'))],
       ),
     );
   }
@@ -717,21 +554,11 @@ class CloudflareDriver implements DriverInterface {
           Container(
             width: 44,
             height: 44,
-            decoration: BoxDecoration(
-              color: typeColor,
-              borderRadius: BorderRadius.circular(22),
-            ),
+            decoration: BoxDecoration(color: typeColor, borderRadius: BorderRadius.circular(22)),
             child: Center(
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(
-                  type,
-                  style: TextStyle(
-                    fontSize: type.length <= 2 ? 14 : 11,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
+                child: Text(type, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
           ),
@@ -743,12 +570,7 @@ class CloudflareDriver implements DriverInterface {
               children: [
                 Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
                 const SizedBox(height: 2),
-                Text(
-                  content,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                Text(content, style: TextStyle(fontSize: 12, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
@@ -756,7 +578,7 @@ class CloudflareDriver implements DriverInterface {
           _TtlTag(ttl: ttl),
           if (proxied) ...[
             const SizedBox(width: 4),
-            Icon(Icons.cloud, size: 16, color: const Color(0xFF3B82F6)),
+            const Icon(Icons.cloud, size: 16, color: Color(0xFF3B82F6)),
           ],
         ],
       ),
@@ -764,29 +586,19 @@ class CloudflareDriver implements DriverInterface {
   }
 
   @override
-  Map<String, String> getCredentialFields() {
-    return {'apiToken': 'API Token'};
-  }
+  Map<String, String> getCredentialFields() => {'apiToken': 'API Token'};
 
   @override
-  List<String> getSupportedRecordTypes() {
-    return ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA'];
-  }
+  List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA'];
 
   String _parseRegistrarType(String ownerType) {
     switch (ownerType.toLowerCase()) {
-      case 'cloudflare':
-        return 'Cloudflare Registrar';
-      case 'apex':
-        return 'Apex (Root)';
-      case 'full':
-        return 'Full DNS';
-      case 'partial':
-        return 'Partial DNS';
-      case 'secondary':
-        return 'Secondary DNS';
-      default:
-        return ownerType;
+      case 'cloudflare': return 'Cloudflare Registrar';
+      case 'apex': return 'Apex (Root)';
+      case 'full': return 'Full DNS';
+      case 'partial': return 'Partial DNS';
+      case 'secondary': return 'Secondary DNS';
+      default: return ownerType;
     }
   }
 }
@@ -804,17 +616,9 @@ class _TtlTag extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(
-        _label,
-        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+    child: Text(_label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey)),
+  );
 }
