@@ -50,7 +50,7 @@ class DnsheDriver implements DriverInterface {
     }
     _client = ApiClient(
       baseUrl: _baseUrl,
-      headers: {'X-API-Key': _apiKey, 'X-API-Secret': _apiSecret},
+      headers: {'X-API-Key': _apiKey!, 'X-API-Secret': _apiSecret!},
     );
     return _client!;
   }
@@ -109,7 +109,7 @@ class DnsheDriver implements DriverInterface {
     try {
       _apiKey = apiKey;
       _apiSecret = apiSecret;
-      _client = ApiClient(baseUrl: _baseUrl, headers: {'X-API-Key': apiKey, 'X-API-Secret': apiSecret});
+      _client = ApiClient(baseUrl: _baseUrl, headers: {'X-API-Key': apiKey, 'X-API-Secret': apiSecret!});
 
       final response = await _client!.get('', queryParameters: {'m': 'domain_hub', 'endpoint': 'quota'});
 
