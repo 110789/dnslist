@@ -13,16 +13,45 @@ class CloudflareDriver implements DriverInterface {
   ApiClient? _client;
   String? _apiToken;
 
-  static const Map<String, String> _errorCodeMap = {
-    '1000': '认证失败，请检查 API Token 是否正确',
-    '7000': '区域不存在',
-    '7001': '区域已存在',
-    '9100': '权限不足，缺少必要权限',
-    '9101': '权限不足，无法访问此资源',
-    '9109': '未授权访问请求的资源',
-    '9200': '账户被暂停',
-    '10000': 'DNS 记录已存在',
-    '10001': 'DNS 记录不存在',
+  static const Map<int, String> _errorCodeMap = {
+    10000: 'API Token 无效或已过期，请检查凭证后重试',
+    10001: '缺少必要权限，请在 Cloudflare 控制台为 Token 添加对应权限',
+    1000: '服务器未知错误，请稍后重试',
+    1001: '请求格式无效，请检查输入参数',
+    1002: '请求被禁止，无法访问此资源',
+    1003: '账户不存在或无权访问',
+    1004: '请求频率超限，请稍后重试',
+    1005: '资源已存在，无需重复创建',
+    1016: 'DNS 记录指向的源站 IP 无效',
+    1020: '访问被拒绝，请稍后重试',
+    7000: '域名/区域不存在，请检查域名是否正确',
+    7001: '域名已存在，无需重复添加',
+    7003: '域名不可用，可能正在初始化或已被暂停',
+    9000: '账户已被暂停，请联系 Cloudflare 客服',
+    9001: '账户已停用，请检查账户状态',
+    9003: 'Token 已过期，请重新创建 API Token',
+    9004: 'Token 未生效，请检查生效时间设置',
+    9200: '账户被暂停，请联系 Cloudflare 客服',
+    9201: '账户被锁定，请联系 Cloudflare 客服',
+    9400: '请求内容无效，请检查输入格式',
+    9401: '缺少必需参数',
+    9500: '服务器内部错误，请稍后重试',
+    9600: '资源配额已达上限',
+    9601: '请求被限制，请稍后重试',
+  };
+
+  static const Map<String, String> _errorMessagePatterns = {
+    'authentication error': 'API Token 无效或已过期，请检查凭证后重试',
+    'authorization error': '权限不足，请在 Cloudflare 控制台为 Token 添加对应权限',
+    'forbidden': '无权限访问此资源',
+    'not found': '请求的资源不存在',
+    'zone not found': '域名/区域不存在，请检查域名是否正确',
+    'dns_record not found': 'DNS 记录不存在',
+    'rate limit': '请求频率超限，请稍后重试',
+    'invalid': '请求参数无效，请检查输入格式',
+    'missing': '缺少必需参数',
+    'expired': 'Token 已过期，请重新创建 API Token',
+    'suspended': '账户已被暂停，请联系 Cloudflare 客服',
   };
 
   @override
@@ -36,7 +65,21 @@ class CloudflareDriver implements DriverInterface {
 
   @override
   String mapErrorCode(String code) {
-    return _errorCodeMap[code] ?? code;
+    final intCode = int.tryParse(code);
+    if (intCode != null && _errorCodeMap.containsKey(intCode)) {
+      return _errorCodeMap[intCode]!;
+    }
+    return _getGenericErrorMessage(code);
+  }
+
+  String _getGenericErrorMessage(String code) {
+    final lowerCode = code.toLowerCase();
+    for (final entry in _errorMessagePatterns.entries) {
+      if (lowerCode.contains(entry.key.toLowerCase())) {
+        return entry.value;
+      }
+    }
+    return code;
   }
 
   @override
@@ -63,45 +106,130 @@ class CloudflareDriver implements DriverInterface {
 
   Map<String, dynamic> _parseError(dynamic responseData) {
     if (responseData == null) {
-      return {'error': '操作失败请稍后尝试', 'errorCode': 'UNKNOWN', 'success': false};
-    }
-    final data = responseData is Map ? responseData : {};
-    final errors = data['errors'] as List?;
-    if (errors != null && errors.isNotEmpty) {
-      final error = errors[0] as Map?;
-      final code = error?['code']?.toString() ?? 'UNKNOWN';
-      final message = error?['message']?.toString() ?? '';
       return {
-        'error': message.isNotEmpty ? message : '操作失败请稍后尝试',
-        'errorCode': code,
-        'success': false,
-      };
-    }
-    final messages = data['messages'] as List?;
-    if (messages != null && messages.isNotEmpty) {
-      final message = (messages[0] as Map?)?['message']?.toString() ?? '';
-      return {
-        'error': message.isNotEmpty ? message : '操作失败请稍后尝试',
-        'errorCode': 'API_MESSAGE',
+        'error': '服务器无响应，请稍后重试',
+        'errorCode': 'UNKNOWN',
         'success': false
       };
     }
-    return {'error': '操作失败请稍后尝试', 'errorCode': 'UNKNOWN', 'success': false};
+
+    final data = responseData is Map ? responseData : <String, dynamic>{};
+    final errors = data['errors'] as List?;
+
+    if (errors != null && errors.isNotEmpty) {
+      final error = errors[0] as Map?;
+      if (error != null) {
+        final code = error['code'];
+        final message = error['message']?.toString() ?? '';
+        final intCode = code is int ? code : int.tryParse(code?.toString() ?? '');
+
+        String errorText;
+        if (intCode != null && _errorCodeMap.containsKey(intCode)) {
+          errorText = _errorCodeMap[intCode]!;
+        } else if (message.isNotEmpty) {
+          errorText = _mapMessageToHint(message);
+        } else {
+          errorText = '操作失败，请稍后重试';
+        }
+
+        return {
+          'error': errorText,
+          'errorCode': code?.toString() ?? 'UNKNOWN',
+          'success': false,
+          'rawMessage': message,
+        };
+      }
+    }
+
+    final messages = data['messages'] as List?;
+    if (messages != null && messages.isNotEmpty) {
+      final msg = (messages[0] as Map?)?['message']?.toString() ?? '';
+      return {
+        'error': msg.isNotEmpty ? _mapMessageToHint(msg) : '操作失败，请稍后重试',
+        'errorCode': 'API_MESSAGE',
+        'success': false,
+        'rawMessage': msg,
+      };
+    }
+
+    return {
+      'error': '操作失败，请稍后重试',
+      'errorCode': 'UNKNOWN',
+      'success': false
+    };
+  }
+
+  String _mapMessageToHint(String message) {
+    if (message.isEmpty) return '操作失败，请稍后重试';
+
+    final lowerMsg = message.toLowerCase();
+
+    if (lowerMsg.contains('authentication') || lowerMsg.contains('auth') && lowerMsg.contains('error')) {
+      return 'API Token 无效或已过期，请检查凭证后重试';
+    }
+    if (lowerMsg.contains('forbidden') || lowerMsg.contains('permission') && lowerMsg.contains('denied')) {
+      return '权限不足，请在 Cloudflare 控制台为 Token 添加对应权限';
+    }
+    if (lowerMsg.contains('not found') || lowerMsg.contains('does not exist')) {
+      if (lowerMsg.contains('zone') || lowerMsg.contains('domain')) {
+        return '域名/区域不存在，请检查域名是否正确';
+      }
+      if (lowerMsg.contains('dns') || lowerMsg.contains('record')) {
+        return 'DNS 记录不存在';
+      }
+      return '请求的资源不存在';
+    }
+    if (lowerMsg.contains('already exists') || lowerMsg.contains('duplicate')) {
+      return '资源已存在，无需重复创建';
+    }
+    if (lowerMsg.contains('rate limit') || lowerMsg.contains('too many request')) {
+      return '请求频率超限，请稍后重试';
+    }
+    if (lowerMsg.contains('invalid') || lowerMsg.contains('malformed')) {
+      return '请求参数无效，请检查输入格式';
+    }
+    if (lowerMsg.contains('suspended') || lowerMsg.contains('paused')) {
+      return '账户已被暂停，请联系 Cloudflare 客服';
+    }
+    if (lowerMsg.contains('expired')) {
+      return 'Token 已过期，请重新创建 API Token';
+    }
+
+    final maxLen = 50;
+    if (message.length > maxLen) {
+      return message.substring(0, maxLen);
+    }
+    return message;
   }
 
   String _handleException(dynamic e) {
     if (e is DioException) {
       switch (e.type) {
         case DioExceptionType.connectionTimeout:
-        case DioExceptionType.receiveTimeout:
         case DioExceptionType.sendTimeout:
+          return '连接超时，请检查网络后重试';
+        case DioExceptionType.receiveTimeout:
+          return '服务器响应超时，请稍后重试';
         case DioExceptionType.connectionError:
-          return '操作失败请稍后尝试';
+          return '网络连接失败，请检查网络设置';
+        case DioExceptionType.cancel:
+          return '请求被取消';
         default:
-          return '操作失败请稍后尝试';
+          final response = e.response;
+          if (response != null) {
+            final statusCode = response.statusCode;
+            if (statusCode == 401) return 'API Token 无效，请检查凭证';
+            if (statusCode == 403) return '权限不足，无法访问此资源';
+            if (statusCode == 404) return '请求的资源不存在';
+            if (statusCode == 429) return '请求频率超限，请稍后重试';
+            if (statusCode != null && statusCode >= 500) {
+              return 'Cloudflare 服务器异常，请稍后重试';
+            }
+          }
+          return '网络请求失败，请稍后重试';
       }
     }
-    return '操作失败请稍后尝试';
+    return '操作失败，请稍后重试';
   }
 
   ApiClient _getClient() {
@@ -111,7 +239,10 @@ class CloudflareDriver implements DriverInterface {
     }
     _client = ApiClient(
       baseUrl: AppConfig.cloudflareBaseUrl,
-      headers: {'Authorization': 'Bearer $_apiToken', 'Content-Type': 'application/json'},
+      headers: {
+        'Authorization': 'Bearer $_apiToken',
+        'Content-Type': 'application/json'
+      },
       connectTimeout: AppConfig.connectionTimeout,
       receiveTimeout: AppConfig.receiveTimeout,
     );
@@ -126,15 +257,21 @@ class CloudflareDriver implements DriverInterface {
       _apiToken = apiToken;
       _client = ApiClient(
         baseUrl: AppConfig.cloudflareBaseUrl,
-        headers: {'Authorization': 'Bearer $apiToken', 'Content-Type': 'application/json'},
+        headers: {
+          'Authorization': 'Bearer $apiToken',
+          'Content-Type': 'application/json'
+        },
         connectTimeout: AppConfig.connectionTimeout,
         receiveTimeout: AppConfig.receiveTimeout,
       );
       final response = await _client!.get('/user/tokens/verify');
-      if (response.data['success'] == true) return true;
+      if (response.data == null) return false;
+      final data = response.data is Map ? response.data : <String, dynamic>{};
+      if (data['success'] == true) return true;
       return false;
     } catch (e) {
       _apiToken = null;
+      _client = null;
       return false;
     }
   }
@@ -146,7 +283,13 @@ class CloudflareDriver implements DriverInterface {
     Map<String, String>? filters,
   }) async {
     if (_apiToken == null) {
-      return {'domains': [], 'pagination': {}, 'error': '凭证未初始化，请重新添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+      return {
+        'domains': [],
+        'pagination': {},
+        'error': '凭证未初始化，请重新添加账户',
+        'errorCode': 'AUTH_REQUIRED',
+        'success': false
+      };
     }
     try {
       final queryParams = <String, dynamic>{
@@ -157,8 +300,18 @@ class CloudflareDriver implements DriverInterface {
         queryParams.addAll(filters);
       }
       final response = await _getClient().get('/zones', queryParameters: queryParams);
-      if (response.data['success'] == true) {
-        final result = response.data['result'] as List? ?? [];
+      if (response.data == null) {
+        return {
+          'domains': [],
+          'pagination': {},
+          'error': '服务器无响应',
+          'errorCode': 'UNKNOWN',
+          'success': false
+        };
+      }
+      final data = response.data is Map ? response.data : <String, dynamic>{};
+      if (data['success'] == true) {
+        final result = data['result'] as List? ?? [];
         final domains = result.map((zone) {
           String? registrar;
           final owner = zone['owner'];
@@ -182,7 +335,7 @@ class CloudflareDriver implements DriverInterface {
             'registrar': registrar,
           };
         }).toList();
-        final pagination = response.data['result_info'] ?? {};
+        final pagination = data['result_info'] ?? <String, dynamic>{};
         return {
           'domains': domains,
           'pagination': pagination,
@@ -193,7 +346,7 @@ class CloudflareDriver implements DriverInterface {
           'pageSize': pageSize,
         };
       }
-      return _parseError(response.data);
+      return _parseError(data);
     } catch (e) {
       return {
         'domains': [],
@@ -213,7 +366,13 @@ class CloudflareDriver implements DriverInterface {
     Map<String, String>? filters,
   }) async {
     if (_client == null) {
-      return {'records': [], 'pagination': {}, 'error': '凭证未初始化，请重新添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+      return {
+        'records': [],
+        'pagination': {},
+        'error': '凭证未初始化，请重新添加账户',
+        'errorCode': 'AUTH_REQUIRED',
+        'success': false
+      };
     }
     try {
       final queryParams = <String, dynamic>{
@@ -223,9 +382,22 @@ class CloudflareDriver implements DriverInterface {
       if (filters != null) {
         queryParams.addAll(filters);
       }
-      final response = await _getClient().get('/zones/$domainId/dns_records', queryParameters: queryParams);
-      if (response.data['success'] == true) {
-        final result = response.data['result'] as List? ?? [];
+      final response = await _getClient().get(
+        '/zones/$domainId/dns_records',
+        queryParameters: queryParams,
+      );
+      if (response.data == null) {
+        return {
+          'records': [],
+          'pagination': {},
+          'error': '服务器无响应',
+          'errorCode': 'UNKNOWN',
+          'success': false
+        };
+      }
+      final data = response.data is Map ? response.data : <String, dynamic>{};
+      if (data['success'] == true) {
+        final result = data['result'] as List? ?? [];
         final records = result.map((record) {
           return {
             'id': record['id']?.toString() ?? '',
@@ -241,7 +413,7 @@ class CloudflareDriver implements DriverInterface {
             'tags': record['tags'] as List? ?? [],
           };
         }).toList();
-        final pagination = response.data['result_info'] ?? {};
+        final pagination = data['result_info'] ?? <String, dynamic>{};
         return {
           'records': records,
           'pagination': pagination,
@@ -252,7 +424,7 @@ class CloudflareDriver implements DriverInterface {
           'pageSize': pageSize,
         };
       }
-      return _parseError(response.data);
+      return _parseError(data);
     } catch (e) {
       return {
         'records': [],
@@ -269,16 +441,41 @@ class CloudflareDriver implements DriverInterface {
     String domainId,
     Map<String, dynamic> recordData,
   ) async {
-    if (_client == null) return {'error': '凭证未初始化，请重新添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+    if (_client == null) {
+      return {
+        'error': '凭证未初始化，请重新添加账户',
+        'errorCode': 'AUTH_REQUIRED',
+        'success': false
+      };
+    }
     try {
       final preparedData = _prepareDnsRecordData(recordData);
-      final response = await _getClient().post('/zones/$domainId/dns_records', data: preparedData);
-      if (response.data['success'] == true) {
-        return {'success': true, 'statusCode': 'OK', 'data': response.data['result']};
+      final response = await _getClient().post(
+        '/zones/$domainId/dns_records',
+        data: preparedData,
+      );
+      if (response.data == null) {
+        return {
+          'error': '服务器无响应',
+          'errorCode': 'UNKNOWN',
+          'success': false
+        };
       }
-      return _parseError(response.data);
+      final data = response.data is Map ? response.data : <String, dynamic>{};
+      if (data['success'] == true) {
+        return {
+          'success': true,
+          'statusCode': 'OK',
+          'data': data['result']
+        };
+      }
+      return _parseError(data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {
+        'error': _handleException(e),
+        'errorCode': 'NETWORK_ERROR',
+        'success': false
+      };
     }
   }
 
@@ -288,16 +485,41 @@ class CloudflareDriver implements DriverInterface {
     String recordId,
     Map<String, dynamic> recordData,
   ) async {
-    if (_client == null) return {'error': '凭证未初始化，请重新添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+    if (_client == null) {
+      return {
+        'error': '凭证未初始化，请重新添加账户',
+        'errorCode': 'AUTH_REQUIRED',
+        'success': false
+      };
+    }
     try {
       final preparedData = _prepareDnsRecordData(recordData);
-      final response = await _getClient().put('/zones/$domainId/dns_records/$recordId', data: preparedData);
-      if (response.data['success'] == true) {
-        return {'success': true, 'statusCode': 'OK', 'data': response.data['result']};
+      final response = await _getClient().put(
+        '/zones/$domainId/dns_records/$recordId',
+        data: preparedData,
+      );
+      if (response.data == null) {
+        return {
+          'error': '服务器无响应',
+          'errorCode': 'UNKNOWN',
+          'success': false
+        };
       }
-      return _parseError(response.data);
+      final data = response.data is Map ? response.data : <String, dynamic>{};
+      if (data['success'] == true) {
+        return {
+          'success': true,
+          'statusCode': 'OK',
+          'data': data['result']
+        };
+      }
+      return _parseError(data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {
+        'error': _handleException(e),
+        'errorCode': 'NETWORK_ERROR',
+        'success': false
+      };
     }
   }
 
@@ -320,22 +542,44 @@ class CloudflareDriver implements DriverInterface {
   @override
   Future<Map<String, dynamic>> deleteDnsRecord(String domainId, String recordId) async {
     if (_client == null) {
-      return {'success': false, 'error': '凭证未初始化，请重新添加账户', 'errorCode': 'AUTH_REQUIRED'};
+      return {
+        'success': false,
+        'error': '凭证未初始化，请重新添加账户',
+        'errorCode': 'AUTH_REQUIRED'
+      };
     }
     try {
       final response = await _getClient().delete('/zones/$domainId/dns_records/$recordId');
-      if (response.data['success'] == true) {
+      if (response.data == null) {
+        return {
+          'success': false,
+          'error': '服务器无响应',
+          'errorCode': 'UNKNOWN'
+        };
+      }
+      final data = response.data is Map ? response.data : <String, dynamic>{};
+      if (data['success'] == true) {
         return {'success': true, 'statusCode': 'OK'};
       }
-      return _parseError(response.data);
+      return _parseError(data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {
+        'error': _handleException(e),
+        'errorCode': 'NETWORK_ERROR',
+        'success': false
+      };
     }
   }
 
   @override
   Future<Map<String, dynamic>> createDomain(Map<String, dynamic> domainData) async {
-    if (_client == null) return {'error': '凭证未初始化，请重新添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+    if (_client == null) {
+      return {
+        'error': '凭证未初始化，请重新添加账户',
+        'errorCode': 'AUTH_REQUIRED',
+        'success': false
+      };
+    }
     try {
       final preparedData = {
         'name': domainData['name']?.toString() ?? '',
@@ -345,8 +589,16 @@ class CloudflareDriver implements DriverInterface {
         preparedData['account'] = domainData['account'];
       }
       final response = await _getClient().post('/zones', data: preparedData);
-      if (response.data['success'] == true) {
-        final result = response.data['result'];
+      if (response.data == null) {
+        return {
+          'error': '服务器无响应',
+          'errorCode': 'UNKNOWN',
+          'success': false
+        };
+      }
+      final data = response.data is Map ? response.data : <String, dynamic>{};
+      if (data['success'] == true) {
+        final result = data['result'];
         return {
           'success': true,
           'statusCode': 'OK',
@@ -360,34 +612,62 @@ class CloudflareDriver implements DriverInterface {
           'message': '域名添加成功'
         };
       }
-      return _parseError(response.data);
+      return _parseError(data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {
+        'error': _handleException(e),
+        'errorCode': 'NETWORK_ERROR',
+        'success': false
+      };
     }
   }
 
   @override
   Future<Map<String, dynamic>> deleteDomain(String domainId) async {
     if (_client == null) {
-      return {'error': '凭证未初始化，请重新添加账户', 'errorCode': 'AUTH_REQUIRED', 'success': false};
+      return {
+        'error': '凭证未初始化，请重新添加账户',
+        'errorCode': 'AUTH_REQUIRED',
+        'success': false
+      };
     }
     if (domainId.isEmpty) {
-      return {'error': '域名标识无效', 'errorCode': 'INVALID_DOMAIN_ID', 'success': false};
+      return {
+        'error': '域名标识无效',
+        'errorCode': 'INVALID_DOMAIN_ID',
+        'success': false
+      };
     }
     try {
       final response = await _getClient().delete('/zones/$domainId');
-      if (response.data['success'] == true) {
+      if (response.data == null) {
+        return {
+          'error': '服务器无响应',
+          'errorCode': 'UNKNOWN',
+          'success': false
+        };
+      }
+      final data = response.data is Map ? response.data : <String, dynamic>{};
+      if (data['success'] == true) {
         return {'success': true, 'statusCode': 'OK', 'message': '域名已删除'};
       }
-      return _parseError(response.data);
+      return _parseError(data);
     } catch (e) {
-      return {'error': _handleException(e), 'errorCode': 'NETWORK_ERROR', 'success': false};
+      return {
+        'error': _handleException(e),
+        'errorCode': 'NETWORK_ERROR',
+        'success': false
+      };
     }
   }
 
   @override
   Future<Map<String, dynamic>> renewDomain(String domainId) async {
-    return {'error': 'Cloudflare 不支持域名续期操作', 'errorCode': 'NOT_SUPPORTED', 'success': false};
+    return {
+      'error': 'Cloudflare 不支持域名续期操作',
+      'errorCode': 'NOT_SUPPORTED',
+      'success': false
+    };
   }
 
   @override
@@ -403,7 +683,8 @@ class CloudflareDriver implements DriverInterface {
   bool get supportsShowNameServers => true;
 
   @override
-  Widget buildDomainListItem(Map<String, dynamic> domainData, {
+  Widget buildDomainListItem(
+    Map<String, dynamic> domainData, {
     required VoidCallback onTap,
     required VoidCallback onDelete,
     required VoidCallback onRenew,
@@ -414,7 +695,9 @@ class CloudflareDriver implements DriverInterface {
   }
 
   @override
-  void showDomainListItemMenu(BuildContext context, Map<String, dynamic> domainData, {
+  void showDomainListItemMenu(
+    BuildContext context,
+    Map<String, dynamic> domainData, {
     required VoidCallback onDelete,
     required VoidCallback onRenew,
     required VoidCallback onShowNameServers,
@@ -426,7 +709,12 @@ class CloudflareDriver implements DriverInterface {
     final offset = renderBox.localToGlobal(Offset.zero);
     showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(offset.dx + renderBox.size.width / 2, offset.dy + renderBox.size.height / 2, offset.dx + renderBox.size.width, offset.dy + renderBox.size.height),
+      position: RelativeRect.fromLTRB(
+        offset.dx + renderBox.size.width / 2,
+        offset.dy + renderBox.size.height / 2,
+        offset.dx + renderBox.size.width,
+        offset.dy + renderBox.size.height,
+      ),
       items: [
         if (supportsShowNameServers) const PopupMenuItem(value: 'nameservers', child: Text('NS节点')),
         if (supportsRenew) const PopupMenuItem(value: 'renew', child: Text('续期')),
@@ -460,9 +748,9 @@ class CloudflareDriver implements DriverInterface {
                 Text('无', style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: Theme.of(ctx).colorScheme.onSurfaceVariant))
               else
                 ...nameServers.map((ns) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Text(ns.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
-                )),
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(ns.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
+                    )),
             ],
           ),
         ),
@@ -487,7 +775,8 @@ class CloudflareDriver implements DriverInterface {
       child: Row(
         children: [
           Container(
-            width: 44, height: 44,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: typeColor,
               borderRadius: BorderRadius.circular(22),
@@ -514,7 +803,12 @@ class CloudflareDriver implements DriverInterface {
               children: [
                 Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
                 const SizedBox(height: 2),
-                Text(content, style: TextStyle(fontSize: 12, color: Colors.grey[600]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  content,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
           ),
@@ -539,26 +833,6 @@ class CloudflareDriver implements DriverInterface {
     return ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA'];
   }
 
-  String _translateStatus(String status) {
-    const map = {'active': '活跃', 'pending': '待处理', 'expired': '已过期', 'suspended': '已暂停', 'deleted': '已删除'};
-    return map[status.toLowerCase()] ?? status;
-  }
-
-  String _formatDate(dynamic dateVal) {
-    if (dateVal == null) return '';
-    try {
-      final s = dateVal is int ? dateVal.toString() : dateVal.toString();
-      if (s.isEmpty) return '';
-      if (dateVal is int && dateVal > 10000000000) {
-        final dt = DateTime.fromMillisecondsSinceEpoch(dateVal, isUtc: true);
-        return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      }
-      final dt = DateTime.tryParse(s);
-      if (dt != null) return '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-      return s;
-    } catch (_) { return ''; }
-  }
-
   String _parseRegistrarType(String ownerType) {
     switch (ownerType.toLowerCase()) {
       case 'cloudflare':
@@ -577,26 +851,10 @@ class CloudflareDriver implements DriverInterface {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final String status;
-  const _StatusBadge({required this.status});
-  @override
-  Widget build(BuildContext context) {
-    final color = DriverColorUtils.getStatusColor(status);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(status, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
-    );
-  }
-}
-
 class _TtlTag extends StatelessWidget {
   final int ttl;
   const _TtlTag({required this.ttl});
+
   String get _label {
     if (ttl <= 0) return 'TTL: $ttl';
     if (ttl < 60) return 'TTL: ${ttl}s';
@@ -604,6 +862,7 @@ class _TtlTag extends StatelessWidget {
     if (ttl < 86400) return 'TTL: ${(ttl / 3600).round()}h';
     return 'TTL: ${(ttl / 86400).round()}d';
   }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -612,7 +871,10 @@ class _TtlTag extends StatelessWidget {
         color: Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(_label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey)),
+      child: Text(
+        _label,
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey),
+      ),
     );
   }
 }
