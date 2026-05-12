@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
-import '../driver_colors.dart';
+import '../../utils/driver/driver_utils.dart';
 import '../../utils/network/api_client.dart';
 import '../../core/config/app_config.dart';
+import '../../core/theme/design_system.dart';
+import '../../core/ui/md3_widgets.dart';
 import 'dnspod_signer.dart';
 
 class DnspodDriver implements DriverInterface {
@@ -680,7 +682,7 @@ class DnspodDriver implements DriverInterface {
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: DriverColorUtils.getDnsTypeColor(type),
+              color: DnsDesignTokens.getDnsTypeColor(type),
               borderRadius: BorderRadius.circular(22),
             ),
             child: Center(
@@ -708,7 +710,7 @@ class DnspodDriver implements DriverInterface {
                     Flexible(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     if (priority != null && priority > 0) ...[
                       const SizedBox(width: 4),
-                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DriverColorUtils.dnsTypeMX)),
+                      Text('P$priority', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: DnsDesignTokens.dnsTypeMX)),
                     ],
                     if (!enabled) ...[
                       const SizedBox(width: 4),
@@ -729,7 +731,7 @@ class DnspodDriver implements DriverInterface {
             ),
           ),
           const SizedBox(width: 8),
-          _TtlTag(ttl: ttl),
+          DnsTtlTag(ttl: ttl),
         ],
       ),
     );
@@ -742,29 +744,6 @@ class DnspodDriver implements DriverInterface {
 
   @override
   List<String> getSupportedRecordTypes() {
-    return ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA', 'URL', 'SPF', 'AAAA'];
-  }
-}
-
-class _TtlTag extends StatelessWidget {
-  final int ttl;
-  const _TtlTag({required this.ttl});
-  String get _label {
-    if (ttl <= 0) return 'TTL: $ttl';
-    if (ttl < 60) return 'TTL: ${ttl}s';
-    if (ttl < 3600) return 'TTL: ${(ttl / 60).round()}m';
-    if (ttl < 86400) return 'TTL: ${(ttl / 3600).round()}h';
-    return 'TTL: ${(ttl / 86400).round()}d';
-  }
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(_label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey)),
-    );
+    return ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'CAA', 'URL', 'SPF'];
   }
 }

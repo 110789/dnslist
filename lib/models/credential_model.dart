@@ -40,15 +40,22 @@ class CredentialModel {
     } else {
       creds = {};
     }
+    final createdAtVal = json['createdAt'];
+    DateTime createdAt;
+    if (createdAtVal is String) {
+      createdAt = DateTime.parse(createdAtVal);
+    } else if (createdAtVal is int) {
+      createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtVal);
+    } else {
+      createdAt = DateTime.now();
+    }
     return CredentialModel(
       id: json['id'],
       providerId: json['providerId'],
       providerName: json['providerName'],
       remark: json['remark'],
       credentials: creds,
-      createdAt: json['createdAt'] is String
-        ? DateTime.parse(json['createdAt'])
-        : DateTime.fromMillisecondsSinceEpoch(json['createdAt'] as int),
+      createdAt: createdAt,
       order: json['order'] ?? 0,
     );
   }

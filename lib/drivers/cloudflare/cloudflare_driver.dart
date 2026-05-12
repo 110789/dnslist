@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
-import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
+import '../../utils/driver/driver_utils.dart';
 import '../../core/config/app_config.dart';
+import '../../core/theme/design_system.dart';
+import '../../core/ui/md3_widgets.dart';
 
 class CloudflareDriver implements DriverInterface {
   static const String _providerId = 'cloudflare';
   static const String _providerName = 'Cloudflare';
   static const String _providerIcon = 'assets/icons/cloudflare.svg';
   static const String _baseUrl = AppConfig.cloudflareBaseUrl;
-  static const int _maxMessageLen = 200;
+  static const int _maxMessageLen = DriverConstants.maxMessageLen;
 
   ApiClient? _client;
   String? _apiToken;
@@ -96,27 +98,16 @@ class CloudflareDriver implements DriverInterface {
   }
 
   Map<String, dynamic> _parseException(Object e) {
-    if (e is! DioException) return {'error': 'Request failed', 'errorCode': 'UNKNOWN'};
+    final result = DioErrorParser.parse(e);
+    if (result['errorCode'] != 'UNKNOWN') return result;
 
+    if (e is! DioException) return result;
     final responseData = e.response?.data;
     if (responseData != null) {
-      final result = _parseResponse(responseData);
-      if (result['error'] != 'Unknown error') return result;
+      final parsed = _parseResponse(responseData);
+      if (parsed['error'] != 'Unknown error') return parsed;
     }
-
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-        return {'error': 'Connection timeout', 'errorCode': 'TIMEOUT'};
-      case DioExceptionType.receiveTimeout:
-        return {'error': 'Response timeout', 'errorCode': 'TIMEOUT'};
-      case DioExceptionType.connectionError:
-        return {'error': 'Connection failed', 'errorCode': 'NETWORK'};
-      case DioExceptionType.cancel:
-        return {'error': 'Request cancelled', 'errorCode': 'CANCELLED'};
-      default:
-        return {'error': 'Request failed', 'errorCode': 'UNKNOWN'};
-    }
+    return result;
   }
 
   @override
@@ -545,7 +536,7 @@ class CloudflareDriver implements DriverInterface {
     final content = recordData['content']?.toString() ?? '';
     final ttl = recordData['ttl'] as int? ?? 3600;
     final proxied = recordData['proxied'] == true;
-    final typeColor = DriverColorUtils.getDnsTypeColor(type);
+    final typeColor = DnsDesignTokens.getDnsTypeColor(type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -575,7 +566,7 @@ class CloudflareDriver implements DriverInterface {
             ),
           ),
           const SizedBox(width: 8),
-          _TtlTag(ttl: ttl),
+          DnsTtlTag(ttl: ttl),
           if (proxied) ...[
             const SizedBox(width: 4),
             const Icon(Icons.cloud, size: 16, color: Color(0xFF3B82F6)),
@@ -603,22 +594,3 @@ class CloudflareDriver implements DriverInterface {
   }
 }
 
-class _TtlTag extends StatelessWidget {
-  final int ttl;
-  const _TtlTag({required this.ttl});
-
-  String get _label {
-    if (ttl <= 0) return 'TTL: $ttl';
-    if (ttl < 60) return 'TTL: ${ttl}s';
-    if (ttl < 3600) return 'TTL: ${(ttl / 60).round()}m';
-    if (ttl < 86400) return 'TTL: ${(ttl / 3600).round()}h';
-    return 'TTL: ${(ttl / 86400).round()}d';
-  }
-
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-    decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-    child: Text(_label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey)),
-  );
-}

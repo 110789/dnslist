@@ -2,16 +2,18 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
-import '../driver_colors.dart';
 import '../../utils/network/api_client.dart';
+import '../../utils/driver/driver_utils.dart';
 import '../../core/config/app_config.dart';
+import '../../core/theme/design_system.dart';
+import '../../core/ui/md3_widgets.dart';
 
 class ClouDNSDriver implements DriverInterface {
   static const String _providerId = 'cloudns';
   static const String _providerName = 'ClouDNS';
   static const String _providerIcon = 'assets/icons/cloudns.svg';
   static const String _baseUrl = AppConfig.cloudnsBaseUrl;
-  static const int _maxMessageLen = 200;
+  static const int _maxMessageLen = DriverConstants.maxMessageLen;
 
   int? _authId;
   String? _authPassword;
@@ -69,27 +71,16 @@ class ClouDNSDriver implements DriverInterface {
   }
 
   Map<String, dynamic> _parseException(Object e) {
-    if (e is! DioException) return {'error': 'Request failed', 'errorCode': 'UNKNOWN'};
+    final result = DioErrorParser.parse(e);
+    if (result['errorCode'] != 'UNKNOWN') return result;
 
+    if (e is! DioException) return result;
     final responseData = e.response?.data;
     if (responseData != null) {
-      final result = _parseResponse(responseData);
-      if (result['error'] != 'Unknown error') return result;
+      final parsed = _parseResponse(responseData);
+      if (parsed['error'] != 'Unknown error') return parsed;
     }
-
-    switch (e.type) {
-      case DioExceptionType.connectionTimeout:
-      case DioExceptionType.sendTimeout:
-        return {'error': 'Connection timeout', 'errorCode': 'TIMEOUT'};
-      case DioExceptionType.receiveTimeout:
-        return {'error': 'Response timeout', 'errorCode': 'TIMEOUT'};
-      case DioExceptionType.connectionError:
-        return {'error': 'Connection failed', 'errorCode': 'NETWORK'};
-      case DioExceptionType.cancel:
-        return {'error': 'Request cancelled', 'errorCode': 'CANCELLED'};
-      default:
-        return {'error': 'Request failed', 'errorCode': 'UNKNOWN'};
-    }
+    return result;
   }
 
   Future<Map<String, dynamic>> _callApi(String action, Map<String, dynamic> params) async {
@@ -273,7 +264,7 @@ class ClouDNSDriver implements DriverInterface {
     final type = recordData['type']?.toString() ?? 'A';
     final content = recordData['record']?.toString() ?? recordData['content']?.toString() ?? '';
     final ttl = recordData['ttl'] as int? ?? 3600;
-    final typeColor = DriverColorUtils.getDnsTypeColor(type);
+    final typeColor = DnsDesignTokens.getDnsTypeColor(type);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -293,7 +284,7 @@ class ClouDNSDriver implements DriverInterface {
             ),
           ),
           const SizedBox(width: 8),
-          _TtlTag(ttl: ttl),
+          DnsTtlTag(ttl: ttl),
         ],
       ),
     );
@@ -303,19 +294,5 @@ class ClouDNSDriver implements DriverInterface {
   Map<String, String> getCredentialFields() => {'authId': 'Auth ID', 'authPassword': 'Auth Password'};
 
   @override
-  List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'SPF', ' CAA'];
-}
-
-class _TtlTag extends StatelessWidget {
-  final int ttl;
-  const _TtlTag({required this.ttl});
-  String get _label {
-    if (ttl <= 0) return 'TTL: $ttl';
-    if (ttl < 60) return 'TTL: ${ttl}s';
-    if (ttl < 3600) return 'TTL: ${(ttl / 60).round()}m';
-    if (ttl < 86400) return 'TTL: ${(ttl / 3600).round()}h';
-    return 'TTL: ${(ttl / 86400).round()}d';
-  }
-  @override
-  Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)), child: Text(_label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey)));
+  List<String> getSupportedRecordTypes() => ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'NS', 'SRV', 'SPF', 'CAA'];
 }
