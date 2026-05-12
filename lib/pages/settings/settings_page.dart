@@ -111,68 +111,21 @@ class SettingsPage extends StatelessWidget {
   }
 
   void _showDarkModeDialog(BuildContext context, ThemeProvider themeProvider) {
-    showModalBottomSheet(
+    DnsBottomSheet.show(
       context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => _DarkModeBottomSheet(
-        themeProvider: themeProvider,
-        getDarkModeLabel: _getDarkModeLabel,
-        onDarkModeChanged: (mode) {
-          themeProvider.setDarkMode(mode);
-          Navigator.pop(ctx);
-        },
-        onCancel: () => Navigator.pop(ctx),
-      ),
-    );
-  }
-}
-
-class _DarkModeBottomSheet extends StatelessWidget {
-  final ThemeProvider themeProvider;
-  final String Function(DarkModeOption) getDarkModeLabel;
-  final Function(DarkModeOption) onDarkModeChanged;
-  final VoidCallback onCancel;
-
-  const _DarkModeBottomSheet({
-    required this.themeProvider,
-    required this.getDarkModeLabel,
-    required this.onDarkModeChanged,
-    required this.onCancel,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              DnsSpacing.md,
-              DnsSpacing.sm,
-              DnsSpacing.md,
-              DnsSpacing.sm,
-            ),
-            child: Text(
-              '外观模式',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ...DarkModeOption.values.map((mode) {
-            final isSelected = themeProvider.darkMode == mode;
-            return _DarkModeOption(
-              mode: mode,
-              label: getDarkModeLabel(mode),
-              isSelected: isSelected,
-              onTap: () => onDarkModeChanged(mode),
-            );
-          }),
-          const SizedBox(height: DnsSpacing.md),
-        ],
-      ),
+      title: '外观模式',
+      children: DarkModeOption.values.map((mode) {
+        final isSelected = themeProvider.darkMode == mode;
+        return _DarkModeOption(
+          mode: mode,
+          label: _getDarkModeLabel(mode),
+          isSelected: isSelected,
+          onTap: () {
+            themeProvider.setDarkMode(mode);
+            Navigator.pop(context);
+          },
+        );
+      }).toList(),
     );
   }
 }

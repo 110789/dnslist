@@ -1083,7 +1083,7 @@ class DnsCredentialCard extends StatelessWidget {
                     ],
                   ],
                 ),
-              ),
+),
               ReorderableDragStartListener(
                 index: 0,
                 child: Padding(
@@ -1097,6 +1097,66 @@ class DnsCredentialCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class DnsBottomSheet extends StatelessWidget {
+  final String? title;
+  final List<Widget> children;
+  final Widget? footer;
+
+  const DnsBottomSheet({
+    super.key,
+    this.title,
+    required this.children,
+    this.footer,
+  });
+
+  static Future<T?> show<T>({
+    required BuildContext context,
+    String? title,
+    required List<Widget> children,
+    Widget? footer,
+  }) {
+    return showModalBottomSheet<T>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => DnsBottomSheet(
+        title: title,
+        children: children,
+        footer: footer,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (title != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                DnsSpacing.md,
+                DnsSpacing.sm,
+                DnsSpacing.md,
+                DnsSpacing.sm,
+              ),
+              child: Text(
+                title!,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ...children,
+          if (footer != null) footer!,
+        ],
       ),
     );
   }
