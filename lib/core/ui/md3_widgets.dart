@@ -1137,12 +1137,7 @@ class DnsBottomSheet extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(DnsRadius.xl),
-        ),
-      ),
+      color: colorScheme.surface,
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
