@@ -121,6 +121,7 @@ class SettingsPage extends StatelessWidget {
           themeProvider.setDarkMode(mode);
           Navigator.pop(ctx);
         },
+        onCancel: () => Navigator.pop(ctx),
       ),
     );
   }
@@ -130,86 +131,47 @@ class _DarkModeBottomSheet extends StatelessWidget {
   final ThemeProvider themeProvider;
   final String Function(DarkModeOption) getDarkModeLabel;
   final Function(DarkModeOption) onDarkModeChanged;
+  final VoidCallback onCancel;
 
   const _DarkModeBottomSheet({
     required this.themeProvider,
     required this.getDarkModeLabel,
     required this.onDarkModeChanged,
+    required this.onCancel,
   });
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(DnsRadius.xl),
-        ),
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: DnsSpacing.sm),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(2),
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              DnsSpacing.md,
+              DnsSpacing.sm,
+              DnsSpacing.md,
+              DnsSpacing.sm,
+            ),
+            child: Text(
+              '外观模式',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                DnsSpacing.lg,
-                DnsSpacing.lg,
-                DnsSpacing.lg,
-                DnsSpacing.md,
-              ),
-              child: Text(
-                '外观模式',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ...DarkModeOption.values.map((mode) {
-              final isSelected = themeProvider.darkMode == mode;
-              return _DarkModeOption(
-                mode: mode,
-                label: getDarkModeLabel(mode),
-                isSelected: isSelected,
-                onTap: () => onDarkModeChanged(mode),
-              );
-            }),
-            const SizedBox(height: DnsSpacing.sm),
-            Divider(
-              height: 0.5,
-              color: colorScheme.outlineVariant,
-            ),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => Navigator.pop(context),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: DnsSpacing.md,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '取消',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+          ...DarkModeOption.values.map((mode) {
+            final isSelected = themeProvider.darkMode == mode;
+            return _DarkModeOption(
+              mode: mode,
+              label: getDarkModeLabel(mode),
+              isSelected: isSelected,
+              onTap: () => onDarkModeChanged(mode),
+            );
+          }),
+          const SizedBox(height: DnsSpacing.md),
+        ],
       ),
     );
   }
