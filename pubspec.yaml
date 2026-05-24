@@ -53,6 +53,9 @@ dependencies:
   # 基础底座 - 状态管理
   provider: ^6.1.0
 
+  # URL启动（打开系统浏览器）
+  url_launcher: ^6.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

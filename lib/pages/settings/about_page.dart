@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/config/app_config.dart';
 import '../../core/router/app_router.dart';
 import '../../core/ui/md3_widgets.dart';
@@ -35,7 +35,7 @@ class AboutPage extends StatelessWidget {
                 icon: Icons.code_outlined,
                 title: 'GitHub 仓库',
                 subtitle: 'lioisme',
-                onTap: () => _copyUrl(context, _repoUrl),
+                onTap: () => _launchUrl(context, _repoUrl),
                 showDivider: true,
               ),
               _SettingsTile(
@@ -115,15 +115,11 @@ class AboutPage extends StatelessWidget {
     );
   }
 
-  void _copyUrl(BuildContext context, String url) {
-    Clipboard.setData(ClipboardData(text: url));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('仓库地址已复制到剪贴板'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _launchUrl(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 }
 
