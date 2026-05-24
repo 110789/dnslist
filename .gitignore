@@ -8,7 +8,6 @@
 build/
 flutter_*.png
 generated/
-pubspec.lock
 
 # IDE
 .idea/
