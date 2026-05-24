@@ -11,11 +11,12 @@ import 'core/theme/app_theme.dart';
 import 'core/services/service_registry.dart';
 import 'core/services/framework_services_impl.dart';
 import 'core/localization/locale_provider.dart';
-import 'package:dp/generated/l10n/app_localizations.dart';
+import 'package:dlist/generated/l10n/app_localizations.dart';
 import 'services/credential_storage.dart';
 import 'services/credential_state.dart';
 import 'services/new_domain_state.dart';
 import 'services/driver_service.dart';
+import 'services/update_provider.dart';
 import 'utils/storage/local_storage.dart';
 import 'database/database.dart';
 import 'database/repositories/credential_repository.dart';
@@ -110,7 +111,7 @@ Future<void> _initServiceRegistry() async {
   await localStorage.init();
 
   final config = DefaultFrameworkConfig(
-    appName: 'DNS管理工具',
+    appName: 'DNS 管理器',
     appVersion: '1.0.0',
     defaultPageSize: 20,
     connectionTimeout: 30000,
@@ -259,14 +260,15 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: domainState),
         ChangeNotifierProvider.value(value: themeProvider),
         ChangeNotifierProvider(create: (_) => LocaleProvider()),
+        ChangeNotifierProvider(create: (_) => UpdateProvider()),
       ],
       child: Consumer<LocaleProvider>(
         builder: (context, localeProvider, _) {
-          return Selector<ThemeProvider, bool>(
-            selector: (_, theme) => theme.isDarkMode,
-            builder: (context, isDarkMode, _) {
+          return Consumer<ThemeProvider>(
+            builder: (context, themeProvider, _) {
+              final isDark = themeProvider.isDarkMode;
               return MaterialApp.router(
-                title: 'DNS管理工具',
+                title: 'Dlist',
                 locale: localeProvider.useSystemLocale ? null : localeProvider.locale,
                 localizationsDelegates: const [
                   AppLocalizations.delegate,
@@ -278,7 +280,14 @@ class _MyAppState extends State<MyApp> {
                 localeResolutionCallback: (locale, supportedLocales) {
                   if (locale == null) return const Locale('en');
                   for (final supported in supportedLocales) {
-                    if (supported.languageCode == locale.languageCode) {
+                    if (supported.languageCode == locale.languageCode &&
+                        supported.scriptCode == locale.scriptCode) {
+                      return supported;
+                    }
+                  }
+                  for (final supported in supportedLocales) {
+                    if (supported.languageCode == locale.languageCode &&
+                        supported.scriptCode == null) {
                       return supported;
                     }
                   }
@@ -286,7 +295,7 @@ class _MyAppState extends State<MyApp> {
                 },
                 routerConfig: AppRouter.router,
                 debugShowCheckedModeBanner: false,
-                theme: isDarkMode ? AppTheme.md3Dark : AppTheme.md3Light,
+                theme: isDark ? AppTheme.md3Dark(seedColor: themeProvider.seedColorDark) : AppTheme.md3Light(seedColor: themeProvider.seedColor),
               );
             },
           );

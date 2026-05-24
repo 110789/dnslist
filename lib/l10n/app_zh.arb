@@ -1,6 +1,6 @@
 {
   "@@locale": "zh",
-  "appName": "DNS管理工具",
+  "appName": "DNS 管理器",
   "appNavTitle": "DNS管理",
 
   "navSettings": "设置",
@@ -59,7 +59,7 @@
   "nameserversNone": "无",
   "nameserversCopied": "已复制: {value}",
 
-  "drawerTitle": "DNS管理工具",
+  "drawerTitle": "DNS 管理器",
   "drawerCredentials": "{count} 个凭证",
   "drawerNoCredentials": "未添加凭证",
   "drawerSettings": "设置",
@@ -106,7 +106,10 @@
   "darkModeDark": "夜间模式",
   "darkModeSystem": "跟随系统",
   "languageSystem": "跟随系统",
-  "languageZh": "简体中文",
+  "languageZhHans": "简体汉文",
+  "languageZhHant": "繁體漢文",
+  "languageJa": "日本語",
+  "languageKo": "한국어",
   "languageEn": "English",
 
   "aboutInfo": "信息",
@@ -115,7 +118,7 @@
   "aboutLicense": "开源许可",
   "aboutVersion": "版本 {version}",
   "aboutDescription": "一款跨平台多服务商域名 & DNS 集中管理工具\n支持 Cloudflare、DNSHE 等多家服务商",
-  "aboutCopyright": "© 2026 DNS管理工具\nAll rights reserved.",
+  "aboutCopyright": "© 2026 DNS 管理器\nAll rights reserved.",
 
   "logcatTitle": "日志",
   "logcatCopy": "复制日志",
@@ -266,5 +269,20 @@
   "driverRainyunLineEducation": "教育",
   "driverRainyunLineSearch": "搜索",
   "driverRainyunLineOverseas": "国外",
-  "driverRainyunCredentialApiKey": "API Key"
+  "driverRainyunCredentialApiKey": "API Key",
+
+  "updateCheck": "检查更新",
+  "updateChecking": "检查中...",
+  "updateAvailable": "发现新版本 v{version}",
+  "updateCurrentVersion": "当前版本: v{version}",
+  "updateLatestVersion": "最新版本: v{version}",
+  "updateDownload": "下载更新",
+  "updateDownloading": "下载中... {progress}%",
+  "updateInstall": "安装",
+  "updateLater": "稍后再说",
+  "updateNoUpdate": "已是最新版本",
+  "updateError": "检查更新失败: {error}",
+  "updateChangelog": "更新日志",
+  "updateCancel": "取消下载",
+  "updateReleasePage": "在 GitHub 查看"
 }

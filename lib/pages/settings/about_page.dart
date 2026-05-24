@@ -1,16 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:dp/generated/l10n/app_localizations.dart';
+import 'package:dlist/generated/l10n/app_localizations.dart';
 import '../../core/config/app_config.dart';
 import '../../core/router/app_router.dart';
 import '../../core/ui/md3_widgets.dart';
 import '../../core/theme/design_system.dart';
+import '../../services/update_provider.dart';
 
-class AboutPage extends StatelessWidget {
+class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
 
-  static const String _repoUrl = 'https://github.com/lioisme';
+  @override
+  State<AboutPage> createState() => _AboutPageState();
+}
+
+class _AboutPageState extends State<AboutPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<UpdateProvider>().addListener(_onUpdateStateChanged);
+    });
+  }
+
+  @override
+  void dispose() {
+    // Avoid calling listen after dispose
+    super.dispose();
+  }
+
+  void _onUpdateStateChanged() {
+    if (!mounted) return;
+    final provider = context.read<UpdateProvider>();
+    switch (provider.status) {
+      case UpdateStatus.noUpdate:
+        _showToast(context, AppLocalizations.of(context)!.updateNoUpdate);
+        provider.reset();
+      case UpdateStatus.available:
+        _showUpdateDialog();
+      case UpdateStatus.downloaded:
+        _showInstallDialog();
+      case UpdateStatus.error:
+        if (provider.errorMessage.isNotEmpty) {
+          _showToast(context, AppLocalizations.of(context)!.updateError(provider.errorMessage));
+          provider.reset();
+        }
+      default:
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +76,14 @@ class AboutPage extends StatelessWidget {
                 icon: Icons.code_outlined,
                 title: AppLocalizations.of(context)!.aboutGitHub,
                 subtitle: AppLocalizations.of(context)!.aboutGitHubSub,
-                onTap: () => _launchUrl(context, _repoUrl),
+                onTap: () => _launchUrl(context, 'https://github.com/lioisme/dnslist'),
+                showDivider: true,
+              ),
+              _SettingsTile(
+                icon: Icons.system_update_outlined,
+                title: AppLocalizations.of(context)!.updateCheck,
+                subtitle: AppLocalizations.of(context)!.updateCurrentVersion(AppConfig.appVersion),
+                onTap: _onCheckUpdate,
                 showDivider: true,
               ),
               _SettingsTile(
@@ -118,6 +165,199 @@ class AboutPage extends StatelessWidget {
     );
   }
 
+  Future<void> _onCheckUpdate() async {
+    final provider = context.read<UpdateProvider>();
+    final l10n = AppLocalizations.of(context)!;
+    await provider.checkForUpdate();
+    if (provider.status == UpdateStatus.noUpdate) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l10n.updateNoUpdate),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        provider.reset();
+      }
+    }
+  }
+
+  void _showUpdateDialog() {
+    final provider = context.read<UpdateProvider>();
+    final release = provider.releaseInfo;
+    if (release == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(
+            l10n.updateAvailable(release.version),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.updateCurrentVersion(AppConfig.appVersion),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: DnsSpacing.sm),
+                Text(
+                  l10n.updateLatestVersion(release.version),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (release.body.isNotEmpty) ...[
+                  const SizedBox(height: DnsSpacing.md),
+                  Text(
+                    l10n.updateChangelog,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: DnsSpacing.xs),
+                  Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    decoration: BoxDecoration(
+                      color: colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(DnsRadius.sm),
+                    ),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(DnsSpacing.sm),
+                      child: Text(
+                        release.body,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          height: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                provider.reset();
+              },
+              child: Text(l10n.updateLater),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                provider.downloadUpdate();
+                _showDownloadProgress();
+              },
+              child: Text(l10n.updateDownload),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDownloadProgress() {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return Consumer<UpdateProvider>(
+          builder: (context, provider, _) {
+            return AlertDialog(
+              title: Text(l10n.updateCheck),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  LinearProgressIndicator(value: provider.progress),
+                  const SizedBox(height: DnsSpacing.md),
+                  Text(
+                    l10n.updateDownloading((provider.progress * 100).toInt()),
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    provider.cancelDownload();
+                    Navigator.of(ctx).pop();
+                  },
+                  child: Text(l10n.updateCancel),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showInstallDialog() {
+    final l10n = AppLocalizations.of(context)!;
+    final provider = context.read<UpdateProvider>();
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: Text(
+            l10n.updateInstall,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          content: Text(
+            l10n.updateAvailable(provider.releaseInfo?.version ?? ''),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                provider.reset();
+              },
+              child: Text(l10n.updateLater),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                provider.installUpdate();
+              },
+              child: Text(l10n.updateInstall),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showToast(BuildContext context, String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   Future<void> _launchUrl(BuildContext context, String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
@@ -150,6 +390,7 @@ class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
+  final Widget? trailing;
   final bool showDivider;
   final VoidCallback? onTap;
 
@@ -157,6 +398,7 @@ class _SettingsTile extends StatelessWidget {
     required this.icon,
     required this.title,
     this.subtitle,
+    this.trailing,
     this.showDivider = false,
     this.onTap,
   });
@@ -194,6 +436,10 @@ class _SettingsTile extends StatelessWidget {
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(width: DnsSpacing.xs),
+                  ],
+                  if (trailing != null) ...[
+                    trailing!,
                     const SizedBox(width: DnsSpacing.xs),
                   ],
                   Icon(

@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appName": "DNS Manager",
+  "appName": "Dlist",
   "appNavTitle": "DNS Manager",
 
   "navSettings": "Settings",
@@ -59,7 +59,7 @@
   "nameserversNone": "None",
   "nameserversCopied": "Copied: {value}",
 
-  "drawerTitle": "DNS Manager",
+  "drawerTitle": "Dlist",
   "drawerCredentials": "{count} credentials",
   "drawerNoCredentials": "No credentials",
   "drawerSettings": "Settings",
@@ -106,7 +106,10 @@
   "darkModeDark": "Dark Mode",
   "darkModeSystem": "Follow System",
   "languageSystem": "Follow System",
-  "languageZh": "简体中文",
+  "languageZhHans": "简体汉文",
+  "languageZhHant": "繁體漢文",
+  "languageJa": "日本語",
+  "languageKo": "한국어",
   "languageEn": "English",
 
   "aboutInfo": "Info",
@@ -115,7 +118,7 @@
   "aboutLicense": "Open Source License",
   "aboutVersion": "Version {version}",
   "aboutDescription": "A cross-platform multi-provider domain & DNS management tool\nSupports Cloudflare, DNSHE, and more",
-  "aboutCopyright": "© 2026 DNS Manager\nAll rights reserved.",
+  "aboutCopyright": "© 2026 Dlist\nAll rights reserved.",
 
   "logcatTitle": "Logs",
   "logcatCopy": "Copy Logs",
@@ -266,5 +269,20 @@
   "driverRainyunLineEducation": "Education",
   "driverRainyunLineSearch": "Search",
   "driverRainyunLineOverseas": "Overseas",
-  "driverRainyunCredentialApiKey": "API Key"
+  "driverRainyunCredentialApiKey": "API Key",
+
+  "updateCheck": "Check for Updates",
+  "updateChecking": "Checking...",
+  "updateAvailable": "New version v{version} available",
+  "updateCurrentVersion": "Current version: v{version}",
+  "updateLatestVersion": "Latest version: v{version}",
+  "updateDownload": "Download",
+  "updateDownloading": "Downloading... {progress}%",
+  "updateInstall": "Install",
+  "updateLater": "Later",
+  "updateNoUpdate": "Already up to date",
+  "updateError": "Update check failed: {error}",
+  "updateChangelog": "Changelog",
+  "updateCancel": "Cancel Download",
+  "updateReleasePage": "View on GitHub"
 }

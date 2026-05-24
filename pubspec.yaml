@@ -1,5 +1,5 @@
-name: dp
-description: "多服务商域名DNS管理工具"
+name: dlist
+description: "DNS管理器 - 多服务商域名DNS管理工具"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -17,6 +17,8 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 version: 1.0.0+1
+homepage: https://github.com/lioisme/dnslist
+repository: https://github.com/lioisme/dnslist
 
 environment:
   sdk: ^3.11.5
@@ -58,6 +60,9 @@ dependencies:
 
   # URL启动（打开系统浏览器）
   url_launcher: ^6.2.0
+
+  # 打开下载文件（APK安装/安装包执行）
+  open_filex: ^4.5.0
 
 dev_dependencies:
   flutter_test:
