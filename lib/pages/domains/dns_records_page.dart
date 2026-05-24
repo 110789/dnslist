@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:dp/generated/l10n/app_localizations.dart';
+import 'package:dlist/generated/l10n/app_localizations.dart';
 import '../../services/credential_state.dart';
 import '../../services/new_domain_state.dart';
 import '../../services/refresh_helper.dart';

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lioisme.dp"
+    namespace = "org.lioisme.dnslist"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,7 +19,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.lioisme.dp"
+        applicationId = "org.lioisme.dnslist"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

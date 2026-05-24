@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dp/generated/l10n/app_localizations.dart';
+import 'package:dlist/generated/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../../pages/home/home_page.dart';
 import '../../pages/domains/dns_records_page.dart';
@@ -7,6 +7,7 @@ import '../../pages/settings/settings_page.dart';
 import '../../pages/settings/about_page.dart';
 import '../../pages/settings/licenses_page.dart';
 import '../../pages/logcat/logcat_page.dart';
+import '../../pages/settings/language_page.dart';
 
 class RouteNames {
   static const String home = 'home';
@@ -15,6 +16,7 @@ class RouteNames {
   static const String about = 'about';
   static const String licenses = 'licenses';
   static const String logcat = 'logcat';
+  static const String language = 'language';
 
   RouteNames._();
 }
@@ -26,6 +28,7 @@ class RoutePaths {
   static const String about = '/settings/about';
   static const String licenses = '/settings/licenses';
   static const String logcat = '/settings/logcat';
+  static const String language = '/settings/language';
 
   RoutePaths._();
 }
@@ -65,6 +68,10 @@ class AppRouter {
       GoRoute(
         path: RoutePaths.logcat,
         builder: (context, state) => const LogcatPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.language,
+        builder: (context, state) => const LanguagePage(),
       ),
     ],
   );

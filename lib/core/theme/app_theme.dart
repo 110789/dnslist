@@ -30,9 +30,9 @@ class AppRadius {
 }
 
 class AppTheme {
-  static ThemeData get md3Light {
+  static ThemeData md3Light({Color seedColor = DnsDesignTokens.primarySeed}) {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: DnsDesignTokens.primarySeed,
+      seedColor: seedColor,
       brightness: Brightness.light,
       surface: DnsDesignTokens.lightSurface,
       onSurface: DnsDesignTokens.lightOnSurface,
@@ -188,9 +188,9 @@ class AppTheme {
     );
   }
 
-  static ThemeData get md3Dark {
+  static ThemeData md3Dark({Color seedColor = DnsDesignTokens.primarySeedDark}) {
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: DnsDesignTokens.primarySeedDark,
+      seedColor: seedColor,
       brightness: Brightness.dark,
       surface: DnsDesignTokens.darkSurface,
       onSurface: DnsDesignTokens.darkOnSurface,

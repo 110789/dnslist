@@ -143,6 +143,36 @@ class DnsElevation {
   static const double level5 = 12.0;
 }
 
+class ThemeColorOption {
+  final String id;
+  final String label;
+  final Color color;
+  final Color darkColor;
+
+  const ThemeColorOption({
+    required this.id,
+    required this.label,
+    required this.color,
+    required this.darkColor,
+  });
+}
+
+class ThemeColors {
+  static const List<ThemeColorOption> options = [
+    ThemeColorOption(id: 'blue', label: '默认蓝', color: Color(0xFF2563EB), darkColor: Color(0xFF3B82F6)),
+    ThemeColorOption(id: 'green', label: '翡翠绿', color: Color(0xFF059669), darkColor: Color(0xFF34D399)),
+    ThemeColorOption(id: 'purple', label: '星紫色', color: Color(0xFF7C3AED), darkColor: Color(0xFFA78BFA)),
+    ThemeColorOption(id: 'orange', label: '暖橙色', color: Color(0xFFEA580C), darkColor: Color(0xFFFB923C)),
+    ThemeColorOption(id: 'pink', label: '玫红色', color: Color(0xFFDB2777), darkColor: Color(0xFFF472B6)),
+    ThemeColorOption(id: 'cyan', label: '青碧色', color: Color(0xFF0891B2), darkColor: Color(0xFF22D3EE)),
+    ThemeColorOption(id: 'indigo', label: '靛蓝色', color: Color(0xFF4338CA), darkColor: Color(0xFF818CF8)),
+    ThemeColorOption(id: 'teal', label: '松石绿', color: Color(0xFF0D9488), darkColor: Color(0xFF2DD4BF)),
+  ];
+
+  static ThemeColorOption get defaultOption => options[0];
+  static ThemeColorOption findById(String id) => options.firstWhere((o) => o.id == id, orElse: () => defaultOption);
+}
+
 class DesignSystem {
   static final tokens = DnsDesignTokens();
   static final typography = DnsTypography();

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
-import 'package:dp/generated/l10n/app_localizations.dart';
+import 'package:dlist/generated/l10n/app_localizations.dart';
 import '../../core/ui/md3_widgets.dart';
 import '../../core/theme/design_system.dart';
 import '../../core/state/theme_provider.dart';
@@ -24,9 +24,9 @@ class SettingsPage extends StatelessWidget {
         elevation: 0,
         scrolledUnderElevation: 2,
       ),
-      body: Selector<ThemeProvider, DarkModeOption>(
-        selector: (_, theme) => theme.darkMode,
-        builder: (context, darkMode, _) {
+      body: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          final colorOption = themeProvider.seedColorOption;
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
             children: [
@@ -36,20 +36,29 @@ class SettingsPage extends StatelessWidget {
                   _SettingsTile(
                     icon: Icons.dark_mode_outlined,
                     title: l10n.settingsDarkMode,
-                    subtitle: _getDarkModeLabel(l10n, darkMode),
-                    onTap: () => _showDarkModeSheet(context, context.read<ThemeProvider>()),
+                    subtitle: _getDarkModeLabel(l10n, themeProvider.darkMode),
+                    onTap: () => _showDarkModeSheet(context, themeProvider),
                     showDivider: true,
                   ),
                   _SettingsTile(
                     icon: Icons.palette_outlined,
                     title: l10n.settingsThemeColor,
-                    subtitle: l10n.settingsThemeDefault,
+                    subtitle: colorOption.label,
+                    trailing: Container(
+                      width: 20, height: 20,
+                      decoration: BoxDecoration(
+                        color: colorOption.color,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: colorScheme.outlineVariant, width: 1.5),
+                      ),
+                    ),
+                    onTap: () => _showThemeColorSheet(context, themeProvider),
                     showDivider: true,
                   ),
                   _SettingsTile(
                     icon: Icons.phone_android,
                     title: l10n.settingsUIStyle,
-                    subtitle: context.read<ThemeProvider>().uiStyle == UIStyle.md3 ? l10n.settingsUIStyleMD3 : l10n.settingsUIStyleCupertino,
+                    subtitle: themeProvider.uiStyle == UIStyle.md3 ? l10n.settingsUIStyleMD3 : l10n.settingsUIStyleCupertino,
                   ),
                 ],
               ),
@@ -61,7 +70,7 @@ class SettingsPage extends StatelessWidget {
                     icon: Icons.translate,
                     title: l10n.settingsLanguage,
                     subtitle: _getLanguageLabel(context),
-                    onTap: () => _showLanguageSheet(context),
+                    onTap: () => GoRouter.of(context).push(RoutePaths.language),
                   ),
                 ],
               ),
@@ -110,43 +119,14 @@ class SettingsPage extends StatelessWidget {
     final localeProvider = context.watch<LocaleProvider>();
     final l10n = AppLocalizations.of(context)!;
     if (localeProvider.useSystemLocale) return l10n.languageSystem;
-    if (localeProvider.locale?.languageCode == 'zh') return l10n.languageZh;
-    return l10n.languageEn;
-  }
-
-  void _showLanguageSheet(BuildContext context) {
-    final localeProvider = context.read<LocaleProvider>();
-    final l10n = AppLocalizations.of(context)!;
-    DnsBottomSheet.show(
-      context: context,
-      title: l10n.settingsLanguage,
-      children: [
-        _LanguageOption(
-          label: l10n.languageSystem,
-          isSelected: localeProvider.useSystemLocale,
-          onTap: () {
-            localeProvider.setLocale(null);
-            Navigator.pop(context);
-          },
-        ),
-        _LanguageOption(
-          label: l10n.languageEn,
-          isSelected: localeProvider.locale?.languageCode == 'en',
-          onTap: () {
-            localeProvider.setLocale(const Locale('en'));
-            Navigator.pop(context);
-          },
-        ),
-        _LanguageOption(
-          label: l10n.languageZh,
-          isSelected: localeProvider.locale?.languageCode == 'zh',
-          onTap: () {
-            localeProvider.setLocale(const Locale('zh'));
-            Navigator.pop(context);
-          },
-        ),
-      ],
-    );
+    final locale = localeProvider.locale;
+    if (locale == null) return l10n.languageSystem;
+    if (locale.languageCode == 'en') return l10n.languageEn;
+    if (locale.languageCode == 'zh' && locale.scriptCode == 'Hant') return l10n.languageZhHant;
+    if (locale.languageCode == 'zh') return l10n.languageZhHans;
+    if (locale.languageCode == 'ja') return l10n.languageJa;
+    if (locale.languageCode == 'ko') return l10n.languageKo;
+    return l10n.languageSystem;
   }
 
   String _getDarkModeLabel(AppLocalizations l10n, DarkModeOption mode) {
@@ -174,6 +154,86 @@ class SettingsPage extends StatelessWidget {
           },
         );
       }).toList(),
+    );
+  }
+
+  void _showThemeColorSheet(BuildContext context, ThemeProvider themeProvider) {
+    DnsBottomSheet.show(
+      context: context,
+      title: AppLocalizations.of(context)!.settingsThemeColor,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: DnsSpacing.md, vertical: DnsSpacing.sm),
+          child: Wrap(
+            spacing: DnsSpacing.sm,
+            runSpacing: DnsSpacing.sm,
+            children: ThemeColors.options.map((option) {
+              final isSelected = themeProvider.seedColorId == option.id;
+              return _ThemeColorOption(
+                option: option,
+                isSelected: isSelected,
+                onTap: () {
+                  themeProvider.setSeedColor(option.id);
+                  Navigator.pop(context);
+                },
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ThemeColorOption extends StatelessWidget {
+  final ThemeColorOption option;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _ThemeColorOption({
+    required this.option,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final size = 56.0;
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: option.color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
+                width: isSelected ? 3 : 1.5,
+              ),
+              boxShadow: isSelected
+                  ? [BoxShadow(color: option.color.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 1)]
+                  : null,
+            ),
+            child: isSelected
+                ? Icon(Icons.check, color: colorScheme.onPrimary, size: 24)
+                : null,
+          ),
+          const SizedBox(height: DnsSpacing.xs),
+          Text(
+            option.label,
+            style: TextStyle(
+              fontSize: 11,
+              color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -235,53 +295,6 @@ class _DarkModeOption extends StatelessWidget {
   }
 }
 
-class _LanguageOption extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  const _LanguageOption({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(DnsRadius.md),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: DnsSpacing.md,
-            vertical: DnsSpacing.sm + 2,
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.translate, size: 22, color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant),
-              const SizedBox(width: DnsSpacing.md),
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: isSelected ? colorScheme.primary : colorScheme.onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-              ),
-              if (isSelected)
-                Icon(Icons.check, size: 20, color: colorScheme.primary),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _SettingsGroup extends StatelessWidget {
   final List<Widget> children;
 
@@ -308,6 +321,7 @@ class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
+  final Widget? trailing;
   final bool showDivider;
   final VoidCallback? onTap;
 
@@ -315,6 +329,7 @@ class _SettingsTile extends StatelessWidget {
     required this.icon,
     required this.title,
     this.subtitle,
+    this.trailing,
     this.showDivider = false,
     this.onTap,
   });
@@ -352,6 +367,10 @@ class _SettingsTile extends StatelessWidget {
                         color: colorScheme.onSurfaceVariant,
                       ),
                     ),
+                    const SizedBox(width: DnsSpacing.xs),
+                  ],
+                  if (trailing != null) ...[
+                    trailing!,
                     const SizedBox(width: DnsSpacing.xs),
                   ],
                   Icon(

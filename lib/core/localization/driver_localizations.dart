@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dp/generated/l10n/app_localizations.dart';
+import 'package:dlist/generated/l10n/app_localizations.dart';
 import '../../drivers/interfaces/driver_interface.dart';
 
 class DriverLocalizations {

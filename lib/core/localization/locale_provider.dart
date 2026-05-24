@@ -20,7 +20,9 @@ class LocaleProvider extends ChangeNotifier {
     final saved = storage.getString(_keyLocale);
     if (saved != null && saved.isNotEmpty) {
       final parts = saved.split('_');
-      if (parts.length >= 2) {
+      if (parts.length >= 2 && parts[1].length == 4) {
+        _locale = Locale.fromSubtags(languageCode: parts[0], scriptCode: parts[1]);
+      } else if (parts.length >= 2) {
         _locale = Locale(parts[0], parts[1]);
       } else {
         _locale = Locale(saved);
@@ -37,6 +39,8 @@ class LocaleProvider extends ChangeNotifier {
     final storage = LocalStorage.instance;
     if (locale == null) {
       await storage.remove(_keyLocale);
+    } else if (locale.scriptCode != null) {
+      await storage.setString(_keyLocale, '${locale.languageCode}_${locale.scriptCode}');
     } else {
       await storage.setString(_keyLocale, locale.languageCode);
     }

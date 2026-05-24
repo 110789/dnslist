@@ -1,4 +1,4 @@
-package com.lioisme.dp
+package org.lioisme.dnslist
 
 import io.flutter.embedding.android.FlutterActivity
 

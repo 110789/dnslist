@@ -10,7 +10,7 @@
 -keep class io.flutter.embedding.** { *; }
 
 # Keep driver classes
--keep class com.lioisme.dp.drivers.** { *; }
+-keep class org.lioisme.dnslist.drivers.** { *; }
 
 # Dio rules
 -dontwarn okhttp3.**

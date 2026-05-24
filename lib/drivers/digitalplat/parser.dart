@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:dp/utils/driver/driver_utils.dart';
+import 'package:dlist/utils/driver/driver_utils.dart';
 import 'core.dart';
 
 class DigitalplatParser {

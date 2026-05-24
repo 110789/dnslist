@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.lioisme" "\0"
-            VALUE "FileDescription", "dp" "\0"
+            VALUE "CompanyName", "org.lioisme" "\0"
+            VALUE "FileDescription", "Dlist" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "dp" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.lioisme. All rights reserved." "\0"
-            VALUE "OriginalFilename", "dp.exe" "\0"
-            VALUE "ProductName", "dp" "\0"
+            VALUE "InternalName", "Dlist" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 org.lioisme. All rights reserved." "\0"
+            VALUE "OriginalFilename", "Dlist.exe" "\0"
+            VALUE "ProductName", "Dlist" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END
