@@ -38,8 +38,8 @@ class DnsDesignTokens {
 
   static Color getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case '活跃': case 'active': return statusActive;
-      case '待处理': case 'pending': return statusPending;
+      case '活跃': case 'active': case 'ok': return statusActive;
+      case '待处理': case 'pending': case 'pendingdelete': return statusPending;
       case '已过期': case 'expired': return statusExpired;
       case '已暂停': case 'suspended': return statusSuspended;
       case '已删除': case 'deleted': return statusDeleted;

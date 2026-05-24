@@ -3,7 +3,6 @@ import 'dart:ui';
 abstract class FrameworkConfig {
   String get appName;
   String get appVersion;
-  Map<String, String> get providerBaseUrls;
   int get defaultPageSize;
   int get connectionTimeout;
   int get receiveTimeout;
@@ -15,8 +14,6 @@ class DefaultFrameworkConfig implements FrameworkConfig {
   @override
   final String appVersion;
   @override
-  final Map<String, String> providerBaseUrls;
-  @override
   final int defaultPageSize;
   @override
   final int connectionTimeout;
@@ -26,7 +23,6 @@ class DefaultFrameworkConfig implements FrameworkConfig {
   const DefaultFrameworkConfig({
     required this.appName,
     required this.appVersion,
-    required this.providerBaseUrls,
     this.defaultPageSize = 20,
     this.connectionTimeout = 30000,
     this.receiveTimeout = 30000,
@@ -50,11 +46,10 @@ abstract class ThemeService {
 }
 
 abstract class NetworkService {
-  String getBaseUrl(String providerId);
   Future<Map<String, dynamic>> get(String url, {Map<String, dynamic>? queryParameters, Map<String, String>? headers});
   Future<Map<String, dynamic>> post(String url, {dynamic data, Map<String, String>? headers});
   Future<Map<String, dynamic>> put(String url, {dynamic data, Map<String, String>? headers});
-  Future<Map<String, dynamic>> delete(String url, {Map<String, String>? headers});
+  Future<Map<String, dynamic>> delete(String url, Map<String, String>? headers);
 }
 
 abstract class StorageService {
@@ -88,10 +83,6 @@ class ServiceRegistry {
     this.themeService = themeService;
     this.networkService = networkService;
     this.storageService = storageService;
-  }
-
-  String getProviderBaseUrl(String providerId) {
-    return config.providerBaseUrls[providerId] ?? '';
   }
 
   int get connectionTimeout => config.connectionTimeout;

@@ -45,6 +45,7 @@ dependencies:
   # SQLite 数据库
   sqflite: ^2.3.0
   path: ^1.9.0
+  path_provider: ^2.1.2
 
   # 基础底座 - 路由
   go_router: ^14.0.0

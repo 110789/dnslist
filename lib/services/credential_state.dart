@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../utils/log/log.dart';
 import 'credential_storage.dart';
 
 class CredentialState extends ChangeNotifier {
@@ -13,8 +14,23 @@ class CredentialState extends ChangeNotifier {
 
   Future<void> init() async {
     if (_isInitialized) return;
+    LogService.instance.info(
+      module: 'services',
+      className: 'CredentialState',
+      methodName: 'init',
+      action: '凭证状态初始化',
+      status: 'pending',
+    );
     await loadCredentials();
     _isInitialized = true;
+    LogService.instance.info(
+      module: 'services',
+      className: 'CredentialState',
+      methodName: 'init',
+      action: '凭证状态初始化完成',
+      data: {'count': _credentials.length, 'selectedId': _selectedCredentialId},
+      status: 'success',
+    );
   }
 
   List<CredentialModel> get credentials {
@@ -54,6 +70,14 @@ class CredentialState extends ChangeNotifier {
   }
 
   Future<void> addCredential(CredentialModel credential) async {
+    LogService.instance.info(
+      module: 'services',
+      className: 'CredentialState',
+      methodName: 'addCredential',
+      action: '添加凭证',
+      data: {'providerId': credential.providerId, 'providerName': credential.providerName},
+      status: 'pending',
+    );
     final maxOrder = _credentials.isEmpty ? 0 : _credentials.map((c) => c.order).reduce((a, b) => a > b ? a : b);
     final newCredential = credential.copyWith(order: maxOrder + 1);
     await _storage.add(newCredential);
@@ -61,6 +85,14 @@ class CredentialState extends ChangeNotifier {
     _selectedCredentialId = newCredential.id;
     _dirty = true;
     notifyListeners();
+    LogService.instance.info(
+      module: 'services',
+      className: 'CredentialState',
+      methodName: 'addCredential',
+      action: '添加凭证成功',
+      data: {'credentialId': newCredential.id},
+      status: 'success',
+    );
   }
 
   Future<void> removeCredential(String id) async {

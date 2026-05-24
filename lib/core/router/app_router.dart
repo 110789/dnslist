@@ -2,11 +2,17 @@ import 'package:go_router/go_router.dart';
 import '../../pages/home/home_page.dart';
 import '../../pages/domains/dns_records_page.dart';
 import '../../pages/settings/settings_page.dart';
+import '../../pages/settings/about_page.dart';
+import '../../pages/settings/licenses_page.dart';
+import '../../pages/logcat/logcat_page.dart';
 
 class RouteNames {
   static const String home = 'home';
   static const String dnsRecords = 'dnsRecords';
   static const String settings = 'settings';
+  static const String about = 'about';
+  static const String licenses = 'licenses';
+  static const String logcat = 'logcat';
 
   RouteNames._();
 }
@@ -15,6 +21,9 @@ class RoutePaths {
   static const String home = '/';
   static const String dnsRecords = '/domains/:domainId/records';
   static const String settings = '/settings';
+  static const String about = '/settings/about';
+  static const String licenses = '/settings/licenses';
+  static const String logcat = '/settings/logcat';
 
   RoutePaths._();
 }
@@ -41,6 +50,18 @@ class AppRouter {
       GoRoute(
         path: RoutePaths.settings,
         builder: (context, state) => const SettingsPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.about,
+        builder: (context, state) => const AboutPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.licenses,
+        builder: (context, state) => const LicensesPage(),
+      ),
+      GoRoute(
+        path: RoutePaths.logcat,
+        builder: (context, state) => const LogcatPage(),
       ),
     ],
   );

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import '../utils/storage/local_storage.dart';
+import '../utils/log/log.dart';
 import 'database_helper.dart';
 
 class AppDatabase {
@@ -24,23 +25,52 @@ class AppDatabase {
   }
 
   Future<Database> _initDatabase() async {
+    final stopwatch = Stopwatch()..start();
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, _dbName);
 
-    return await openDatabase(
+    final db = await openDatabase(
       path,
       version: _dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
+    stopwatch.stop();
+
+    LogService.instance.info(
+      module: 'core',
+      className: 'AppDatabase',
+      methodName: '_initDatabase',
+      action: '数据库初始化完成',
+      data: {'path': path, 'version': _dbVersion},
+      durationMs: stopwatch.elapsedMilliseconds,
+      status: 'success',
+    );
+    return db;
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    LogService.instance.info(
+      module: 'core',
+      className: 'AppDatabase',
+      methodName: '_onCreate',
+      action: '创建数据库表结构',
+      data: {'version': version},
+      status: 'success',
+    );
     await DatabaseHelper.createTables(db);
     await DatabaseHelper.insertDefaultSettings(db);
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    LogService.instance.info(
+      module: 'core',
+      className: 'AppDatabase',
+      methodName: '_onUpgrade',
+      action: '数据库版本升级',
+      data: {'oldVersion': oldVersion, 'newVersion': newVersion},
+      status: 'success',
+    );
     await DatabaseHelper.migrate(db, oldVersion, newVersion);
   }
 

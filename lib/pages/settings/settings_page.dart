@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/ui/md3_widgets.dart';
 import '../../core/theme/design_system.dart';
 import '../../core/state/theme_provider.dart';
+import '../../core/router/app_router.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -67,6 +69,7 @@ class SettingsPage extends StatelessWidget {
                     icon: Icons.receipt_long_outlined,
                     title: '日志',
                     subtitle: '查看应用运行日志',
+                    onTap: () => GoRouter.of(context).push(RoutePaths.logcat),
                   ),
                 ],
               ),
@@ -76,13 +79,15 @@ class SettingsPage extends StatelessWidget {
                 children: [
                   _SettingsTile(
                     icon: Icons.new_releases_outlined,
-                    title: '版本',
-                    subtitle: '1.0.0',
+                    title: '关于',
+                    subtitle: '版本 1.0.0',
                     showDivider: true,
+                    onTap: () => GoRouter.of(context).push(RoutePaths.about),
                   ),
                   _SettingsTile(
                     icon: Icons.policy_outlined,
                     title: '开源许可',
+                    onTap: () => GoRouter.of(context).push(RoutePaths.licenses),
                   ),
                 ],
               ),

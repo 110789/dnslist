@@ -7,94 +7,69 @@ import 'service_registry.dart';
 class ThemeServiceImpl implements ThemeService {
   @override
   Color getDnsTypeColor(String type) => DnsDesignTokens.getDnsTypeColor(type);
-  
+
   @override
   Color getStatusColor(String status) => DnsDesignTokens.getStatusColor(status);
-  
+
   @override
   Color get successColor => DnsDesignTokens.success;
-  
+
   @override
   Color get warningColor => DnsDesignTokens.warning;
-  
+
   @override
   Color get errorColor => DnsDesignTokens.error;
-  
+
   @override
   Color get infoColor => DnsDesignTokens.info;
-  
+
   @override
   double get spacingXs => DnsSpacing.xs;
-  
+
   @override
   double get spacingSm => DnsSpacing.sm;
-  
+
   @override
   double get spacingMd => DnsSpacing.md;
-  
+
   @override
   double get spacingLg => DnsSpacing.lg;
-  
+
   @override
   double get radiusSm => DnsRadius.sm;
-  
+
   @override
   double get radiusMd => DnsRadius.md;
-  
+
   @override
   double get radiusLg => DnsRadius.lg;
 }
 
 class NetworkServiceImpl implements NetworkService {
-  final Map<String, ApiClient> _clients = {};
-
-  String getBaseUrl(String providerId) {
-    return ServiceRegistry.instance.getProviderBaseUrl(providerId);
-  }
-
-  ApiClient _getClient(String providerId) {
-    if (!_clients.containsKey(providerId)) {
-      final baseUrl = getBaseUrl(providerId);
-      _clients[providerId] = ApiClient(baseUrl: baseUrl);
-    }
-    return _clients[providerId]!;
-  }
+  final ApiClient _client = ApiClient(baseUrl: '');
 
   @override
   Future<Map<String, dynamic>> get(String url, {Map<String, dynamic>? queryParameters, Map<String, String>? headers}) async {
-    final client = _getClient(_extractProviderId(url));
-    final response = await client.get(url, queryParameters: queryParameters, headers: headers);
-    return response.data;
+    final response = await _client.get(url, queryParameters: queryParameters, headers: headers);
+    return response.data ?? {};
   }
 
   @override
   Future<Map<String, dynamic>> post(String url, {dynamic data, Map<String, String>? headers}) async {
-    final client = _getClient(_extractProviderId(url));
-    final response = await client.post(url, data: data, headers: headers);
-    return response.data;
+    final response = await _client.post(url, data: data, headers: headers);
+    return response.data ?? {};
   }
 
   @override
   Future<Map<String, dynamic>> put(String url, {dynamic data, Map<String, String>? headers}) async {
-    final client = _getClient(_extractProviderId(url));
-    final response = await client.put(url, data: data, headers: headers);
-    return response.data;
+    final response = await _client.put(url, data: data, headers: headers);
+    return response.data ?? {};
   }
 
   @override
-  Future<Map<String, dynamic>> delete(String url, {Map<String, String>? headers}) async {
-    final client = _getClient(_extractProviderId(url));
-    final response = await client.delete(url, headers: headers);
-    return response.data;
-  }
-
-  String _extractProviderId(String url) {
-    if (url.contains('cloudflare')) return 'cloudflare';
-    if (url.contains('dnshe')) return 'dnshe';
-    if (url.contains('dnspod')) return 'dnspod';
-    if (url.contains('cloudns')) return 'cloudns';
-    if (url.contains('rainyun')) return 'rainyun';
-    return '';
+  Future<Map<String, dynamic>> delete(String url, Map<String, String>? headers) async {
+    final response = await _client.delete(url, headers: headers);
+    return response.data ?? {};
   }
 }
 

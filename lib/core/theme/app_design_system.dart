@@ -62,9 +62,11 @@ class DnsColors {
     switch (status) {
       case '活跃':
       case 'active':
+      case 'ok':
         return DesignSystem.success;
       case '待处理':
       case 'pending':
+      case 'pendingdelete':
         return DesignSystem.warning;
       case '已过期':
       case 'expired':

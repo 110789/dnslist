@@ -6,14 +6,15 @@ export 'dns.dart';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
-import '../../utils/driver/driver_utils.dart';
+import '../interfaces/record_dialog_capability.dart';
+import '../utils/driver_ui_tokens.dart';
 import '../../utils/toast_util.dart';
 import 'core.dart';
 import 'parser.dart';
 import 'zone.dart';
 import 'dns.dart';
 
-class DnsheDriver implements DriverInterface {
+class DnsheDriver implements DriverInterface, RecordDialogCapability {
   Dio? _client;
   // ignore: unused_field
   String? _apiKey;
@@ -500,7 +501,7 @@ class DnsheDriver implements DriverInterface {
 
   void showAddRecordDialog(
     BuildContext context, {
-    required String domainId,
+    String? domainId,
     required Future<Map<String, dynamic>> Function(Map<String, dynamic> recordData) onSubmit,
   }) {
     String selectedType = 'A';
@@ -618,6 +619,7 @@ keyboardType: field.keyboardType,
   void showEditRecordDialog(
     BuildContext context,
     Map<String, dynamic> record, {
+    String? domainId,
     required Future<Map<String, dynamic>> Function(Map<String, dynamic> recordData) onSubmit,
   }) {
     String selectedType = record['type']?.toString() ?? 'A';

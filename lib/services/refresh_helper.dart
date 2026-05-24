@@ -2,11 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/refresh/refresh_core.dart';
 import '../core/refresh/refresh_types.dart';
+import '../utils/log/log.dart';
 import 'new_domain_state.dart';
 import 'credential_state.dart';
 
 class RefreshHelper {
   static Future<void> refreshDomainListManual(BuildContext context) async {
+    LogService.instance.info(
+      module: 'ux',
+      className: 'RefreshHelper',
+      methodName: 'refreshDomainListManual',
+      action: '用户触发下拉刷新',
+      status: 'pending',
+    );
     final credentialState = context.read<CredentialState>();
     final domainState = context.read<NewDomainState>();
     final selected = credentialState.selectedCredential;
@@ -16,6 +24,14 @@ class RefreshHelper {
         credentials: selected.credentials,
         triggerType: RefreshTriggerType.manual,
       );
+      LogService.instance.info(
+        module: 'ux',
+        className: 'RefreshHelper',
+        methodName: 'refreshDomainListManual',
+        action: '下拉刷新完成',
+        data: {'providerId': selected.providerId, 'triggerType': 'manual'},
+        status: 'success',
+      );
     }
   }
 
@@ -24,6 +40,13 @@ class RefreshHelper {
     final domainState = context.read<NewDomainState>();
     final selected = credentialState.selectedCredential;
     if (selected != null) {
+      LogService.instance.debug(
+        module: 'ux',
+        className: 'RefreshHelper',
+        methodName: 'refreshDomainListPassive',
+        action: '被动刷新触发',
+        data: {'providerId': selected.providerId},
+      );
       await domainState.refreshDomainList(
         providerId: selected.providerId,
         credentials: selected.credentials,
@@ -38,6 +61,13 @@ class RefreshHelper {
     required String providerId,
     required Map<String, String> credentials,
   }) async {
+    LogService.instance.debug(
+      module: 'ux',
+      className: 'RefreshHelper',
+      methodName: 'refreshDomainListPassiveWithCredential',
+      action: '凭证切换后刷新',
+      data: {'providerId': providerId},
+    );
     final domainState = context.read<NewDomainState>();
     await domainState.refreshDomainList(
       providerId: providerId,

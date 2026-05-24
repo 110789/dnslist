@@ -641,6 +641,8 @@ class DnsDomainTile extends StatelessWidget {
       'expired': '已过期',
       'suspended': '已暂停',
       'deleted': '已删除',
+      'ok': '活跃',
+      'pendingdelete': '待删除',
     };
     return map[status.toLowerCase()] ?? status;
   }

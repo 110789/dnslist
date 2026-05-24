@@ -8,7 +8,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import '../interfaces/driver_interface.dart';
-import '../../utils/driver/driver_utils.dart';
+import '../utils/driver_ui_tokens.dart';
 import 'core.dart';
 import 'signer.dart';
 import 'parser.dart';
