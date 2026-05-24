@@ -81,13 +81,7 @@ class SettingsPage extends StatelessWidget {
                     icon: Icons.new_releases_outlined,
                     title: '关于',
                     subtitle: '版本 1.0.0',
-                    showDivider: true,
                     onTap: () => GoRouter.of(context).push(RoutePaths.about),
-                  ),
-                  _SettingsTile(
-                    icon: Icons.policy_outlined,
-                    title: '开源许可',
-                    onTap: () => GoRouter.of(context).push(RoutePaths.licenses),
                   ),
                 ],
               ),
