@@ -11,6 +11,7 @@ import 'core/theme/app_theme.dart';
 import 'core/services/service_registry.dart';
 import 'core/services/framework_services_impl.dart';
 import 'core/localization/locale_provider.dart';
+import 'package:dp/generated/l10n/app_localizations.dart';
 import 'services/credential_storage.dart';
 import 'services/credential_state.dart';
 import 'services/new_domain_state.dart';
@@ -199,26 +200,44 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   late final CredentialState credentialState;
+  late final NewDomainState domainState;
+  late final ThemeProvider themeProvider;
   bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    _initCredentialState();
+    _initProviders();
   }
 
-  Future<void> _initCredentialState() async {
-    final credentialRepository = CredentialRepository();
-    final credentialStorage = CredentialStorage(
-      LocalStorage.instance,
-      repository: credentialRepository,
-    );
-    credentialState = CredentialState(credentialStorage);
-    await credentialState.init();
-    if (mounted) {
-      setState(() {
-        _isInitialized = true;
-      });
+  Future<void> _initProviders() async {
+    try {
+      final credentialRepository = CredentialRepository();
+      final credentialStorage = CredentialStorage(
+        LocalStorage.instance,
+        repository: credentialRepository,
+      );
+      credentialState = CredentialState(credentialStorage);
+      await credentialState.init();
+
+      domainState = NewDomainState();
+      final userPrefsRepository = UserPreferencesRepository();
+      themeProvider = ThemeProvider(repository: userPrefsRepository);
+
+      if (mounted) {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    } catch (e, stack) {
+      LogService.instance.fatal(
+        module: 'core',
+        className: 'MyApp',
+        methodName: '_initProviders',
+        action: 'Provider初始化失败',
+        errorMessage: e.toString(),
+        stackTrace: stack.toString(),
+      );
     }
   }
 
@@ -233,10 +252,6 @@ class _MyAppState extends State<MyApp> {
         ),
       );
     }
-
-    final userPrefsRepository = UserPreferencesRepository();
-    final domainState = NewDomainState();
-    final themeProvider = ThemeProvider(repository: userPrefsRepository);
 
     return MultiProvider(
       providers: [
@@ -254,11 +269,12 @@ class _MyAppState extends State<MyApp> {
                 title: 'DNS管理工具',
                 locale: localeProvider.useSystemLocale ? null : localeProvider.locale,
                 localizationsDelegates: const [
+                  AppLocalizations.delegate,
                   GlobalMaterialLocalizations.delegate,
                   GlobalWidgetsLocalizations.delegate,
                   GlobalCupertinoLocalizations.delegate,
                 ],
-                supportedLocales: const [Locale('en'), Locale('zh')],
+                supportedLocales: AppLocalizations.supportedLocales,
                 localeResolutionCallback: (locale, supportedLocales) {
                   if (locale == null) return const Locale('en');
                   for (final supported in supportedLocales) {
