@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dp/generated/l10n/app_localizations.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -66,18 +67,19 @@ class _LogcatPageState extends State<LogcatPage> {
   }
 
   Future<void> _clearLogs() async {
+    final l10n = AppLocalizations.of(context)!;
     final confirm = await showDnsConfirmDialog(
       context,
-      title: '清空日志',
-      message: '确定要清空所有日志吗？',
-      confirmLabel: '清空',
+      title: l10n.logcatClearTitle,
+      message: l10n.logcatClearConfirm,
+      confirmLabel: l10n.logcatClearBtn,
       isDestructive: true,
     );
     if (confirm == true) {
       await LogService.instance.clearLogs();
       await _loadLogs();
       if (mounted) {
-        ToastUtil.showSuccess(context, '日志已清空');
+        ToastUtil.showSuccess(context, l10n.toastLogcatCleared);
       }
     }
   }
@@ -89,7 +91,7 @@ class _LogcatPageState extends State<LogcatPage> {
 
     await Clipboard.setData(ClipboardData(text: text));
     if (mounted) {
-      ToastUtil.showSuccess(context, '日志已复制到剪贴板');
+      ToastUtil.showSuccess(context, AppLocalizations.of(context)!.toastLogcatCopied);
     }
   }
 
@@ -106,11 +108,11 @@ class _LogcatPageState extends State<LogcatPage> {
       await file.writeAsString(text);
 
       if (mounted) {
-        ToastUtil.showSuccess(context, '日志已导出到: ${file.path}');
+        ToastUtil.showSuccess(context, AppLocalizations.of(context)!.toastLogcatExported(file.path));
       }
     } catch (e) {
       if (mounted) {
-        ToastUtil.showError(context, '导出失败: $e');
+        ToastUtil.showError(context, AppLocalizations.of(context)!.toastLogcatExportFailed(e.toString()));
       }
     }
   }
@@ -122,7 +124,7 @@ class _LogcatPageState extends State<LogcatPage> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('日志'),
+        title: Text(AppLocalizations.of(context)!.logcatTitle),
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 2,
@@ -144,27 +146,27 @@ class _LogcatPageState extends State<LogcatPage> {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'copy',
                 child: ListTile(
-                  leading: Icon(Icons.copy),
-                  title: Text('复制日志'),
+                  leading: const Icon(Icons.copy),
+                  title: Text(AppLocalizations.of(context)!.logcatCopy),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'export',
                 child: ListTile(
-                  leading: Icon(Icons.download),
-                  title: Text('导出日志'),
+                  leading: const Icon(Icons.download),
+                  title: Text(AppLocalizations.of(context)!.logcatExport),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'clear',
                 child: ListTile(
-                  leading: Icon(Icons.delete_outline, color: Colors.red),
-                  title: Text('清空日志', style: TextStyle(color: Colors.red)),
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text(AppLocalizations.of(context)!.logcatClear, style: const TextStyle(color: Colors.red)),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -179,10 +181,10 @@ class _LogcatPageState extends State<LogcatPage> {
             child: _isLoading
                 ? const DnsLoading()
                 : _filteredLogs.isEmpty
-                    ? const DnsEmptyState(
+                    ? DnsEmptyState(
                         icon: Icons.article_outlined,
-                        title: '暂无日志',
-                        description: '运行应用后将会显示日志',
+                        title: AppLocalizations.of(context)!.logcatEmptyTitle,
+                        description: AppLocalizations.of(context)!.logcatEmptyDesc,
                       )
                     : _buildLogList(),
           ),
@@ -474,7 +476,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '筛选日志',
+                  AppLocalizations.of(context)!.logcatFilterTitle,
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
                 TextButton(
@@ -483,7 +485,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                     widget.onModulesChanged(_modules);
                     Navigator.pop(context);
                   },
-                  child: const Text('应用'),
+                  child: Text(AppLocalizations.of(context)!.logcatFilterApply),
                 ),
               ],
             ),
@@ -493,7 +495,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
             child: ListView(
               padding: const EdgeInsets.all(DnsSpacing.md),
               children: [
-                Text('日志级别', style: Theme.of(context).textTheme.labelLarge),
+                Text(AppLocalizations.of(context)!.logcatFilterLevel, style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: DnsSpacing.sm),
                 Wrap(
                   spacing: DnsSpacing.xs,
@@ -516,7 +518,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   }).toList(),
                 ),
                 const SizedBox(height: DnsSpacing.lg),
-                Text('模块', style: Theme.of(context).textTheme.labelLarge),
+                Text(AppLocalizations.of(context)!.logcatFilterModule, style: Theme.of(context).textTheme.labelLarge),
                 const SizedBox(height: DnsSpacing.sm),
                 Wrap(
                   spacing: DnsSpacing.xs,
@@ -549,7 +551,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                             _modules = _allModules.toSet();
                           });
                         },
-                        child: const Text('全选'),
+                        child: Text(AppLocalizations.of(context)!.commonSelectAll),
                       ),
                     ),
                     const SizedBox(width: DnsSpacing.md),
@@ -561,7 +563,7 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                             _modules.clear();
                           });
                         },
-                        child: const Text('清空'),
+                        child: Text(AppLocalizations.of(context)!.commonClear),
                       ),
                     ),
                   ],

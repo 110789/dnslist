@@ -69,7 +69,7 @@ class DriverUiTokens {
       color: Colors.orange.withValues(alpha: 0.2),
       borderRadius: BorderRadius.circular(2),
     ),
-    child: const Text('暂停', style: TextStyle(fontSize: 9, color: Colors.orange)),
+    child: Text('暂停', style: const TextStyle(fontSize: 9, color: Colors.orange)),
   );
 
   static Widget buildDnsTypeAvatar(String type, Color typeColor) => Container(

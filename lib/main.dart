@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'dart:ui';
 
@@ -9,6 +10,7 @@ import 'core/state/theme_provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/service_registry.dart';
 import 'core/services/framework_services_impl.dart';
+import 'core/localization/locale_provider.dart';
 import 'services/credential_storage.dart';
 import 'services/credential_state.dart';
 import 'services/new_domain_state.dart';
@@ -241,15 +243,36 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(value: credentialState),
         ChangeNotifierProvider.value(value: domainState),
         ChangeNotifierProvider.value(value: themeProvider),
+        ChangeNotifierProvider(create: (_) => LocaleProvider()),
       ],
-      child: Selector<ThemeProvider, bool>(
-        selector: (_, theme) => theme.isDarkMode,
-        builder: (context, isDarkMode, _) {
-          return MaterialApp.router(
-            title: 'DNS管理工具',
-            routerConfig: AppRouter.router,
-            debugShowCheckedModeBanner: false,
-            theme: isDarkMode ? AppTheme.md3Dark : AppTheme.md3Light,
+      child: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, _) {
+          return Selector<ThemeProvider, bool>(
+            selector: (_, theme) => theme.isDarkMode,
+            builder: (context, isDarkMode, _) {
+              return MaterialApp.router(
+                title: 'DNS管理工具',
+                locale: localeProvider.useSystemLocale ? null : localeProvider.locale,
+                localizationsDelegates: const [
+                  GlobalMaterialLocalizations.delegate,
+                  GlobalWidgetsLocalizations.delegate,
+                  GlobalCupertinoLocalizations.delegate,
+                ],
+                supportedLocales: const [Locale('en'), Locale('zh')],
+                localeResolutionCallback: (locale, supportedLocales) {
+                  if (locale == null) return const Locale('en');
+                  for (final supported in supportedLocales) {
+                    if (supported.languageCode == locale.languageCode) {
+                      return supported;
+                    }
+                  }
+                  return const Locale('en');
+                },
+                routerConfig: AppRouter.router,
+                debugShowCheckedModeBanner: false,
+                theme: isDarkMode ? AppTheme.md3Dark : AppTheme.md3Light,
+              );
+            },
           );
         },
       ),

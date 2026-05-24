@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+import 'package:dp/generated/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import '../../pages/home/home_page.dart';
 import '../../pages/domains/dns_records_page.dart';
@@ -40,7 +42,8 @@ class AppRouter {
         path: '/domains/:domainId/records',
         builder: (context, state) {
           final domainId = state.pathParameters['domainId'] ?? '';
-          final domainName = state.uri.queryParameters['name'] ?? 'DNS记录';
+          final defaultTitle = AppLocalizations.of(context)?.appNavTitle ?? 'DNS Manager';
+          final domainName = state.uri.queryParameters['name'] ?? defaultTitle;
           return DnsRecordsPage(
             domainId: domainId,
             domainName: domainName,

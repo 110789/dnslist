@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dp/generated/l10n/app_localizations.dart';
 import '../../core/ui/md3_widgets.dart';
 import '../../core/theme/design_system.dart';
 import '../../core/state/theme_provider.dart';
+import '../../core/localization/locale_provider.dart';
 import '../../core/router/app_router.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -12,11 +14,12 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('设置'),
+        title: Text(l10n.navSettings),
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 2,
@@ -27,60 +30,61 @@ class SettingsPage extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.symmetric(vertical: DnsSpacing.sm),
             children: [
-              DnsSectionHeader(title: '外观'),
+              DnsSectionHeader(title: l10n.settingsAppearance),
               _SettingsGroup(
                 children: [
                   _SettingsTile(
                     icon: Icons.dark_mode_outlined,
-                    title: '外观模式',
-                    subtitle: _getDarkModeLabel(darkMode),
+                    title: l10n.settingsDarkMode,
+                    subtitle: _getDarkModeLabel(l10n, darkMode),
                     onTap: () => _showDarkModeSheet(context, context.read<ThemeProvider>()),
                     showDivider: true,
                   ),
                   _SettingsTile(
                     icon: Icons.palette_outlined,
-                    title: '主题颜色',
-                    subtitle: '默认',
+                    title: l10n.settingsThemeColor,
+                    subtitle: l10n.settingsThemeDefault,
                     showDivider: true,
                   ),
                   _SettingsTile(
                     icon: Icons.phone_android,
-                    title: '界面风格',
-                    subtitle: context.read<ThemeProvider>().uiStyle == UIStyle.md3 ? 'Material Design 3' : 'Cupertino',
+                    title: l10n.settingsUIStyle,
+                    subtitle: context.read<ThemeProvider>().uiStyle == UIStyle.md3 ? l10n.settingsUIStyleMD3 : l10n.settingsUIStyleCupertino,
                   ),
                 ],
               ),
               const SizedBox(height: DnsSpacing.sm),
-              DnsSectionHeader(title: '通用'),
+              DnsSectionHeader(title: l10n.settingsGeneral),
               _SettingsGroup(
                 children: [
                   _SettingsTile(
                     icon: Icons.translate,
-                    title: '语言',
-                    subtitle: '跟随系统',
+                    title: l10n.settingsLanguage,
+                    subtitle: _getLanguageLabel(context),
+                    onTap: () => _showLanguageSheet(context),
                   ),
                 ],
               ),
               const SizedBox(height: DnsSpacing.sm),
-              DnsSectionHeader(title: '高级'),
+              DnsSectionHeader(title: l10n.settingsAdvanced),
               _SettingsGroup(
                 children: [
                   _SettingsTile(
                     icon: Icons.receipt_long_outlined,
-                    title: '日志',
-                    subtitle: '查看应用运行日志',
+                    title: l10n.settingsLogs,
+                    subtitle: l10n.settingsLogsSubtitle,
                     onTap: () => GoRouter.of(context).push(RoutePaths.logcat),
                   ),
                 ],
               ),
               const SizedBox(height: DnsSpacing.sm),
-              DnsSectionHeader(title: '关于'),
+              DnsSectionHeader(title: l10n.settingsAbout),
               _SettingsGroup(
                 children: [
                   _SettingsTile(
                     icon: Icons.new_releases_outlined,
-                    title: '关于',
-                    subtitle: '版本 1.0.0',
+                    title: l10n.settingsAbout,
+                    subtitle: l10n.settingsVersion,
                     onTap: () => GoRouter.of(context).push(RoutePaths.about),
                   ),
                 ],
@@ -88,7 +92,7 @@ class SettingsPage extends StatelessWidget {
               const SizedBox(height: DnsSpacing.xl),
               Center(
                 child: Text(
-                  'DNS域名管理工具 v1.0.0',
+                  l10n.settingsFooter,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurfaceVariant,
                   ),
@@ -102,23 +106,67 @@ class SettingsPage extends StatelessWidget {
     );
   }
 
-  String _getDarkModeLabel(DarkModeOption mode) {
+  String _getLanguageLabel(BuildContext context) {
+    final localeProvider = context.watch<LocaleProvider>();
+    final l10n = AppLocalizations.of(context)!;
+    if (localeProvider.useSystemLocale) return l10n.languageSystem;
+    if (localeProvider.locale?.languageCode == 'zh') return l10n.languageZh;
+    return l10n.languageEn;
+  }
+
+  void _showLanguageSheet(BuildContext context) {
+    final localeProvider = context.read<LocaleProvider>();
+    final l10n = AppLocalizations.of(context)!;
+    DnsBottomSheet.show(
+      context: context,
+      title: l10n.settingsLanguage,
+      children: [
+        _LanguageOption(
+          label: l10n.languageSystem,
+          isSelected: localeProvider.useSystemLocale,
+          onTap: () {
+            localeProvider.setLocale(null);
+            Navigator.pop(context);
+          },
+        ),
+        _LanguageOption(
+          label: l10n.languageEn,
+          isSelected: localeProvider.locale?.languageCode == 'en',
+          onTap: () {
+            localeProvider.setLocale(const Locale('en'));
+            Navigator.pop(context);
+          },
+        ),
+        _LanguageOption(
+          label: l10n.languageZh,
+          isSelected: localeProvider.locale?.languageCode == 'zh',
+          onTap: () {
+            localeProvider.setLocale(const Locale('zh'));
+            Navigator.pop(context);
+          },
+        ),
+      ],
+    );
+  }
+
+  String _getDarkModeLabel(AppLocalizations l10n, DarkModeOption mode) {
     switch (mode) {
-      case DarkModeOption.light: return '日间模式';
-      case DarkModeOption.dark: return '夜间模式';
-      case DarkModeOption.system: return '跟随系统';
+      case DarkModeOption.light: return l10n.darkModeLight;
+      case DarkModeOption.dark: return l10n.darkModeDark;
+      case DarkModeOption.system: return l10n.darkModeSystem;
     }
   }
 
   void _showDarkModeSheet(BuildContext context, ThemeProvider themeProvider) {
+    final l10n = AppLocalizations.of(context)!;
     DnsBottomSheet.show(
       context: context,
-      title: '外观模式',
+      title: l10n.settingsDarkMode,
       children: DarkModeOption.values.map((mode) {
         final isSelected = themeProvider.darkMode == mode;
         return _DarkModeOption(
           mode: mode,
-          label: _getDarkModeLabel(mode),
+          label: _getDarkModeLabel(l10n, mode),
           isSelected: isSelected,
           onTap: () {
             themeProvider.setDarkMode(mode);
@@ -167,6 +215,53 @@ class _DarkModeOption extends StatelessWidget {
           child: Row(
             children: [
               Icon(_icon, size: 22, color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant),
+              const SizedBox(width: DnsSpacing.md),
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: isSelected ? colorScheme.primary : colorScheme.onSurface,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Icon(Icons.check, size: 20, color: colorScheme.primary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LanguageOption extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _LanguageOption({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(DnsRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: DnsSpacing.md,
+            vertical: DnsSpacing.sm + 2,
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.translate, size: 22, color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant),
               const SizedBox(width: DnsSpacing.md),
               Expanded(
                 child: Text(

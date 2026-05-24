@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dp/generated/l10n/app_localizations.dart';
 import '../../core/config/app_config.dart';
 import '../../core/router/app_router.dart';
 import '../../core/ui/md3_widgets.dart';
@@ -18,7 +19,7 @@ class AboutPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: const Text('关于'),
+        title: Text(AppLocalizations.of(context)!.navAbout),
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 2,
@@ -28,19 +29,19 @@ class AboutPage extends StatelessWidget {
         children: [
           _buildAppInfoSection(context),
           const SizedBox(height: DnsSpacing.xl),
-          DnsSectionHeader(title: '信息'),
+          DnsSectionHeader(title: AppLocalizations.of(context)!.aboutInfo),
           _SettingsGroup(
             children: [
               _SettingsTile(
                 icon: Icons.code_outlined,
-                title: 'GitHub 仓库',
-                subtitle: 'lioisme',
+                title: AppLocalizations.of(context)!.aboutGitHub,
+                subtitle: AppLocalizations.of(context)!.aboutGitHubSub,
                 onTap: () => _launchUrl(context, _repoUrl),
                 showDivider: true,
               ),
               _SettingsTile(
                 icon: Icons.policy_outlined,
-                title: '开源许可',
+                title: AppLocalizations.of(context)!.aboutLicense,
                 onTap: () => GoRouter.of(context).push(RoutePaths.licenses),
               ),
             ],
@@ -53,6 +54,7 @@ class AboutPage extends StatelessWidget {
   }
 
   Widget _buildAppInfoSection(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Column(
@@ -72,14 +74,14 @@ class AboutPage extends StatelessWidget {
         ),
         const SizedBox(height: DnsSpacing.md),
         Text(
-          AppConfig.appName,
+          l10n.appName,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: DnsSpacing.xs),
         Text(
-          '版本 ${AppConfig.appVersion}',
+          l10n.aboutVersion(AppConfig.appVersion),
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
             color: colorScheme.onSurfaceVariant,
           ),
@@ -88,7 +90,7 @@ class AboutPage extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: DnsSpacing.xl),
           child: Text(
-            '一款跨平台多服务商域名 & DNS 集中管理工具\n支持 Cloudflare、DNSHE 等多家服务商',
+            l10n.aboutDescription,
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: colorScheme.onSurfaceVariant,
@@ -101,11 +103,12 @@ class AboutPage extends StatelessWidget {
   }
 
   Widget _buildCopyright(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Center(
       child: Text(
-        '© 2026 DNS管理工具\nAll rights reserved.',
+        l10n.aboutCopyright,
         textAlign: TextAlign.center,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
           color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),

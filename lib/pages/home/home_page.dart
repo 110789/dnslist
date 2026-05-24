@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dp/generated/l10n/app_localizations.dart';
 import '../../services/credential_state.dart';
 import '../../services/credential_storage.dart';
 import '../../services/credential_validation.dart';
 import '../../services/new_domain_state.dart';
 import '../../services/refresh_helper.dart';
 import '../../drivers/driver_factory.dart';
+import '../../core/localization/driver_localizations.dart';
 import '../../utils/toast_util.dart';
 import '../../core/ui/md3_widgets.dart';
 import '../../core/theme/design_system.dart';
@@ -60,7 +62,7 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: colorScheme.surface,
       appBar: AppBar(
-        title: Text(hasCredentials ? (selected?.providerName ?? 'DNS管理') : 'DNS管理'),
+        title: Text(hasCredentials ? (selected?.providerName ?? AppLocalizations.of(context)!.appNavTitle) : AppLocalizations.of(context)!.appNavTitle),
         centerTitle: true,
         elevation: 0,
         scrolledUnderElevation: 2,
@@ -223,13 +225,14 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
+          final l10n = AppLocalizations.of(context)!;
           return AlertDialog(
-            title: const Text('删除域名'),
-            content: Text('确定要删除 "$domainName" 吗？此操作无法撤销。'),
+            title: Text(l10n.domainDeleteTitle),
+            content: Text(l10n.domainDeleteConfirm(domainName)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('取消'),
+                child: Text(l10n.commonCancel),
               ),
               FilledButton(
                 style: FilledButton.styleFrom(
@@ -251,7 +254,7 @@ class _HomePageState extends State<HomePage> {
                           final errorMsg = result['error']?.toString() ?? '';
                           if (result['success'] == true) {
                             Navigator.pop(dialogContext);
-                            ToastUtil.showSuccess(context, '域名已删除');
+                            ToastUtil.showSuccess(context, AppLocalizations.of(context)!.toastDomainDeleted);
                           } else {
                             Navigator.pop(dialogContext);
                             ToastUtil.showError(context, errorMsg ?? '', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
@@ -260,7 +263,7 @@ class _HomePageState extends State<HomePage> {
                       },
                       child: isDeleting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('删除'),
+                    : Text(AppLocalizations.of(context)!.commonDelete),
               ),
             ],
           );
@@ -278,13 +281,14 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
+          final l10n = AppLocalizations.of(context)!;
           return AlertDialog(
-            title: const Text('续期域名'),
-            content: Text('确定要续期 "$domainName" 吗？'),
+            title: Text(l10n.domainRenewTitle),
+            content: Text(l10n.domainRenewConfirm(domainName)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('取消'),
+                child: Text(l10n.commonCancel),
               ),
               FilledButton(
                 onPressed: isRenewing
@@ -300,8 +304,8 @@ class _HomePageState extends State<HomePage> {
                           Navigator.pop(dialogContext);
                           if (result['success'] == true) {
                             final msg = result['remaining_days'] != null
-                                ? '续期成功，剩余 ${result['remaining_days']} 天'
-                                : '续期成功';
+                                ? l10n.toastDomainRenewed(result['remaining_days'])
+                                : l10n.toastDomainRenewedSimple;
                             ToastUtil.showSuccess(context, msg);
                           } else {
                             final driver = DriverFactory.get(selected.providerId);
@@ -312,7 +316,7 @@ class _HomePageState extends State<HomePage> {
                       },
                 child: isRenewing
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('续期'),
+                    : Text(l10n.commonRenew),
               ),
             ],
           );
@@ -339,28 +343,34 @@ class _HomePageState extends State<HomePage> {
         builder: (dialogContext, setDialogState) {
           final bool canSubmit = !isSubmitting && !hasError;
 
+          final l10n = AppLocalizations.of(context)!;
           return AlertDialog(
-            title: Text(driver.getAddDomainTitle()),
+            title: Text(DriverLocalizations.addDomainTitle(context, driver)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   ...fields.map((field) {
+                    final label = DriverLocalizations.fieldLabel(l10n, driver.providerId, field.key, field.label);
+                    final hintText = DriverLocalizations.fieldHint(l10n, driver.providerId, field.key, field.hintText);
+                    final description = field.description != null
+                        ? DriverLocalizations.fieldDesc(l10n, driver.providerId, field.key, field.description!)
+                        : null;
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TextField(
                           controller: controllers[field.key],
-                          decoration: InputDecoration(labelText: field.label, hintText: field.hintText),
+                          decoration: InputDecoration(labelText: label, hintText: hintText),
                           onChanged: (_) {
                             if (hasError) setDialogState(() => hasError = false);
                           },
                         ),
-                        if (field.description != null) ...[
+                        if (description != null) ...[
                           const SizedBox(height: 4),
                           Text(
-                            field.description!,
+                            description,
                             style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
                               color: Theme.of(dialogContext).colorScheme.onSurfaceVariant,
                             ),
@@ -378,7 +388,7 @@ class _HomePageState extends State<HomePage> {
                           Icon(Icons.warning_amber, size: 16, color: Theme.of(dialogContext).colorScheme.error),
                           const SizedBox(width: 4),
                           Text(
-                            '请填写所有必填项',
+                            l10n.domainAddDialogRequired,
                             style: TextStyle(
                               color: Theme.of(dialogContext).colorScheme.error,
                               fontSize: 12,
@@ -393,7 +403,7 @@ class _HomePageState extends State<HomePage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('取消'),
+                child: Text(l10n.commonCancel),
               ),
               FilledButton(
                 onPressed: canSubmit
@@ -424,7 +434,7 @@ class _HomePageState extends State<HomePage> {
                           final errorMsg = result['error']?.toString() ?? '';
                           if (result['success'] == true) {
                             Navigator.pop(dialogContext);
-                            ToastUtil.showSuccess(context, '域名添加成功');
+                            ToastUtil.showSuccess(context, l10n.toastDomainAdded);
                           } else {
                             Navigator.pop(dialogContext);
                             ToastUtil.showError(context, errorMsg ?? '', errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode'].toString()) : null);
@@ -434,7 +444,7 @@ class _HomePageState extends State<HomePage> {
                     : null,
                 child: isSubmitting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('添加'),
+                    : Text(l10n.commonAdd),
               ),
             ],
           );
@@ -444,23 +454,25 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildEmptyCredentialState(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return DnsEmptyState(
       icon: Icons.key_off,
-      title: '请先添加凭证',
-      description: '凭证用于连接DNS服务商，管理您的域名和DNS记录',
+      title: l10n.credentialEmptyTitle,
+      description: l10n.credentialEmptyDesc,
       action: FilledButton.icon(
         onPressed: () => _showAddCredentialDialog(context),
         icon: const Icon(Icons.add),
-        label: const Text('添加凭证'),
+        label: Text(l10n.credentialAdd),
       ),
     );
   }
 
   Widget _buildEmptyDomainState(BuildContext context) {
-    return const DnsEmptyState(
+    final l10n = AppLocalizations.of(context)!;
+    return DnsEmptyState(
       icon: Icons.dns,
-      title: '暂无域名',
-      description: '暂无域名，请使用右下角按钮添加域名',
+      title: l10n.domainEmptyTitle,
+      description: l10n.domainEmptyDesc,
     );
   }
 
@@ -483,7 +495,7 @@ class _HomePageState extends State<HomePage> {
               child: FilledButton.icon(
                 onPressed: () => _showAddCredentialDialog(context),
                 icon: const Icon(Icons.add),
-                label: const Text('添加凭证'),
+                label: Text(AppLocalizations.of(context)!.credentialAdd),
               ),
             ),
           ),
@@ -513,13 +525,13 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 16),
             Text(
-              '暂无凭证',
+              AppLocalizations.of(context)!.credentialEmptyListTitle,
               style: Theme.of(context).textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 6),
             Text(
-              '点击下方按钮添加',
+              AppLocalizations.of(context)!.credentialEmptyListDesc,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -584,7 +596,7 @@ class _HomePageState extends State<HomePage> {
       children: [
         ListTile(
           leading: Icon(Icons.check_circle, color: Theme.of(ctx).colorScheme.primary),
-          title: const Text('选择此凭证'),
+          title: Text(AppLocalizations.of(ctx)!.credentialSelect),
           onTap: () async {
             Navigator.pop(ctx);
             credentialState.selectCredential(credential.id);
@@ -597,7 +609,7 @@ class _HomePageState extends State<HomePage> {
         ),
         ListTile(
           leading: Icon(Icons.edit, color: Theme.of(ctx).colorScheme.primary),
-          title: const Text('编辑凭证'),
+          title: Text(AppLocalizations.of(ctx)!.credentialEdit),
           onTap: () {
             Navigator.pop(ctx);
             _showEditCredentialDialog(context, credential);
@@ -605,7 +617,7 @@ class _HomePageState extends State<HomePage> {
         ),
         ListTile(
           leading: Icon(Icons.delete, color: Theme.of(ctx).colorScheme.error),
-          title: Text('删除凭证', style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
+          title: Text(AppLocalizations.of(ctx)!.credentialDelete, style: TextStyle(color: Theme.of(ctx).colorScheme.error)),
           onTap: () {
             Navigator.pop(ctx);
             _showDeleteCredentialDialog(context, credential, credentialState);
@@ -619,11 +631,11 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       builder: (ctx) => _CredentialDialog(
-        title: '添加凭证',
+        title: AppLocalizations.of(context)!.credentialDialogTitle,
         onSave: (credential) async {
           final credentialState = context.read<CredentialState>();
           await credentialState.addCredential(credential);
-          ToastUtil.showSuccess(context, '添加凭证成功');
+          ToastUtil.showSuccess(context, AppLocalizations.of(context)!.toastCredentialAdded);
           Navigator.pop(ctx);
           await Future.delayed(const Duration(milliseconds: 300));
           if (context.mounted) {
@@ -645,13 +657,13 @@ class _HomePageState extends State<HomePage> {
     showDialog(
       context: context,
       builder: (ctx) => _CredentialDialog(
-        title: '编辑凭证',
+        title: AppLocalizations.of(context)!.credentialDialogEditTitle,
         credential: credential,
         onSave: (updatedCredential) async {
           final credentialState = context.read<CredentialState>();
           final selected = credentialState.selectedCredential;
           await credentialState.updateCredential(updatedCredential);
-          ToastUtil.showSuccess(context, '更新凭证成功');
+          ToastUtil.showSuccess(context, AppLocalizations.of(context)!.toastCredentialUpdated);
           Navigator.pop(ctx);
           await Future.delayed(const Duration(milliseconds: 300));
           if (context.mounted && selected != null && selected.id == updatedCredential.id) {
@@ -671,18 +683,19 @@ class _HomePageState extends State<HomePage> {
     CredentialModel credential,
     CredentialState credentialState,
   ) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirm = await showDnsConfirmDialog(
       context,
-      title: '删除凭证',
-      message: '确定要删除 "${credential.providerName}" 的凭证吗？',
-      confirmLabel: '删除',
+      title: l10n.credentialDelete,
+      message: '${l10n.credentialDelete} "${credential.providerName}"?',
+      confirmLabel: l10n.commonDelete,
       isDestructive: true,
     );
     if (confirm == true && context.mounted) {
       final wasSelected = credentialState.selectedCredentialId == credential.id;
       await credentialState.removeCredential(credential.id);
       if (context.mounted) {
-        ToastUtil.showSuccess(context, '删除凭证成功');
+        ToastUtil.showSuccess(context, l10n.toastCredentialDeleted);
         if (wasSelected) {
           final newSelected = credentialState.selectedCredential;
           if (newSelected != null) {
@@ -743,7 +756,7 @@ class _DrawerHeader extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'DNS管理工具',
+                  AppLocalizations.of(context)!.drawerTitle,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: colorScheme.onSurface,
@@ -751,7 +764,9 @@ class _DrawerHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  credentialCount > 0 ? '$credentialCount 个凭证' : '未添加凭证',
+                  credentialCount > 0
+                      ? AppLocalizations.of(context)!.drawerCredentials(credentialCount)
+                      : AppLocalizations.of(context)!.drawerNoCredentials,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -794,7 +809,7 @@ class _DrawerSettingsEntry extends StatelessWidget {
                 const SizedBox(width: DnsSpacing.md),
                 Expanded(
                   child: Text(
-                    '设置',
+                    AppLocalizations.of(context)!.navSettings,
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: colorScheme.onSurface),
                   ),
                 ),
@@ -1002,6 +1017,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
     final isEditing = widget.credential != null;
     final colorScheme = Theme.of(context).colorScheme;
 
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
       title: Text(widget.title),
       content: SingleChildScrollView(
@@ -1013,7 +1029,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
               DropdownButtonFormField<String>(
                 value: _selectedProviderId,
                 decoration: InputDecoration(
-                  labelText: '选择服务商',
+                  labelText: l10n.credentialProvider,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(DnsRadius.md),
                   ),
@@ -1033,7 +1049,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
                 child: DropdownButtonFormField<String>(
                   value: _selectedProviderId,
                   decoration: InputDecoration(
-                    labelText: '服务商',
+                    labelText: l10n.credentialProviderReadonly,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(DnsRadius.md),
                     ),
@@ -1048,7 +1064,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
             ],
             TextField(
               controller: _remarkController,
-              decoration: const InputDecoration(labelText: '备注（可选）', hintText: '用于区分不同凭证'),
+              decoration: InputDecoration(labelText: l10n.credentialRemarkLabel, hintText: l10n.credentialRemarkHint),
             ),
             const SizedBox(height: 12),
             if (_selectedProviderId != null) ...[
@@ -1061,12 +1077,12 @@ class _CredentialDialogState extends State<_CredentialDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('取消')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.commonCancel)),
         FilledButton(
           onPressed: _selectedProviderId != null && !_isValidating ? _saveCredential : null,
           child: _isValidating
               ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Text('保存'),
+              : Text(l10n.commonSave),
         ),
       ],
     );
@@ -1076,15 +1092,19 @@ class _CredentialDialogState extends State<_CredentialDialog> {
     final driver = DriverFactory.get(_selectedProviderId!);
     if (driver == null) return const SizedBox.shrink();
     final fields = driver.getCredentialFields();
+    final l10n = AppLocalizations.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: fields.entries.map((entry) {
         _controllers[entry.key] = _controllers[entry.key] ?? TextEditingController();
+        final label = l10n != null
+            ? DriverLocalizations.credentialFieldLabel(l10n, driver.providerId, entry.key, entry.value)
+            : entry.value;
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: TextField(
             controller: _controllers[entry.key],
-            decoration: InputDecoration(labelText: entry.value),
+            decoration: InputDecoration(labelText: label),
             obscureText: entry.key.toLowerCase().contains('secret'),
           ),
         );
@@ -1102,7 +1122,7 @@ class _CredentialDialogState extends State<_CredentialDialog> {
       if (value != null && value.isNotEmpty) credentials[key] = value;
     }
     if (credentials.isEmpty) {
-      ToastUtil.showError(context, '请填写密钥信息', errorCode: 400);
+      ToastUtil.showError(context, AppLocalizations.of(context)!.credentialFillKeys, errorCode: 400);
       return;
     }
     setState(() => _isValidating = true);

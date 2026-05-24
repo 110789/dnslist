@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dp/generated/l10n/app_localizations.dart';
 import '../theme/design_system.dart';
 
 enum DnsLoadState { idle, loading, loaded, empty, error }
@@ -412,10 +413,10 @@ class DnsDnsRecordTile extends StatelessWidget {
               if (value == 'delete') onDelete?.call();
             },
             itemBuilder: (ctx) => [
-              const PopupMenuItem(value: 'edit', child: Text('编辑')),
+              PopupMenuItem(value: 'edit', child: Text(AppLocalizations.of(ctx)!.commonEdit)),
               PopupMenuItem(
                 value: 'delete',
-                child: Text('删除', style: TextStyle(color: colorScheme.error)),
+                child: Text(AppLocalizations.of(ctx)!.commonDelete, style: TextStyle(color: colorScheme.error)),
               ),
             ],
           ),
@@ -450,25 +451,26 @@ class DnsDomainTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final name = domain['name']?.toString() ?? '';
     final status = domain['status']?.toString() ?? '';
-    final displayStatus = _translateStatus(status);
+    final displayStatus = _translateStatus(context, status);
     final colorScheme = Theme.of(context).colorScheme;
 
     final createdAt = domain['created_at'] ?? domain['created_on'];
     final expiresAt = domain['expires_at'] ?? domain['expiry_at'];
     final ttl = domain['ttl'];
 
+    final l10n = AppLocalizations.of(context)!;
     final dateLines = <String>[];
     if (createdAt != null) {
       final formatted = _formatDate(createdAt);
-      if (formatted.isNotEmpty) dateLines.add('添加: $formatted');
+      if (formatted.isNotEmpty) dateLines.add('${l10n.domainAddedLabel} $formatted');
     }
     if (expiresAt != null && expiresAt.toString().isNotEmpty) {
       final formatted = _formatDate(expiresAt);
-      if (formatted.isNotEmpty) dateLines.add('过期: $formatted');
+      if (formatted.isNotEmpty) dateLines.add('${l10n.domainExpiresLabel} $formatted');
     }
     if (ttl != null) {
       final ttlInt = ttl is int ? ttl : int.tryParse(ttl.toString()) ?? 0;
-      dateLines.add('TTL: ${_ttlLabel(ttlInt)}');
+      dateLines.add(l10n.ttlLabel(_ttlLabel(ttlInt)));
     }
 
     final subtitleChild = dateLines.isEmpty
@@ -520,26 +522,28 @@ class DnsDomainTile extends StatelessWidget {
         },
         itemBuilder: (ctx) => [
           if (supportsShowNameServers)
-            PopupMenuItem(value: 'nameservers', child: Text(_getNameServersTitle(domain))),
+            PopupMenuItem(value: 'nameservers', child: Text(_getNameServersTitle(context, domain))),
           if (supportsRenew)
-            const PopupMenuItem(value: 'renew', child: Text('续期')),
+            PopupMenuItem(value: 'renew', child: Text(AppLocalizations.of(ctx)!.commonRenew)),
           if (supportsDelete)
             PopupMenuItem(
               value: 'delete',
-              child: Text('删除', style: TextStyle(color: colorScheme.error)),
+              child: Text(AppLocalizations.of(ctx)!.commonDelete, style: TextStyle(color: colorScheme.error)),
             ),
         ],
       ),
     );
   }
 
-  String _getNameServersTitle(Map<String, dynamic> domainData) {
+  String _getNameServersTitle(BuildContext context, Map<String, dynamic> domainData) {
+    final l10n = AppLocalizations.of(context)!;
     final nameServers = domainData['name_servers'] as List? ?? [];
-    if (nameServers.isEmpty) return 'DNS 服务器';
-    return 'DNS 服务器 (${nameServers.length})';
+    if (nameServers.isEmpty) return l10n.domainNameservers;
+    return l10n.domainNameserversCount(nameServers.length);
   }
 
   void _showNameServersDialog(BuildContext context, Map<String, dynamic> domainData) {
+    final l10n = AppLocalizations.of(context)!;
     final nameServers = domainData['name_servers'] as List? ?? [];
     final domainName = domainData['name']?.toString() ?? '';
     final colorScheme = Theme.of(context).colorScheme;
@@ -552,10 +556,10 @@ class DnsDomainTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('DNS 服务器', style: Theme.of(ctx).textTheme.titleSmall),
+              Text(l10n.domainNameservers, style: Theme.of(ctx).textTheme.titleSmall),
               const SizedBox(height: 8),
               if (nameServers.isEmpty)
-                Text('无', style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant))
+                Text(l10n.nameserversNone, style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant))
               else
                 ...nameServers.map((ns) {
                   final nsValue = ns.toString();
@@ -569,7 +573,7 @@ class DnsDomainTile extends StatelessWidget {
                           Clipboard.setData(ClipboardData(text: nsValue));
                           ScaffoldMessenger.of(ctx).showSnackBar(
                             SnackBar(
-                              content: Text('已复制: $nsValue'),
+                              content: Text(l10n.nameserversCopied(nsValue)),
                               duration: const Duration(seconds: 1),
                               behavior: SnackBarBehavior.floating,
                             ),
@@ -597,7 +601,7 @@ class DnsDomainTile extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('关闭')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonClose)),
         ],
       ),
     );
@@ -634,15 +638,16 @@ class DnsDomainTile extends StatelessWidget {
     }
   }
 
-  String _translateStatus(String status) {
+  String _translateStatus(BuildContext context, String status) {
+    final l10n = AppLocalizations.of(context)!;
     final map = {
-      'active': '活跃',
-      'pending': '待处理',
-      'expired': '已过期',
-      'suspended': '已暂停',
-      'deleted': '已删除',
-      'ok': '活跃',
-      'pendingdelete': '待删除',
+      'active': l10n.statusActive,
+      'pending': l10n.statusPending,
+      'expired': l10n.statusExpired,
+      'suspended': l10n.statusSuspended,
+      'deleted': l10n.statusDeleted,
+      'ok': l10n.statusActive,
+      'pendingdelete': l10n.statusPendingDelete,
     };
     return map[status.toLowerCase()] ?? status;
   }
@@ -745,7 +750,7 @@ class DnsErrorState extends StatelessWidget {
             ),
             const SizedBox(height: DnsSpacing.lg),
             Text(
-              '加载失败',
+              AppLocalizations.of(context)!.errorLoadFailed,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -764,7 +769,7 @@ class DnsErrorState extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onRetry,
                 icon: const Icon(Icons.refresh, size: 18),
-                label: const Text('重试'),
+                label: Text(AppLocalizations.of(context)!.commonRetry),
               ),
             ],
           ],
@@ -908,10 +913,13 @@ Future<bool?> showDnsConfirmDialog(
   BuildContext context, {
   required String title,
   required String message,
-  String confirmLabel = '确定',
-  String cancelLabel = '取消',
+  String? confirmLabel,
+  String? cancelLabel,
   bool isDestructive = false,
 }) {
+  final l10n = AppLocalizations.of(context);
+  final effectiveConfirm = confirmLabel ?? l10n?.commonConfirm ?? 'Confirm';
+  final effectiveCancel = cancelLabel ?? l10n?.commonCancel ?? 'Cancel';
   return showDialog<bool>(
     context: context,
     builder: (ctx) {
@@ -932,7 +940,7 @@ Future<bool?> showDnsConfirmDialog(
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: Text(cancelLabel),
+            child: Text(effectiveCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -942,7 +950,7 @@ Future<bool?> showDnsConfirmDialog(
                     foregroundColor: colorScheme.onError,
                   )
                 : null,
-            child: Text(confirmLabel),
+            child: Text(effectiveConfirm),
           ),
         ],
       );

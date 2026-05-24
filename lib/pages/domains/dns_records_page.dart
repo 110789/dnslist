@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:dp/generated/l10n/app_localizations.dart';
 import '../../services/credential_state.dart';
 import '../../services/new_domain_state.dart';
 import '../../services/refresh_helper.dart';
 import '../../drivers/driver_factory.dart';
 import '../../drivers/dnshe/index.dart' as dnshe_driver;
+import '../../core/localization/driver_localizations.dart';
 import '../../utils/toast_util.dart';
 import '../../core/ui/md3_widgets.dart';
 import '../../core/theme/design_system.dart';
@@ -80,7 +82,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
 
           if (result['success'] == true) {
             if (context.mounted) {
-              ToastUtil.showSuccess(context, '记录添加成功');
+              ToastUtil.showSuccess(context, AppLocalizations.of(context)!.toastDnsRecordAdded);
             }
           }
 
@@ -90,6 +92,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       return;
     }
 
+    final l10n = AppLocalizations.of(context)!;
     final domainState = context.read<NewDomainState>();
     final credentialState = context.read<CredentialState>();
     final credentials = credentialState.selectedCredential?.credentials ?? {};
@@ -121,7 +124,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
           final fields = driver.getAddRecordFields();
 
           return AlertDialog(
-            title: Text(driver.getAddRecordTitle()),
+            title: Text(DriverLocalizations.addRecordTitle(context, driver)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -129,7 +132,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 children: [
                   DropdownButtonFormField<String>(
                     value: selectedType,
-                    decoration: const InputDecoration(labelText: '记录类型'),
+                    decoration: InputDecoration(labelText: l10n.dnsRecordType),
                     items: driver.getSupportedRecordTypes().map((t) =>
                       DropdownMenuItem(value: t, child: Text(t))
                     ).toList(),
@@ -141,13 +144,15 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   ),
                   const SizedBox(height: 16),
                   ...fields.map((field) {
+                    final label = DriverLocalizations.fieldLabel(l10n, driver.providerId, field.key, field.label);
+                    final hintText = DriverLocalizations.fieldHint(l10n, driver.providerId, field.key, field.hintText);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: TextField(
                         controller: fieldControllers[field.key],
                         decoration: InputDecoration(
-                          labelText: field.label,
-                          hintText: field.hintText,
+                          labelText: label,
+                          hintText: hintText,
                         ),
                         keyboardType: field.keyboardType,
                         onChanged: (v) => fieldValues[field.key] = v,
@@ -158,8 +163,8 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     const SizedBox(height: 8),
                     TextField(
                       decoration: InputDecoration(
-                        labelText: selectedType == 'MX' ? '优先级' : '权重',
-                        hintText: '数值越小优先级越高',
+                        labelText: selectedType == 'MX' ? l10n.dnsRecordPriority : l10n.dnsRecordWeight,
+                        hintText: l10n.dnsRecordPriorityHint,
                       ),
                       keyboardType: TextInputType.number,
                       onChanged: (v) => priorityValue = v,
@@ -169,8 +174,8 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     const SizedBox(height: 16),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('代理（Proxied）'),
-                      subtitle: const Text('启用代理加速'),
+                      title: Text(l10n.dnsRecordProxy),
+                      subtitle: Text(l10n.dnsRecordProxyHint),
                       value: proxied,
                       onChanged: (v) => setDialogState(() => proxied = v),
                     ),
@@ -179,12 +184,12 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       value: fieldValues['line'] ?? 'DEFAULT',
-                      decoration: const InputDecoration(labelText: '记录线路'),
-                      items: const [
-                        DropdownMenuItem(value: 'DEFAULT', child: Text('默认')),
-                        DropdownMenuItem(value: 'LTEL', child: Text('电信')),
-                        DropdownMenuItem(value: 'LCNC', child: Text('联通')),
-                        DropdownMenuItem(value: 'LMOB', child: Text('移动')),
+                      decoration: InputDecoration(labelText: l10n.dnsRecordLine),
+                      items: [
+                        DropdownMenuItem(value: 'DEFAULT', child: Text(l10n.dnsRecordLineDefault)),
+                        DropdownMenuItem(value: 'LTEL', child: Text(l10n.dnsRecordLineLTEL)),
+                        DropdownMenuItem(value: 'LCNC', child: Text(l10n.dnsRecordLineLCNC)),
+                        DropdownMenuItem(value: 'LMOB', child: Text(l10n.dnsRecordLineLMOB)),
                       ],
                       onChanged: (v) {
                         if (v != null) {
@@ -196,7 +201,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   if (hasError)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text('请填写必填项', style: TextStyle(color: Theme.of(dialogContext).colorScheme.error, fontSize: 12)),
+                      child: Text(l10n.dnsRecordRequired, style: TextStyle(color: Theme.of(dialogContext).colorScheme.error, fontSize: 12)),
                     ),
                 ],
               ),
@@ -204,7 +209,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('取消'),
+                child: Text(l10n.commonCancel),
               ),
               FilledButton(
                 onPressed: isSubmitting ? null : () async {
@@ -253,7 +258,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   if (dialogContext.mounted) {
                     if (result['success']) {
                       Navigator.pop(dialogContext);
-                      ToastUtil.showSuccess(context, '记录添加成功');
+                      ToastUtil.showSuccess(context, l10n.toastDnsRecordAdded);
                     } else {
                       setDialogState(() => isSubmitting = false);
                       ToastUtil.showError(
@@ -266,7 +271,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 },
                 child: isSubmitting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('添加'),
+                    : Text(l10n.commonAdd),
               ),
             ],
           );
@@ -298,7 +303,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
 
           if (result['success'] == true) {
             if (context.mounted) {
-              ToastUtil.showSuccess(context, '记录已更新');
+              ToastUtil.showSuccess(context, AppLocalizations.of(context)!.toastDnsRecordUpdated);
             }
           }
 
@@ -308,6 +313,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       return;
     }
 
+    final l10nEdit = AppLocalizations.of(context)!;
     final domainState = context.read<NewDomainState>();
     final credentialState = context.read<CredentialState>();
     final credentials = credentialState.selectedCredential?.credentials ?? {};
@@ -337,7 +343,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
           final fields = driver.getEditRecordFields(record);
 
           return AlertDialog(
-            title: Text(driver.getEditRecordTitle()),
+            title: Text(DriverLocalizations.editRecordTitle(context, driver)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -345,7 +351,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 children: [
                   DropdownButtonFormField<String>(
                     value: selectedType,
-                    decoration: const InputDecoration(labelText: '记录类型'),
+                    decoration: InputDecoration(labelText: l10nEdit.dnsRecordType),
                     items: driver.getSupportedRecordTypes().map((t) =>
                       DropdownMenuItem(value: t, child: Text(t))
                     ).toList(),
@@ -357,13 +363,15 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   ),
                   const SizedBox(height: 16),
                   ...fields.where((f) => f.key != 'line').map((field) {
+                    final label = DriverLocalizations.fieldLabel(l10nEdit, driver.providerId, field.key, field.label);
+                    final hintText = DriverLocalizations.fieldHint(l10nEdit, driver.providerId, field.key, field.hintText);
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: TextField(
                         controller: fieldControllers[field.key],
                         decoration: InputDecoration(
-                          labelText: field.label,
-                          hintText: field.hintText,
+                          labelText: label,
+                          hintText: hintText,
                         ),
                         keyboardType: field.keyboardType,
                         onChanged: (v) => fieldValues[field.key] = v,
@@ -374,7 +382,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     const SizedBox(height: 8),
                     TextField(
                       decoration: InputDecoration(
-                        labelText: selectedType == 'MX' ? '优先级' : '权重',
+                        labelText: selectedType == 'MX' ? l10nEdit.dnsRecordPriority : l10nEdit.dnsRecordWeight,
                       ),
                       keyboardType: TextInputType.number,
                       controller: TextEditingController(
@@ -389,8 +397,8 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     const SizedBox(height: 16),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
-                      title: const Text('代理（Proxied）'),
-                      subtitle: const Text('启用代理加速'),
+                      title: Text(l10nEdit.dnsRecordProxy),
+                      subtitle: Text(l10nEdit.dnsRecordProxyHint),
                       value: proxied,
                       onChanged: (v) => setDialogState(() => proxied = v),
                     ),
@@ -399,12 +407,12 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       value: fieldValues['line'] ?? record['line']?.toString() ?? 'DEFAULT',
-                      decoration: const InputDecoration(labelText: '记录线路'),
-                      items: const [
-                        DropdownMenuItem(value: 'DEFAULT', child: Text('默认')),
-                        DropdownMenuItem(value: 'LTEL', child: Text('电信')),
-                        DropdownMenuItem(value: 'LCNC', child: Text('联通')),
-                        DropdownMenuItem(value: 'LMOB', child: Text('移动')),
+                      decoration: InputDecoration(labelText: l10nEdit.dnsRecordLine),
+                      items: [
+                        DropdownMenuItem(value: 'DEFAULT', child: Text(l10nEdit.dnsRecordLineDefault)),
+                        DropdownMenuItem(value: 'LTEL', child: Text(l10nEdit.dnsRecordLineLTEL)),
+                        DropdownMenuItem(value: 'LCNC', child: Text(l10nEdit.dnsRecordLineLCNC)),
+                        DropdownMenuItem(value: 'LMOB', child: Text(l10nEdit.dnsRecordLineLMOB)),
                       ],
                       onChanged: (v) {
                         if (v != null) {
@@ -419,7 +427,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('取消'),
+                child: Text(l10nEdit.commonCancel),
               ),
               FilledButton(
                 onPressed: isSubmitting ? null : () async {
@@ -446,12 +454,12 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   if (dialogContext.mounted) {
                     if (result['success']) {
                       Navigator.pop(dialogContext);
-                      ToastUtil.showSuccess(context, '记录已更新');
+                      ToastUtil.showSuccess(context, l10nEdit.toastDnsRecordUpdated);
                     } else {
                       setDialogState(() => isSubmitting = false);
                       ToastUtil.showError(
                         context,
-                        result['error'] ?? '更新失败',
+                        result['error'] ?? l10nEdit.toastDnsRecordUpdateFailed,
                         errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
                       );
                     }
@@ -459,7 +467,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 },
                 child: isSubmitting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('保存'),
+                    : Text(l10nEdit.commonSave),
               ),
             ],
           );
@@ -476,13 +484,14 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
+          final l10nDel = AppLocalizations.of(context)!;
           return AlertDialog(
-            title: const Text('删除记录'),
-            content: Text('确定要删除 "$name" 吗？此操作无法撤销。'),
+            title: Text(l10nDel.dnsRecordDeleteTitle),
+            content: Text(l10nDel.dnsRecordDeleteConfirm(name)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('取消'),
+                child: Text(l10nDel.commonCancel),
               ),
               FilledButton(
                 style: FilledButton.styleFrom(
@@ -501,12 +510,12 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                   if (dialogContext.mounted) {
                     if (result['success']) {
                       Navigator.pop(dialogContext);
-                      ToastUtil.showSuccess(context, '记录已删除');
+                      ToastUtil.showSuccess(context, l10nDel.toastDnsRecordDeleted);
                     } else {
                       setDialogState(() => isDeleting = false);
                       ToastUtil.showError(
                         context,
-                        result['error'] ?? '删除失败',
+                        result['error'] ?? l10nDel.toastDnsRecordDeleteFailed,
                         errorCode: result['errorCode'] != null ? double.tryParse(result['errorCode']) : null,
                       );
                     }
@@ -514,7 +523,7 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
                 },
                 child: isDeleting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('删除'),
+                    : Text(l10nDel.commonDelete),
               ),
             ],
           );
@@ -650,10 +659,11 @@ class _DnsRecordsPageState extends State<DnsRecordsPage> {
   }
 
   Widget _buildEmptyState() {
-    return const DnsEmptyState(
+    final l10n = AppLocalizations.of(context)!;
+    return DnsEmptyState(
       icon: Icons.dns_outlined,
-      title: '暂无DNS记录',
-      description: '暂无DNS记录，请使用右下角按钮添加记录',
+      title: l10n.dnsRecordEmptyTitle,
+      description: l10n.dnsRecordEmptyDesc,
     );
   }
 }
